@@ -52,8 +52,10 @@ function Game()
 		this.setCurrentSide();
 
 		this.ui = new UI(this);
-		// Auto-start game for development - skip main menu
+		// Auto-start game for development - skip main menu and hide it
 		// To show menu, use: this.ui.mainMenuButton('options');
+		var startmenu = document.getElementById('startmenu');
+		if (startmenu) startmenu.style.display = 'none';
 
 		this.gameStarted = true;
 		this.gameEnded = false;
