@@ -445,23 +445,26 @@ function Render(mapObj)
 	//Caches images, func a function to call upon cache completion
 	this.cacheImages = function(func)
 	{
+		console.log("[RENDER] Starting to cache images...");
+		console.log("[RENDER] Map terrain image:", map.terrainImage);
+
 		if (!imgAttackCursor)
 		{
 			imgAttackCursor = new Image();
-			imgAttackCursor.onerror = function() { console.warn("Failed to load attack cursor image"); };
+			imgAttackCursor.onerror = function() { console.warn("[RENDER] Failed to load attack cursor image"); };
 			imgAttackCursor.src = "resources/ui/cursors/attack.png";
 		}
 		if (!imgFlags)
 		{
 			imgFlags = new Image();
-			imgFlags.onerror = function() { console.warn("Failed to load flags image"); };
+			imgFlags.onerror = function() { console.warn("[RENDER] Failed to load flags image"); };
 			imgFlags.src = "resources/ui/flags/flags_med.png";
 		}
 
 		if (!imgUnitFire)
 		{
 			imgUnitFire = new Image();
-			imgUnitFire.onerror = function() { console.warn("Failed to load unit fire indicator"); };
+			imgUnitFire.onerror = function() { console.warn("[RENDER] Failed to load unit fire indicator"); };
 			imgUnitFire.src = "resources/ui/indicators/unit-fire.png";
 		}
 
@@ -469,15 +472,23 @@ function Render(mapObj)
 		{
 			imgMapBackground = new Image();
 			imgMapBackground.onerror = function() {
-				console.warn("Failed to load map background: " + map.terrainImage);
+				console.warn("[RENDER] Failed to load map background: " + map.terrainImage);
 				setupLayers();
 				if (func) func();
 			};
-			imgMapBackground.onload = function() { setupLayers(); if (func) func(); }
-			imgMapBackground.src = map.terrainImage || "resources/maps/images/default.png";
+			imgMapBackground.onload = function() {
+				console.log("[RENDER] Map background loaded successfully");
+				setupLayers();
+				if (func) func();
+			}
+			var mapSrc = map.terrainImage || "resources/maps/images/default.png";
+			console.log("[RENDER] Loading map background from:", mapSrc);
+			imgMapBackground.src = mapSrc;
 		}
 
-		cacheUnitImages(map.getUnitImagesList(), func);
+		var unitList = map.getUnitImagesList();
+		console.log("[RENDER] Unit images to cache:", unitList);
+		cacheUnitImages(unitList, func);
 	}
 	
 	//Returns canvases 

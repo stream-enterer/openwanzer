@@ -1254,20 +1254,25 @@ function getMouseInfo(canvas, e)
 
 function uiMapRenderAndSelectUnit()
 {
+	console.log("[UI] uiMapRenderAndSelectUnit() called - rendering map...");
 	R.render();  //Full page rendering
+	console.log("[UI] Map rendered, selecting starting unit...");
 	selectStartingUnit(); //select the first available unit for the current side
 	uiSetUnitOnViewPort(map.currentUnit);
+	console.log("[UI] Starting unit selected and centered");
 }
 
 function uiMapCacheImages()
 {
+	console.log("[UI] uiMapCacheImages() called");
 	if (hasBrokenClearRect())
 	{
-		console.log("Broken canvas clearRect workaround");
+		console.log("[UI] Broken canvas clearRect workaround");
 		R.cacheImages(function() {window.setTimeout(uiMapRenderAndSelectUnit, 3000)});
 	}
 	else
 	{
+		console.log("[UI] Calling R.cacheImages() with callback");
 		R.cacheImages(uiMapRenderAndSelectUnit);
 	}
 }
