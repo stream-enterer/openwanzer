@@ -38,27 +38,39 @@ function Game()
 
 	this.init = function()
 	{
+		console.log("[GAME] Starting game initialization...");
 		this.state = new GameState(this);
 
 		if (!this.state.restore()) //No savegame
 		{
+			console.log("[GAME] No savegame found, loading default scenario:", Game.defaultScenario);
 			this.scenario = new Scenario(Game.defaultScenario);
 			this.scenario.load();
+			console.log("[GAME] Scenario loaded successfully");
 		}
 
 		setupPlayers(this);
+		console.log("[GAME] Players set up");
 
 		localPlayingSide = getLocalSide(this.scenario.map.getPlayers());
 		this.setCurrentSide();
+		console.log("[GAME] Current side set to:", this.scenario.map.currentPlayer);
 
+		console.log("[GAME] Creating UI...");
 		this.ui = new UI(this);
+		console.log("[GAME] UI created successfully");
+
 		// Auto-start game for development - skip main menu and hide it
 		// To show menu, use: this.ui.mainMenuButton('options');
 		var startmenu = document.getElementById('startmenu');
-		if (startmenu) startmenu.style.display = 'none';
+		if (startmenu) {
+			startmenu.style.display = 'none';
+			console.log("[GAME] Start menu hidden");
+		}
 
 		this.gameStarted = true;
 		this.gameEnded = false;
+		console.log("[GAME] Game initialization complete! Game should be visible now.");
 	}
 
 	this.processTurn = function()
