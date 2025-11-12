@@ -448,25 +448,33 @@ function Render(mapObj)
 		if (!imgAttackCursor)
 		{
 			imgAttackCursor = new Image();
+			imgAttackCursor.onerror = function() { console.warn("Failed to load attack cursor image"); };
 			imgAttackCursor.src = "resources/ui/cursors/attack.png";
 		}
 		if (!imgFlags)
 		{
 			imgFlags = new Image();
+			imgFlags.onerror = function() { console.warn("Failed to load flags image"); };
 			imgFlags.src = "resources/ui/flags/flags_med.png";
 		}
 
 		if (!imgUnitFire)
 		{
 			imgUnitFire = new Image();
+			imgUnitFire.onerror = function() { console.warn("Failed to load unit fire indicator"); };
 			imgUnitFire.src = "resources/ui/indicators/unit-fire.png";
 		}
 
 		if (!imgMapBackground)
 		{
 			imgMapBackground = new Image();
-			imgMapBackground.src = map.terrainImage;
-			imgMapBackground.onload = function() { setupLayers(); func(); }
+			imgMapBackground.onerror = function() {
+				console.warn("Failed to load map background: " + map.terrainImage);
+				setupLayers();
+				if (func) func();
+			};
+			imgMapBackground.onload = function() { setupLayers(); if (func) func(); }
+			imgMapBackground.src = map.terrainImage || "resources/maps/images/default.png";
 		}
 
 		cacheUnitImages(map.getUnitImagesList(), func);
@@ -588,7 +596,7 @@ function Render(mapObj)
 	}
 	
 	//imgList a list of image file names, func a function to call upon cache completion
-	//Units are saved from Luiz Guzman SHPTool to a 1x9 sprites bmp and 
+	//Units are saved from Luiz Guzman SHPTool to a 1x9 sprites bmp and
 	//converted to transparent png by convert.py
 	function cacheUnitImages(imgList, func)
 	{
@@ -603,11 +611,17 @@ function Render(mapObj)
 				loaded++;
 				continue;
 			}
-			
+
 			imgUnits[imgList[i]] = new Image();
-			imgUnits[imgList[i]].onload = function() 
+			imgUnits[imgList[i]].onload = function()
 			{
-				loaded++;  
+				loaded++;
+				if (loaded == toLoad)
+					if (func) func();
+			}
+			imgUnits[imgList[i]].onerror = function(e) {
+				console.warn("Failed to load unit image: " + this.src);
+				loaded++;
 				if (loaded == toLoad)
 					if (func) func();
 			}
