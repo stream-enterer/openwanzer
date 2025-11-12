@@ -45,6 +45,12 @@ Equipment.resetEquipment = function()
 	Equipment.equipmentIndexes = {};
 }
 
+Equipment.buildEquipment = function(countryList)
+{
+	Equipment.resetEquipment();
+	Equipment.addCountryListEquipment(countryList);
+}
+
 Equipment.addCountryListEquipment = function(countryList)
 {
 	for (var i = 0; i < countryList.length; i++)

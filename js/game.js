@@ -50,10 +50,11 @@ function Game()
 
 		localPlayingSide = getLocalSide(this.scenario.map.getPlayers());
 		this.setCurrentSide();
-		
+
 		this.ui = new UI(this);
-		this.ui.mainMenuButton('options'); 	//Bring up the "Main Menu"
-		
+		// Auto-start game for development - skip main menu
+		// To show menu, use: this.ui.mainMenuButton('options');
+
 		this.gameStarted = true;
 		this.gameEnded = false;
 	}

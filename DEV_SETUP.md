@@ -14,7 +14,7 @@ This guide will help you get OpenWanzer running locally for development and test
    http://localhost:8000/index.html
    ```
 
-3. **Start playing!** The game should load with a minimal tutorial scenario.
+3. **Start playing!** The game loads directly into the tutorial scenario (start menu is disabled for development).
 
 ## What's Included
 
@@ -34,10 +34,11 @@ All created as solid-color PNG files for development:
 - Flags and UI indicators
 - Generated via `create_placeholders.py`
 
-### Error Handling
-Modified `js/render.js` to gracefully handle missing assets:
-- Images that fail to load will show console warnings instead of crashing
-- Game will continue running even with missing graphics
+### Code Fixes
+Modified game initialization for development:
+- **js/render.js**: Added error handlers for missing assets (console warnings instead of crashes)
+- **js/game.js**: Auto-start game, skip start menu (menu requires additional button images)
+- **js/equipment.js**: Added missing `Equipment.buildEquipment()` function required for scenario loading
 
 ## Development Workflow
 
