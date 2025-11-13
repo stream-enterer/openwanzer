@@ -298,7 +298,16 @@ class PanzerGame(arcade.Window):
         # Update message box text
         if self.message_box:
             message_text = "=== Game Messages ===\n" + "\n".join(self.messages)
-            self.message_box.text = message_text
+
+            # Clear and update the document directly to ensure no overlapping
+            if hasattr(self.message_box, 'doc'):
+                # Delete all existing text
+                self.message_box.doc.delete_text(0, len(self.message_box.doc.text))
+                # Insert new text
+                self.message_box.doc.insert_text(0, message_text)
+            else:
+                # Fallback to text property
+                self.message_box.text = message_text
 
             # Set flag to trigger scroll on next update
             self.needs_scroll = True
@@ -759,10 +768,14 @@ class PanzerGame(arcade.Window):
                     self.ai_delay = 0.3
 
         # Handle autoscroll if needed
-        if self.needs_scroll and self.message_box and hasattr(self.message_box, 'layout'):
-            # Scroll to bottom to show latest messages
-            # In pyglet ScrollableTextLayout: view_y = -content_height scrolls to bottom
-            self.message_box.layout.view_y = -self.message_box.layout.content_height
+        if self.needs_scroll and self.message_box:
+            if hasattr(self.message_box, 'layout'):
+                # Scroll to bottom to show latest messages
+                # In pyglet ScrollableTextLayout: view_y = -content_height scrolls to bottom
+                try:
+                    self.message_box.layout.view_y = -self.message_box.layout.content_height
+                except Exception as e:
+                    print(f"Scroll error: {e}")
             self.needs_scroll = False
 
 
