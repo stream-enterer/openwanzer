@@ -60,9 +60,26 @@ struct VideoSettings {
   bool fpsDropdownEdit;
 
   VideoSettings()
-      : resolutionIndex(2), fullscreen(false), vsync(true), fpsIndex(1),
+      : resolutionIndex(6), fullscreen(true), vsync(false), fpsIndex(6),
         hexSize(40.0f), panSpeed(5.0f), msaa(false),
         resolutionDropdownEdit(false), fpsDropdownEdit(false) {}
+};
+
+// Game Layout Structure
+struct GameLayout {
+  Rectangle statusBar;   // Top status bar
+  Rectangle unitPanel;   // Right unit info panel
+  Rectangle helpBar;     // Bottom help text area
+  Rectangle playArea;    // Map rendering area
+
+  void recalculate(int w, int h) {
+    statusBar = {0, 0, (float)w, 40};
+    unitPanel = {(float)w - 250, 50, 250, 300};
+    helpBar = {0, (float)h - 30, (float)w, 30};
+    playArea = {0, 40, (float)w - 250, (float)h - 70};
+  }
+
+  GameLayout() { recalculate(SCREEN_WIDTH, SCREEN_HEIGHT); }
 };
 
 // Resolution options
@@ -156,6 +173,7 @@ struct GameState {
   int maxTurns;
   bool showOptionsMenu;
   VideoSettings settings;
+  GameLayout layout;
 
   GameState()
       : selectedUnit(nullptr), currentTurn(1), currentPlayer(0), maxTurns(20),
@@ -527,8 +545,8 @@ void endTurn(GameState &game) {
 }
 
 void drawUI(GameState &game) {
-  // Turn info panel
-  DrawRectangle(0, 0, SCREEN_WIDTH, 40, Color{40, 40, 40, 240});
+  // Turn info panel (status bar)
+  DrawRectangleRec(game.layout.statusBar, Color{40, 40, 40, 240});
 
   std::string turnText = "Turn: " + std::to_string(game.currentTurn) + "/" +
                          std::to_string(game.maxTurns);
@@ -540,65 +558,66 @@ void drawUI(GameState &game) {
            game.currentPlayer == 0 ? RED : BLUE);
 
   // Options button
-  if (GuiButton(Rectangle{(float)SCREEN_WIDTH - 110, 5, 100, 30}, "OPTIONS")) {
+  if (GuiButton(Rectangle{game.layout.statusBar.width - 110, 5, 100, 30},
+                "OPTIONS")) {
     game.showOptionsMenu = !game.showOptionsMenu;
   }
 
   // Unit info panel
   if (game.selectedUnit && !game.showOptionsMenu) {
-    int panelWidth = 250;
-    DrawRectangle(SCREEN_WIDTH - panelWidth, 50, panelWidth, 300,
-                  Color{40, 40, 40, 240});
+    DrawRectangleRec(game.layout.unitPanel, Color{40, 40, 40, 240});
 
     Unit *unit = game.selectedUnit;
-    int y = 60;
+    int y = (int)game.layout.unitPanel.y + 10;
+    int x = (int)game.layout.unitPanel.x + 10;
 
-    DrawText(unit->name.c_str(), SCREEN_WIDTH - panelWidth + 10, y, 20, WHITE);
+    DrawText(unit->name.c_str(), x, y, 20, WHITE);
     y += 30;
 
     std::string info = "Strength: " + std::to_string(unit->strength) + "/" +
                        std::to_string(unit->maxStrength);
-    DrawText(info.c_str(), SCREEN_WIDTH - panelWidth + 10, y, 16, WHITE);
+    DrawText(info.c_str(), x, y, 16, WHITE);
     y += 25;
 
     info = "Experience: " + std::string(unit->experience, '*');
-    DrawText(info.c_str(), SCREEN_WIDTH - panelWidth + 10, y, 16, YELLOW);
+    DrawText(info.c_str(), x, y, 16, YELLOW);
     y += 25;
 
     info = "Moves: " + std::to_string(unit->movesLeft) + "/" +
            std::to_string(unit->movementPoints);
-    DrawText(info.c_str(), SCREEN_WIDTH - panelWidth + 10, y, 16, WHITE);
+    DrawText(info.c_str(), x, y, 16, WHITE);
     y += 25;
 
     info = "Fuel: " + std::to_string(unit->fuel);
-    DrawText(info.c_str(), SCREEN_WIDTH - panelWidth + 10, y, 16, WHITE);
+    DrawText(info.c_str(), x, y, 16, WHITE);
     y += 25;
 
     info = "Ammo: " + std::to_string(unit->ammo);
-    DrawText(info.c_str(), SCREEN_WIDTH - panelWidth + 10, y, 16, WHITE);
+    DrawText(info.c_str(), x, y, 16, WHITE);
     y += 25;
 
     info = "Entrenchment: " + std::to_string(unit->entrenchment);
-    DrawText(info.c_str(), SCREEN_WIDTH - panelWidth + 10, y, 16, WHITE);
+    DrawText(info.c_str(), x, y, 16, WHITE);
     y += 35;
 
-    DrawText("Stats:", SCREEN_WIDTH - panelWidth + 10, y, 16, GRAY);
+    DrawText("Stats:", x, y, 16, GRAY);
     y += 20;
     info = "Hard Atk: " + std::to_string(unit->hardAttack);
-    DrawText(info.c_str(), SCREEN_WIDTH - panelWidth + 10, y, 14, WHITE);
+    DrawText(info.c_str(), x, y, 14, WHITE);
     y += 20;
     info = "Soft Atk: " + std::to_string(unit->softAttack);
-    DrawText(info.c_str(), SCREEN_WIDTH - panelWidth + 10, y, 14, WHITE);
+    DrawText(info.c_str(), x, y, 14, WHITE);
     y += 20;
     info = "Defense: " + std::to_string(unit->groundDefense);
-    DrawText(info.c_str(), SCREEN_WIDTH - panelWidth + 10, y, 14, WHITE);
+    DrawText(info.c_str(), x, y, 14, WHITE);
   }
 
-  // Controls help
+  // Controls help (help bar)
   if (!game.showOptionsMenu) {
     DrawText(
         "SPACE - End Turn | Left Click - Select/Move/Attack | ESC - Options",
-        10, SCREEN_HEIGHT - 25, 16, WHITE);
+        (int)game.layout.helpBar.x + 10,
+        (int)game.layout.helpBar.y + 5, 16, WHITE);
   }
 }
 
@@ -623,72 +642,73 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
   int controlX = menuX + 250;
   int controlWidth = 300;
 
-  // Resolution
-  DrawText("Resolution:", labelX, y, 20, WHITE);
-  std::string resLabels;
-  for (int i = 0; i < RESOLUTION_COUNT; i++) {
-    if (i > 0)
-      resLabels += ";";
-    resLabels += RESOLUTIONS[i].label;
-  }
-  if (GuiDropdownBox(
-          Rectangle{(float)controlX, (float)y - 5, (float)controlWidth, 30},
-          resLabels.c_str(), &game.settings.resolutionIndex,
-          game.settings.resolutionDropdownEdit)) {
-    game.settings.resolutionDropdownEdit =
-        !game.settings.resolutionDropdownEdit;
-  }
+  // Store positions for dropdowns to draw them last
+  int resolutionY = y;
   y += 50;
+  int fullscreenY = y;
+  y += 50;
+  int vsyncY = y;
+  y += 50;
+  int fpsY = y;
+  y += 50;
+
+  // Draw labels and non-dropdown controls first
+  // Resolution label
+  DrawText("Resolution:", labelX, resolutionY, 20, WHITE);
 
   // Fullscreen
-  DrawText("Fullscreen:", labelX, y, 20, WHITE);
-  GuiCheckBox(Rectangle{(float)controlX, (float)y - 5, 30, 30}, "",
-              &game.settings.fullscreen);
-  y += 50;
+  DrawText("Fullscreen:", labelX, fullscreenY, 20, WHITE);
+  if (!game.settings.resolutionDropdownEdit) {
+    GuiCheckBox(Rectangle{(float)controlX, (float)fullscreenY - 5, 30, 30}, "",
+                &game.settings.fullscreen);
+  }
 
   // VSync
-  DrawText("VSync:", labelX, y, 20, WHITE);
-  GuiCheckBox(Rectangle{(float)controlX, (float)y - 5, 30, 30}, "",
-              &game.settings.vsync);
-  y += 50;
-
-  // FPS Target
-  DrawText("FPS Target:", labelX, y, 20, WHITE);
-  if (GuiDropdownBox(
-          Rectangle{(float)controlX, (float)y - 5, (float)controlWidth, 30},
-          FPS_LABELS, &game.settings.fpsIndex, game.settings.fpsDropdownEdit)) {
-    game.settings.fpsDropdownEdit = !game.settings.fpsDropdownEdit;
+  DrawText("VSync:", labelX, vsyncY, 20, WHITE);
+  if (!game.settings.resolutionDropdownEdit) {
+    GuiCheckBox(Rectangle{(float)controlX, (float)vsyncY - 5, 30, 30}, "",
+                &game.settings.vsync);
   }
+
+  // FPS Target label
+  DrawText("FPS Target:", labelX, fpsY, 20, WHITE);
   std::string currentFps =
       game.settings.fpsIndex == 6
           ? "Unlimited"
           : std::to_string(FPS_VALUES[game.settings.fpsIndex]);
-  DrawText(currentFps.c_str(), controlX + controlWidth + 15, y, 20, GRAY);
-  y += 50;
+  if (!game.settings.resolutionDropdownEdit && !game.settings.fpsDropdownEdit) {
+    DrawText(currentFps.c_str(), controlX + controlWidth + 15, fpsY, 20, GRAY);
+  }
 
   // MSAA
   DrawText("Anti-Aliasing (4x):", labelX, y, 20, WHITE);
   bool oldMsaa = game.settings.msaa;
-  GuiCheckBox(Rectangle{(float)controlX, (float)y - 5, 30, 30}, "",
-              &game.settings.msaa);
-  if (game.settings.msaa != oldMsaa)
-    needsRestart = true;
+  if (!game.settings.resolutionDropdownEdit && !game.settings.fpsDropdownEdit) {
+    GuiCheckBox(Rectangle{(float)controlX, (float)y - 5, 30, 30}, "",
+                &game.settings.msaa);
+    if (game.settings.msaa != oldMsaa)
+      needsRestart = true;
+  }
   y += 50;
 
   // Hex Size Slider
   DrawText("Hex Size:", labelX, y, 20, WHITE);
-  GuiSlider(Rectangle{(float)controlX, (float)y, (float)controlWidth, 20}, "20",
-            "80", &game.settings.hexSize, 20, 80);
-  std::string hexSizeStr = std::to_string((int)game.settings.hexSize);
-  DrawText(hexSizeStr.c_str(), controlX + controlWidth + 15, y, 20, GRAY);
+  if (!game.settings.resolutionDropdownEdit && !game.settings.fpsDropdownEdit) {
+    GuiSlider(Rectangle{(float)controlX, (float)y, (float)controlWidth, 20}, "20",
+              "80", &game.settings.hexSize, 20, 80);
+    std::string hexSizeStr = std::to_string((int)game.settings.hexSize);
+    DrawText(hexSizeStr.c_str(), controlX + controlWidth + 15, y, 20, GRAY);
+  }
   y += 50;
 
   // Pan Speed Slider
   DrawText("Camera Pan Speed:", labelX, y, 20, WHITE);
-  GuiSlider(Rectangle{(float)controlX, (float)y, (float)controlWidth, 20}, "1",
-            "20", &game.settings.panSpeed, 1, 20);
-  std::string panSpeedStr = std::to_string((int)game.settings.panSpeed);
-  DrawText(panSpeedStr.c_str(), controlX + controlWidth + 15, y, 20, GRAY);
+  if (!game.settings.resolutionDropdownEdit && !game.settings.fpsDropdownEdit) {
+    GuiSlider(Rectangle{(float)controlX, (float)y, (float)controlWidth, 20}, "1",
+              "20", &game.settings.panSpeed, 1, 20);
+    std::string panSpeedStr = std::to_string((int)game.settings.panSpeed);
+    DrawText(panSpeedStr.c_str(), controlX + controlWidth + 15, y, 20, GRAY);
+  }
   y += 60;
 
   // Buttons
@@ -706,10 +726,12 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
       SetWindowSize(res.width, res.height);
       SCREEN_WIDTH = res.width;
       SCREEN_HEIGHT = res.height;
+      game.layout.recalculate(res.width, res.height);
     }
 
     if (game.settings.fullscreen != IsWindowFullscreen()) {
       ToggleFullscreen();
+      game.layout.recalculate(GetScreenWidth(), GetScreenHeight());
     }
 
     SetTargetFPS(FPS_VALUES[game.settings.fpsIndex]);
@@ -732,13 +754,36 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
 
   if (GuiButton(Rectangle{(float)menuX + 410, (float)buttonY, 150, 40},
                 "Defaults")) {
-    game.settings.resolutionIndex = 2; // 1280x720
+    game.settings.resolutionIndex = 6; // 1920x1080
     game.settings.fullscreen = true;
     game.settings.vsync = false;
-    game.settings.fpsIndex = 7; // 60 FPS
+    game.settings.fpsIndex = 6; // Unlimited FPS
     game.settings.hexSize = 40.0f;
     game.settings.panSpeed = 5.0f;
     game.settings.msaa = false;
+  }
+
+  // Draw dropdowns last so they appear on top
+  // Resolution dropdown
+  std::string resLabels;
+  for (int i = 0; i < RESOLUTION_COUNT; i++) {
+    if (i > 0)
+      resLabels += ";";
+    resLabels += RESOLUTIONS[i].label;
+  }
+  if (GuiDropdownBox(
+          Rectangle{(float)controlX, (float)resolutionY - 5, (float)controlWidth, 30},
+          resLabels.c_str(), &game.settings.resolutionIndex,
+          game.settings.resolutionDropdownEdit)) {
+    game.settings.resolutionDropdownEdit =
+        !game.settings.resolutionDropdownEdit;
+  }
+
+  // FPS Target dropdown
+  if (GuiDropdownBox(
+          Rectangle{(float)controlX, (float)fpsY - 5, (float)controlWidth, 30},
+          FPS_LABELS, &game.settings.fpsIndex, game.settings.fpsDropdownEdit)) {
+    game.settings.fpsDropdownEdit = !game.settings.fpsDropdownEdit;
   }
 
   // Restart warning
