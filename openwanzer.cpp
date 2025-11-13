@@ -475,19 +475,50 @@ struct CombatLog {
 
   CombatLog() : scrollOffset(0.0f), maxScrollOffset(0.0f), isHovering(false),
                 isDragging(false), dragOffset{0, 0} {
-    // Upper right corner, below status bar (40px), 350px wide, 400px tall
-    bounds = {SCREEN_WIDTH - 360.0f, 50.0f, 350.0f, 400.0f};
+    // Lower right corner, 350px wide, 400px tall, 10px margin from edges
+    bounds = {SCREEN_WIDTH - 360.0f, SCREEN_HEIGHT - 410.0f, 350.0f, 400.0f};
     initialBounds = bounds;
   }
 
   void recalculateBounds(int screenWidth, int screenHeight) {
-    // Position in upper right, below status bar (preserving offset from initial if dragged)
+    // Position in lower right (preserving offset from initial if dragged)
     float defaultX = screenWidth - 360.0f;
+    float defaultY = screenHeight - 410.0f;
     float offsetX = bounds.x - initialBounds.x;
     float offsetY = bounds.y - initialBounds.y;
 
-    initialBounds = {defaultX, 50.0f, 350.0f, 400.0f};
-    bounds = {defaultX + offsetX, 50.0f + offsetY, 350.0f, 400.0f};
+    initialBounds = {defaultX, defaultY, 350.0f, 400.0f};
+    bounds = {defaultX + offsetX, defaultY + offsetY, 350.0f, 400.0f};
+  }
+
+  void resetPosition() {
+    bounds = initialBounds;
+  }
+};
+
+// Unit info box structure (upper right panel for selected unit)
+struct UnitInfoBox {
+  Rectangle bounds;        // Display area
+  bool isHovering;        // Is mouse hovering over box?
+  bool isDragging;        // Is being dragged?
+  Vector2 dragOffset;     // Offset from top-left corner to mouse when drag started
+  Rectangle initialBounds; // Initial position for reset
+
+  UnitInfoBox() : isHovering(false), isDragging(false), dragOffset{0, 0} {
+    // Upper right corner, below status bar (40px), 250px wide, 300px tall
+    bounds = {SCREEN_WIDTH - 250.0f, 50.0f, 250.0f, 300.0f};
+    initialBounds = bounds;
+  }
+
+  void recalculateBounds(int screenWidth, int screenHeight) {
+    // Position in upper right (preserving offset from initial if dragged)
+    float defaultX = screenWidth - 250.0f;
+    float defaultY = 50.0f;
+    float offsetX = bounds.x - initialBounds.x;
+    float offsetY = bounds.y - initialBounds.y;
+
+    initialBounds = {defaultX, defaultY, 250.0f, 300.0f};
+    bounds = {defaultX + offsetX, defaultY + offsetY, 250.0f, 300.0f};
   }
 
   void resetPosition() {
@@ -508,6 +539,7 @@ struct GameState {
   GameLayout layout;
   CameraState camera;
   CombatLog combatLog;
+  UnitInfoBox unitInfoBox;
 
   GameState()
       : selectedUnit(nullptr), currentTurn(1), currentPlayer(0), maxTurns(20),
@@ -1101,7 +1133,10 @@ void moveUnit(GameState &game, Unit *unit, const HexCoord &target) {
   int cost = MOV_TABLE_DRY[movMethodIdx][terrainIdx];
 
   // Don't move if impassable
-  if (cost >= 255) return;
+  if (cost >= 255) {
+    addLogMessage(game, "Terrain is impassable");
+    return;
+  }
 
   // For difficult terrain (cost 254), we can enter but it uses all remaining moves
   if (cost == 254) cost = unit->movesLeft;
@@ -1131,6 +1166,8 @@ void moveUnit(GameState &game, Unit *unit, const HexCoord &target) {
     // Log movement
     std::string unitName = unit->name + " (" + (unit->side == 0 ? "Axis" : "Allied") + ")";
     addLogMessage(game, unitName + " moves to (" + std::to_string(target.row) + "," + std::to_string(target.col) + ")");
+  } else {
+    addLogMessage(game, "Not enough movement points");
   }
 }
 
@@ -1160,8 +1197,13 @@ int calculateKills(int atkVal, int defVal, const Unit *attacker, const Unit *def
 }
 
 void performAttack(GameState &game, Unit *attacker, Unit *defender) {
-  if (!attacker || !defender || attacker->hasFired)
+  if (!attacker || !defender)
     return;
+
+  if (attacker->hasFired) {
+    addLogMessage(game, "Unit has already fired this turn");
+    return;
+  }
 
   // Log combat initiation
   std::string attackerName = attacker->name + " (" + (attacker->side == 0 ? "Axis" : "Allied") + ")";
@@ -1457,23 +1499,24 @@ namespace Config {
 namespace Rendering {
 
 void drawCombatLog(GameState &game) {
-  const int fontSize = 14;
-  const int lineSpacing = 18;
+  // Get font size from raygui theme (same as dropdowns)
+  const int fontSize = GuiGetStyle(DEFAULT, TEXT_SIZE);
+  const int lineSpacing = fontSize + 4;
   const float scrollBarWidth = 15.0f;
   const float padding = 10.0f;
   const int titleHeight = 25;
 
   Rectangle bounds = game.combatLog.bounds;
 
-  // Get colors from raygui theme
-  Color backgroundColor = GetColor(GuiGetStyle(DEFAULT, BACKGROUND_COLOR));
-  Color borderColor = GetColor(GuiGetStyle(DEFAULT, BORDER_COLOR_FOCUSED));
-  Color titleColor = GetColor(GuiGetStyle(DEFAULT, LINE_COLOR));
-  Color textColor = GetColor(GuiGetStyle(LABEL, TEXT_COLOR_NORMAL));
+  // Get colors from raygui dropdown theme
+  Color backgroundColor = GetColor(GuiGetStyle(DROPDOWNBOX, BASE_COLOR_NORMAL));
+  Color borderColor = GetColor(GuiGetStyle(DROPDOWNBOX, BORDER_COLOR_NORMAL));
+  Color textColor = GetColor(GuiGetStyle(DROPDOWNBOX, TEXT_COLOR_NORMAL));
+  Color titleColor = textColor;  // Use same color for title
 
   // Draw background
   DrawRectangleRec(bounds, backgroundColor);
-  DrawRectangleLinesEx(bounds, 2, borderColor);
+  DrawRectangleLinesEx(bounds, 1, borderColor);  // 1px border
 
   // Draw title
   DrawText("Combat Log", (int)(bounds.x + padding), (int)(bounds.y + 5), 16, titleColor);
@@ -1589,6 +1632,74 @@ void drawCombatLog(GameState &game) {
   }
 }
 
+void drawUnitInfoBox(GameState &game) {
+  if (!game.selectedUnit || game.showOptionsMenu) return;
+
+  // Get font size and colors from raygui dropdown theme
+  const int fontSize = GuiGetStyle(DEFAULT, TEXT_SIZE);
+  const float padding = 10.0f;
+  Rectangle bounds = game.unitInfoBox.bounds;
+
+  Color backgroundColor = GetColor(GuiGetStyle(DROPDOWNBOX, BASE_COLOR_NORMAL));
+  Color borderColor = GetColor(GuiGetStyle(DROPDOWNBOX, BORDER_COLOR_NORMAL));
+  Color textColor = GetColor(GuiGetStyle(DROPDOWNBOX, TEXT_COLOR_NORMAL));
+
+  // Check if mouse is hovering over the box
+  Vector2 mousePos = GetMousePosition();
+  game.unitInfoBox.isHovering = CheckCollisionPointRec(mousePos, bounds);
+
+  // Draw background
+  DrawRectangleRec(bounds, backgroundColor);
+  DrawRectangleLinesEx(bounds, 1, borderColor);  // 1px border
+
+  Unit *unit = game.selectedUnit;
+  int y = (int)bounds.y + (int)padding;
+  int x = (int)bounds.x + (int)padding;
+  const int titleSize = fontSize + 4;
+  const int normalSize = fontSize;
+
+  // Use raygui's font via DrawText (DrawText uses the default font, which raygui can set)
+  DrawText(unit->name.c_str(), x, y, titleSize, textColor);
+  y += titleSize + 10;
+
+  std::string info = "Strength: " + std::to_string(unit->strength) + "/" +
+                     std::to_string(unit->maxStrength);
+  DrawText(info.c_str(), x, y, normalSize, textColor);
+  y += normalSize + 5;
+
+  info = "Experience: " + std::string(unit->experience, '*');
+  DrawText(info.c_str(), x, y, normalSize, textColor);
+  y += normalSize + 5;
+
+  info = "Moves: " + std::to_string(unit->movesLeft) + "/" +
+         std::to_string(unit->movementPoints);
+  DrawText(info.c_str(), x, y, normalSize, textColor);
+  y += normalSize + 5;
+
+  info = "Fuel: " + std::to_string(unit->fuel);
+  DrawText(info.c_str(), x, y, normalSize, textColor);
+  y += normalSize + 5;
+
+  info = "Ammo: " + std::to_string(unit->ammo);
+  DrawText(info.c_str(), x, y, normalSize, textColor);
+  y += normalSize + 5;
+
+  info = "Entrenchment: " + std::to_string(unit->entrenchment);
+  DrawText(info.c_str(), x, y, normalSize, textColor);
+  y += normalSize + 10;
+
+  DrawText("Stats:", x, y, normalSize, textColor);
+  y += normalSize + 5;
+  info = "Hard Atk: " + std::to_string(unit->hardAttack);
+  DrawText(info.c_str(), x, y, normalSize - 2, textColor);
+  y += normalSize;
+  info = "Soft Atk: " + std::to_string(unit->softAttack);
+  DrawText(info.c_str(), x, y, normalSize - 2, textColor);
+  y += normalSize;
+  info = "Defense: " + std::to_string(unit->groundDefense);
+  DrawText(info.c_str(), x, y, normalSize - 2, textColor);
+}
+
 void drawUI(GameState &game) {
   // Turn info panel (status bar)
   DrawRectangleRec(game.layout.statusBar, Color{40, 40, 40, 240});
@@ -1615,8 +1726,9 @@ void drawUI(GameState &game) {
     game.camera.zoomDirection = 0;
     Input::calculateCenteredCameraOffset(game.camera, SCREEN_WIDTH, SCREEN_HEIGHT);
 
-    // Reset combat log position
+    // Reset combat log and unit info box positions
     game.combatLog.resetPosition();
+    game.unitInfoBox.resetPosition();
   }
 
   // Options button
@@ -1628,54 +1740,8 @@ void drawUI(GameState &game) {
   // Draw combat log
   drawCombatLog(game);
 
-  // Unit info panel
-  if (game.selectedUnit && !game.showOptionsMenu) {
-    DrawRectangleRec(game.layout.unitPanel, Color{40, 40, 40, 240});
-
-    Unit *unit = game.selectedUnit;
-    int y = (int)game.layout.unitPanel.y + 10;
-    int x = (int)game.layout.unitPanel.x + 10;
-
-    DrawText(unit->name.c_str(), x, y, 20, WHITE);
-    y += 30;
-
-    std::string info = "Strength: " + std::to_string(unit->strength) + "/" +
-                       std::to_string(unit->maxStrength);
-    DrawText(info.c_str(), x, y, 16, WHITE);
-    y += 25;
-
-    info = "Experience: " + std::string(unit->experience, '*');
-    DrawText(info.c_str(), x, y, 16, YELLOW);
-    y += 25;
-
-    info = "Moves: " + std::to_string(unit->movesLeft) + "/" +
-           std::to_string(unit->movementPoints);
-    DrawText(info.c_str(), x, y, 16, WHITE);
-    y += 25;
-
-    info = "Fuel: " + std::to_string(unit->fuel);
-    DrawText(info.c_str(), x, y, 16, WHITE);
-    y += 25;
-
-    info = "Ammo: " + std::to_string(unit->ammo);
-    DrawText(info.c_str(), x, y, 16, WHITE);
-    y += 25;
-
-    info = "Entrenchment: " + std::to_string(unit->entrenchment);
-    DrawText(info.c_str(), x, y, 16, WHITE);
-    y += 35;
-
-    DrawText("Stats:", x, y, 16, GRAY);
-    y += 20;
-    info = "Hard Atk: " + std::to_string(unit->hardAttack);
-    DrawText(info.c_str(), x, y, 14, WHITE);
-    y += 20;
-    info = "Soft Atk: " + std::to_string(unit->softAttack);
-    DrawText(info.c_str(), x, y, 14, WHITE);
-    y += 20;
-    info = "Defense: " + std::to_string(unit->groundDefense);
-    DrawText(info.c_str(), x, y, 14, WHITE);
-  }
+  // Draw unit info box
+  drawUnitInfoBox(game);
 }
 
 void drawOptionsMenu(GameState &game, bool &needsRestart) {
@@ -1794,12 +1860,14 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
       SCREEN_HEIGHT = res.height;
       game.layout.recalculate(res.width, res.height);
       game.combatLog.recalculateBounds(res.width, res.height);
+      game.unitInfoBox.recalculateBounds(res.width, res.height);
     }
 
     if (game.settings.fullscreen != IsWindowFullscreen()) {
       ToggleFullscreen();
       game.layout.recalculate(GetScreenWidth(), GetScreenHeight());
       game.combatLog.recalculateBounds(GetScreenWidth(), GetScreenHeight());
+      game.unitInfoBox.recalculateBounds(GetScreenWidth(), GetScreenHeight());
     }
 
     SetTargetFPS(FPS_VALUES[game.settings.fpsIndex]);
@@ -2026,28 +2094,42 @@ void handlePan(GameState &game) {
   }
 }
 
-// Handle combat log dragging
+// Handle combat log and unit info box dragging
 void handleCombatLogDrag(GameState &game) {
   Vector2 mousePos = GetMousePosition();
 
-  // Start dragging on left click in combat log
+  // Start dragging on left click
   if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+    // Combat log dragging
     if (CheckCollisionPointRec(mousePos, game.combatLog.bounds)) {
       game.combatLog.isDragging = true;
       game.combatLog.dragOffset.x = mousePos.x - game.combatLog.bounds.x;
       game.combatLog.dragOffset.y = mousePos.y - game.combatLog.bounds.y;
+    }
+
+    // Unit info box dragging
+    if (game.selectedUnit && CheckCollisionPointRec(mousePos, game.unitInfoBox.bounds)) {
+      game.unitInfoBox.isDragging = true;
+      game.unitInfoBox.dragOffset.x = mousePos.x - game.unitInfoBox.bounds.x;
+      game.unitInfoBox.dragOffset.y = mousePos.y - game.unitInfoBox.bounds.y;
     }
   }
 
   // Stop dragging on release
   if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) {
     game.combatLog.isDragging = false;
+    game.unitInfoBox.isDragging = false;
   }
 
   // Update position while dragging
   if (game.combatLog.isDragging) {
     game.combatLog.bounds.x = mousePos.x - game.combatLog.dragOffset.x;
     game.combatLog.bounds.y = mousePos.y - game.combatLog.dragOffset.y;
+  }
+
+  if (game.unitInfoBox.isDragging) {
+    game.unitInfoBox.bounds.x = mousePos.x - game.unitInfoBox.dragOffset.x;
+    game.unitInfoBox.bounds.y = mousePos.y - game.unitInfoBox.dragOffset.y;
   }
 }
 
@@ -2298,13 +2380,23 @@ int main() {
                 GameLogic::performAttack(game, game.selectedUnit, clickedUnit);
                 Rendering::clearSelectionHighlights(game);
                 game.selectedUnit = nullptr;
+              } else {
+                GameLogic::addLogMessage(game, "No target at attack location");
               }
             } else if (clickedUnit && clickedUnit->side == game.currentPlayer) {
               // Select new unit
               game.selectedUnit = clickedUnit;
               GameLogic::highlightMovementRange(game, game.selectedUnit);
               GameLogic::highlightAttackRange(game, game.selectedUnit);
+            } else if (clickedUnit && clickedUnit->side != game.currentPlayer) {
+              // Clicked on enemy unit but not in attack range
+              GameLogic::addLogMessage(game, "Target not in range");
             } else {
+              // Clicked on invalid hex
+              if (!game.map[clickedHex.row][clickedHex.col].isMoveSel &&
+                  !game.map[clickedHex.row][clickedHex.col].isAttackSel) {
+                GameLogic::addLogMessage(game, "Cannot move or attack there");
+              }
               // Deselect
               game.selectedUnit = nullptr;
               Rendering::clearSelectionHighlights(game);
@@ -2314,6 +2406,9 @@ int main() {
             game.selectedUnit = clickedUnit;
             GameLogic::highlightMovementRange(game, game.selectedUnit);
             GameLogic::highlightAttackRange(game, game.selectedUnit);
+          } else if (clickedUnit && clickedUnit->side != game.currentPlayer) {
+            // Clicked on enemy unit without selection
+            GameLogic::addLogMessage(game, "Cannot select enemy unit");
           }
         }
       }
@@ -2427,7 +2522,7 @@ int main() {
     }
 
     // Draw FPS in bottom right corner
-    DrawFPS(SCREEN_WIDTH - 100, SCREEN_HEIGHT - 30);
+    // FPS display removed per user request
 
     EndDrawing();
   }
