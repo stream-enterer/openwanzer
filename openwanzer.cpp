@@ -146,6 +146,8 @@ const int MOV_TABLE_DRY[12][18] = {
 // SECTION 4: UTILITY FUNCTIONS (GAME LOGIC)
 //==============================================================================
 
+namespace GameLogic {
+
 // Helper function to map TerrainType to movement table index
 int getTerrainIndex(TerrainType terrain) {
   switch (terrain) {
@@ -206,6 +208,8 @@ int getTerrainEntrenchment(TerrainType terrain) {
   }
   return 0;
 }
+
+} // namespace GameLogic
 
 //==============================================================================
 // SECTION 5: DATA STRUCTURES
@@ -776,6 +780,8 @@ void clearSelectionHighlights(GameState &game) {
 // SECTION 7: GAME LOGIC FUNCTIONS
 //==============================================================================
 
+namespace GameLogic {
+
 // Hex math and distance calculations
 int hexDistance(const HexCoord &a, const HexCoord &b) {
   OffsetCoord offsetA = Rendering::gameCoordToOffset(a);
@@ -1302,6 +1308,8 @@ void endTurn(GameState &game) {
   game.selectedUnit = nullptr;
   Rendering::clearSelectionHighlights(game);
 }
+
+} // namespace GameLogic
 
 //==============================================================================
 // SECTION 8: INPUT AND CAMERA FUNCTIONS
@@ -1925,8 +1933,8 @@ int main() {
   game.addUnit(UnitClass::RECON, 1, 8, 11);
 
   // Initialize Zone of Control and Spotting for all units
-  initializeAllZOC(game);
-  initializeAllSpotting(game);
+  GameLogic::initializeAllZOC(game);
+  GameLogic::initializeAllSpotting(game);
 
   bool needsRestart = false;
 
@@ -1940,7 +1948,7 @@ int main() {
       handlePan(game);
 
       if (IsKeyPressed(KEY_SPACE)) {
-        endTurn(game);
+        GameLogic::endTurn(game);
       }
 
       if (IsKeyPressed(KEY_ESCAPE)) {
@@ -1969,20 +1977,20 @@ int main() {
           if (game.selectedUnit) {
             // Try to move or attack
             if (game.map[clickedHex.row][clickedHex.col].isMoveSel) {
-              moveUnit(game, game.selectedUnit, clickedHex);
+              GameLogic::moveUnit(game, game.selectedUnit, clickedHex);
               Rendering::clearSelectionHighlights(game);
-              highlightAttackRange(game, game.selectedUnit);
+              GameLogic::highlightAttackRange(game, game.selectedUnit);
             } else if (game.map[clickedHex.row][clickedHex.col].isAttackSel) {
               if (clickedUnit) {
-                performAttack(game, game.selectedUnit, clickedUnit);
+                GameLogic::performAttack(game, game.selectedUnit, clickedUnit);
                 Rendering::clearSelectionHighlights(game);
                 game.selectedUnit = nullptr;
               }
             } else if (clickedUnit && clickedUnit->side == game.currentPlayer) {
               // Select new unit
               game.selectedUnit = clickedUnit;
-              highlightMovementRange(game, game.selectedUnit);
-              highlightAttackRange(game, game.selectedUnit);
+              GameLogic::highlightMovementRange(game, game.selectedUnit);
+              GameLogic::highlightAttackRange(game, game.selectedUnit);
             } else {
               // Deselect
               game.selectedUnit = nullptr;
@@ -1991,8 +1999,8 @@ int main() {
           } else if (clickedUnit && clickedUnit->side == game.currentPlayer) {
             // Select unit
             game.selectedUnit = clickedUnit;
-            highlightMovementRange(game, game.selectedUnit);
-            highlightAttackRange(game, game.selectedUnit);
+            GameLogic::highlightMovementRange(game, game.selectedUnit);
+            GameLogic::highlightAttackRange(game, game.selectedUnit);
           }
         }
       }
