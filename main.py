@@ -59,12 +59,19 @@ class PanzerGame(arcade.Window):
         self.selected_unit_label = None
         self.ai_thinking_label = None
         self.hud_box = None
-        self.message_box = None
 
-        # Message log
+        # Message log using Text objects
         self.messages = []
-        self.max_messages = 100
-        self.needs_scroll = False  # Flag to trigger autoscroll
+        self.max_messages = 20  # Limit for visible messages
+        self.message_text_objects = []  # List of Text objects for each message line
+
+        # Game over screen Text objects
+        self.game_over_text = None
+        self.winner_text = None
+        self.restart_text = None
+
+        # Unit text objects cache (key: unit id, value: Text object)
+        self.unit_text_objects = {}
 
         # AI processing
         self.ai_thinking = False
@@ -243,23 +250,14 @@ class PanzerGame(arcade.Window):
         )
         message_box_container.add(message_bg, anchor_x="left", anchor_y="bottom")
 
-        # Create text area for messages
-        self.message_box = arcade.gui.UITextArea(
-            text="=== Game Messages ===\n",
-            width=self.hud_panel_width - 44,
-            height=message_box_height - 44,
-            font_size=9,
-            text_color=arcade.color.WHITE
-        )
+        # Store message box dimensions for Text object positioning
+        self.message_box_x = self.game_panel_width + 20
+        self.message_box_y = 20
+        self.message_box_width = self.hud_panel_width - 44
+        self.message_box_height = message_box_height - 44
 
-        # Position message box with padding
-        message_box_container.add(
-            self.message_box,
-            anchor_x="left",
-            anchor_y="bottom",
-            align_x=20,
-            align_y=20
-        )
+        # Create Text objects for message log (will be populated dynamically)
+        self.update_message_text_objects()
 
         # Add sections to vertical layout (message box first to position at bottom)
         hud_vertical_layout.add(message_box_container)
@@ -295,13 +293,43 @@ class PanzerGame(arcade.Window):
         if len(self.messages) > self.max_messages:
             self.messages = self.messages[-self.max_messages:]
 
-        # Update message box text
-        if self.message_box:
-            message_text = "=== Game Messages ===\n" + "\n".join(self.messages)
-            self.message_box.text = message_text
+        # Update message Text objects
+        self.update_message_text_objects()
 
-            # Set flag to trigger scroll on next update
-            self.needs_scroll = True
+    def update_message_text_objects(self):
+        """Recreate Text objects for message log"""
+        # Clear old Text objects
+        self.message_text_objects = []
+
+        # Create header
+        header = arcade.Text(
+            "=== Game Messages ===",
+            self.message_box_x,
+            self.message_box_y + self.message_box_height - 15,
+            arcade.color.WHITE,
+            9,
+            bold=True
+        )
+        self.message_text_objects.append(header)
+
+        # Create Text object for each message (newest at bottom)
+        line_height = 12
+        start_y = self.message_box_y + self.message_box_height - 35
+
+        # Display messages from oldest to newest (bottom to top)
+        for i, msg in enumerate(self.messages):
+            y_pos = start_y - (i * line_height)
+            if y_pos < self.message_box_y:
+                break  # Don't draw messages that would go below message box
+
+            text_obj = arcade.Text(
+                msg,
+                self.message_box_x,
+                y_pos,
+                arcade.color.WHITE,
+                9
+            )
+            self.message_text_objects.append(text_obj)
 
     def on_resize(self, width, height):
         """Handle window resize"""
@@ -378,6 +406,10 @@ class PanzerGame(arcade.Window):
 
         # Draw UI manager (HUD panels and widgets)
         self.ui_manager.draw()
+
+        # Draw message log Text objects
+        for text_obj in self.message_text_objects:
+            text_obj.draw()
 
         # Draw game over screen
         if self.game_state.game_over:
@@ -459,11 +491,28 @@ class PanzerGame(arcade.Window):
                         arcade.color.BLACK, 2
                     )
 
-                    # Draw unit type indicator
-                    unit_text = self.get_unit_symbol(unit)
-                    arcade.draw_text(unit_text, x, y, arcade.color.WHITE,
-                                   12, anchor_x="center", anchor_y="center",
-                                   bold=True)
+                    # Draw unit type indicator using Text object
+                    unit_symbol = self.get_unit_symbol(unit)
+                    unit_id = id(unit)
+
+                    # Create or update Text object for this unit
+                    if unit_id not in self.unit_text_objects:
+                        self.unit_text_objects[unit_id] = arcade.Text(
+                            unit_symbol,
+                            x, y,
+                            arcade.color.WHITE,
+                            12,
+                            anchor_x="center",
+                            anchor_y="center",
+                            bold=True
+                        )
+                    else:
+                        # Update position
+                        self.unit_text_objects[unit_id].x = x
+                        self.unit_text_objects[unit_id].y = y
+
+                    # Draw the Text object
+                    self.unit_text_objects[unit_id].draw()
 
                     # Draw strength bar
                     bar_width = 20
@@ -516,23 +565,43 @@ class PanzerGame(arcade.Window):
             (0, 0, 0, 200)
         )
 
-        # Game over text
-        arcade.draw_text("GAME OVER", self.width / 2, self.height / 2 + 50,
-                        arcade.color.WHITE, 48, bold=True,
-                        anchor_x="center", anchor_y="center")
+        # Create or update game over Text objects
+        if self.game_over_text is None:
+            self.game_over_text = arcade.Text(
+                "GAME OVER",
+                self.width / 2, self.height / 2 + 50,
+                arcade.color.WHITE,
+                48,
+                bold=True,
+                anchor_x="center",
+                anchor_y="center"
+            )
 
-        # Winner
-        winner_text = f"{SIDE_NAMES[self.game_state.winner]} Wins!"
-        winner_color = SIDE_COLORS[self.game_state.winner]
-        arcade.draw_text(winner_text, self.width / 2, self.height / 2,
-                        winner_color, 36, bold=True,
-                        anchor_x="center", anchor_y="center")
+            winner_text_str = f"{SIDE_NAMES[self.game_state.winner]} Wins!"
+            winner_color = SIDE_COLORS[self.game_state.winner]
+            self.winner_text = arcade.Text(
+                winner_text_str,
+                self.width / 2, self.height / 2,
+                winner_color,
+                36,
+                bold=True,
+                anchor_x="center",
+                anchor_y="center"
+            )
 
-        # Restart instruction
-        arcade.draw_text("Press R to Restart", self.width / 2,
-                        self.height / 2 - 50,
-                        arcade.color.WHITE, 20,
-                        anchor_x="center", anchor_y="center")
+            self.restart_text = arcade.Text(
+                "Press R to Restart",
+                self.width / 2, self.height / 2 - 50,
+                arcade.color.WHITE,
+                20,
+                anchor_x="center",
+                anchor_y="center"
+            )
+
+        # Draw Text objects
+        self.game_over_text.draw()
+        self.winner_text.draw()
+        self.restart_text.draw()
     
     def on_mouse_press(self, x, y, button, modifiers):
         """Handle mouse clicks"""
@@ -757,13 +826,6 @@ class PanzerGame(arcade.Window):
                     success, message = self.game_state.attack_unit(unit, target)
                     self.add_message(f"AI: {message}")
                     self.ai_delay = 0.3
-
-        # Handle autoscroll if needed
-        if self.needs_scroll and self.message_box and hasattr(self.message_box, 'layout'):
-            # Scroll to bottom to show latest messages
-            # In pyglet ScrollableTextLayout: view_y = -content_height scrolls to bottom
-            self.message_box.layout.view_y = -self.message_box.layout.content_height
-            self.needs_scroll = False
 
 
 def main():
