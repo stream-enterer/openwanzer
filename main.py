@@ -268,8 +268,8 @@ class PanzerGame(arcade.Window):
 
         # Update projection to match viewport for 1:1 pixel ratio
         # This prevents squashing/stretching when window is resized
-        # Rect uses keyword arguments for clarity
-        self.game_camera.projection = Rect(x=0, y=0, width=self.game_panel_width, height=self.height)
+        # Rect uses orthographic projection bounds: left, right, bottom, top
+        self.game_camera.projection = Rect(left=0, right=self.game_panel_width, bottom=0, top=self.height)
 
         # Position camera for scrollable viewport
         self.game_camera.position = (self.camera_x, self.camera_y)
