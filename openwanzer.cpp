@@ -20,6 +20,8 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <dirent.h>
+#include <sys/stat.h>
 
 // Constants
 const int DEFAULT_SCREEN_WIDTH = 1920;
@@ -89,13 +91,18 @@ struct VideoSettings {
   float hexSize;
   float panSpeed;
   bool msaa;
+  int guiScaleIndex;
+  std::string styleTheme;
   bool resolutionDropdownEdit;
   bool fpsDropdownEdit;
+  bool guiScaleDropdownEdit;
+  bool styleThemeDropdownEdit;
 
   VideoSettings()
       : resolutionIndex(6), fullscreen(true), vsync(false), fpsIndex(6),
-        hexSize(40.0f), panSpeed(5.0f), msaa(false),
-        resolutionDropdownEdit(false), fpsDropdownEdit(false) {}
+        hexSize(40.0f), panSpeed(5.0f), msaa(false), guiScaleIndex(2),
+        styleTheme("dark"), resolutionDropdownEdit(false), fpsDropdownEdit(false),
+        guiScaleDropdownEdit(false), styleThemeDropdownEdit(false) {}
 };
 
 // Game Layout Structure
@@ -132,6 +139,70 @@ const int RESOLUTION_COUNT = 9;
 
 const int FPS_VALUES[] = {30, 60, 75, 120, 144, 240, 0};
 const char *FPS_LABELS = "30;60;75;120;144;240;Unlimited";
+
+const float GUI_SCALE_VALUES[] = {1.0f, 1.5f, 2.0f};
+const char *GUI_SCALE_LABELS = "1.00;1.50;2.00";
+const int GUI_SCALE_COUNT = 3;
+
+// Global variables for style themes
+std::vector<std::string> AVAILABLE_STYLES;
+std::string STYLE_LABELS_STRING;
+
+// Function to discover available styles
+void discoverStyles() {
+  AVAILABLE_STYLES.clear();
+  const char* stylesPath = "resources/styles";
+
+  DIR* dir = opendir(stylesPath);
+  if (dir == nullptr) {
+    TraceLog(LOG_WARNING, "Failed to open styles directory");
+    // Add default style as fallback
+    AVAILABLE_STYLES.push_back("default");
+    STYLE_LABELS_STRING = "default";
+    return;
+  }
+
+  struct dirent* entry;
+  while ((entry = readdir(dir)) != nullptr) {
+    // Skip . and ..
+    if (entry->d_name[0] == '.') continue;
+
+    // Check if it's a directory
+    std::string fullPath = std::string(stylesPath) + "/" + entry->d_name;
+    struct stat statbuf;
+    if (stat(fullPath.c_str(), &statbuf) == 0 && S_ISDIR(statbuf.st_mode)) {
+      // Check if .rgs file exists
+      std::string rgsPath = fullPath + "/style_" + entry->d_name + ".rgs";
+      std::ifstream rgsFile(rgsPath);
+      if (rgsFile.good()) {
+        AVAILABLE_STYLES.push_back(entry->d_name);
+      }
+    }
+  }
+  closedir(dir);
+
+  // Sort styles alphabetically
+  std::sort(AVAILABLE_STYLES.begin(), AVAILABLE_STYLES.end());
+
+  // Create labels string
+  STYLE_LABELS_STRING.clear();
+  for (size_t i = 0; i < AVAILABLE_STYLES.size(); i++) {
+    if (i > 0) STYLE_LABELS_STRING += ";";
+    STYLE_LABELS_STRING += AVAILABLE_STYLES[i];
+  }
+
+  TraceLog(LOG_INFO, TextFormat("Found %d styles", (int)AVAILABLE_STYLES.size()));
+}
+
+// Get index of a style by name
+int getStyleIndex(const std::string& styleName) {
+  for (size_t i = 0; i < AVAILABLE_STYLES.size(); i++) {
+    if (AVAILABLE_STYLES[i] == styleName) {
+      return (int)i;
+    }
+  }
+  return 0; // Default to first style if not found
+}
 
 // Structures
 struct HexCoord {
@@ -643,6 +714,8 @@ void endTurn(GameState &game) {
 // Forward declarations
 void saveConfig(const VideoSettings& settings);
 void loadConfig(VideoSettings& settings);
+void applyGuiScale(float scale);
+void loadStyleTheme(const std::string& themeName);
 
 void drawUI(GameState &game) {
   // Turn info panel (status bar)
@@ -730,7 +803,7 @@ void drawUI(GameState &game) {
 
 void drawOptionsMenu(GameState &game, bool &needsRestart) {
   int menuWidth = 600;
-  int menuHeight = 550;
+  int menuHeight = 650;
   int menuX = (SCREEN_WIDTH - menuWidth) / 2;
   int menuY = (SCREEN_HEIGHT - menuHeight) / 2;
 
@@ -749,6 +822,12 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
   int controlX = menuX + 250;
   int controlWidth = 300;
 
+  // Check if any dropdown is open
+  bool anyDropdownOpen = game.settings.resolutionDropdownEdit ||
+                         game.settings.fpsDropdownEdit ||
+                         game.settings.guiScaleDropdownEdit ||
+                         game.settings.styleThemeDropdownEdit;
+
   // Store positions for dropdowns to draw them last
   int resolutionY = y;
   y += 50;
@@ -758,6 +837,10 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
   y += 50;
   int fpsY = y;
   y += 50;
+  int guiScaleY = y;
+  y += 50;
+  int styleThemeY = y;
+  y += 50;
 
   // Draw labels and non-dropdown controls first
   // Resolution label
@@ -765,14 +848,14 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
 
   // Fullscreen
   DrawText("Fullscreen:", labelX, fullscreenY, 20, WHITE);
-  if (!game.settings.resolutionDropdownEdit) {
+  if (!anyDropdownOpen || game.settings.resolutionDropdownEdit) {
     GuiCheckBox(Rectangle{(float)controlX, (float)fullscreenY - 5, 30, 30}, "",
                 &game.settings.fullscreen);
   }
 
   // VSync
   DrawText("VSync:", labelX, vsyncY, 20, WHITE);
-  if (!game.settings.resolutionDropdownEdit) {
+  if (!anyDropdownOpen || game.settings.resolutionDropdownEdit) {
     GuiCheckBox(Rectangle{(float)controlX, (float)vsyncY - 5, 30, 30}, "",
                 &game.settings.vsync);
   }
@@ -783,14 +866,20 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
       game.settings.fpsIndex == 6
           ? "Unlimited"
           : std::to_string(FPS_VALUES[game.settings.fpsIndex]);
-  if (!game.settings.resolutionDropdownEdit && !game.settings.fpsDropdownEdit) {
+  if (!anyDropdownOpen || game.settings.fpsDropdownEdit) {
     DrawText(currentFps.c_str(), controlX + controlWidth + 15, fpsY, 20, GRAY);
   }
+
+  // GUI Scale label
+  DrawText("GUI Scale:", labelX, guiScaleY, 20, WHITE);
+
+  // Style Theme label
+  DrawText("Style Theme:", labelX, styleThemeY, 20, WHITE);
 
   // MSAA
   DrawText("Anti-Aliasing (4x):", labelX, y, 20, WHITE);
   bool oldMsaa = game.settings.msaa;
-  if (!game.settings.resolutionDropdownEdit && !game.settings.fpsDropdownEdit) {
+  if (!anyDropdownOpen) {
     GuiCheckBox(Rectangle{(float)controlX, (float)y - 5, 30, 30}, "",
                 &game.settings.msaa);
     if (game.settings.msaa != oldMsaa)
@@ -800,7 +889,7 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
 
   // Hex Size Slider
   DrawText("Hex Size:", labelX, y, 20, WHITE);
-  if (!game.settings.resolutionDropdownEdit && !game.settings.fpsDropdownEdit) {
+  if (!anyDropdownOpen) {
     GuiSlider(Rectangle{(float)controlX, (float)y, (float)controlWidth, 20}, "20",
               "80", &game.settings.hexSize, 20, 80);
     std::string hexSizeStr = std::to_string((int)game.settings.hexSize);
@@ -810,7 +899,7 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
 
   // Pan Speed Slider
   DrawText("Camera Pan Speed:", labelX, y, 20, WHITE);
-  if (!game.settings.resolutionDropdownEdit && !game.settings.fpsDropdownEdit) {
+  if (!anyDropdownOpen) {
     GuiSlider(Rectangle{(float)controlX, (float)y, (float)controlWidth, 20}, "1",
               "20", &game.settings.panSpeed, 1, 20);
     std::string panSpeedStr = std::to_string((int)game.settings.panSpeed);
@@ -825,6 +914,8 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
     // Close any open dropdowns
     game.settings.resolutionDropdownEdit = false;
     game.settings.fpsDropdownEdit = false;
+    game.settings.guiScaleDropdownEdit = false;
+    game.settings.styleThemeDropdownEdit = false;
 
     // Apply settings
     Resolution res = RESOLUTIONS[game.settings.resolutionIndex];
@@ -846,6 +937,12 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
     // Apply hex size
     HEX_SIZE = game.settings.hexSize;
 
+    // Apply style theme
+    loadStyleTheme(game.settings.styleTheme);
+
+    // Apply GUI scale (after style is loaded)
+    applyGuiScale(GUI_SCALE_VALUES[game.settings.guiScaleIndex]);
+
     // Save config to file
     saveConfig(game.settings);
 
@@ -857,6 +954,8 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
     // Close any open dropdowns
     game.settings.resolutionDropdownEdit = false;
     game.settings.fpsDropdownEdit = false;
+    game.settings.guiScaleDropdownEdit = false;
+    game.settings.styleThemeDropdownEdit = false;
     game.showOptionsMenu = false;
   }
 
@@ -869,10 +968,12 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
     game.settings.hexSize = 40.0f;
     game.settings.panSpeed = 5.0f;
     game.settings.msaa = false;
+    game.settings.guiScaleIndex = 2; // 2.00
+    game.settings.styleTheme = "dark";
   }
 
   // Draw dropdowns last so they appear on top
-  // Draw FPS dropdown first, then resolution dropdown so resolution appears on top
+  // Draw in reverse Z-order: FPS, GUI Scale, Style Theme, Resolution (so Resolution appears on top)
   std::string resLabels;
   for (int i = 0; i < RESOLUTION_COUNT; i++) {
     if (i > 0)
@@ -885,6 +986,26 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
           Rectangle{(float)controlX, (float)fpsY - 5, (float)controlWidth, 30},
           FPS_LABELS, &game.settings.fpsIndex, game.settings.fpsDropdownEdit)) {
     game.settings.fpsDropdownEdit = !game.settings.fpsDropdownEdit;
+  }
+
+  // GUI Scale dropdown
+  if (GuiDropdownBox(
+          Rectangle{(float)controlX, (float)guiScaleY - 5, (float)controlWidth, 30},
+          GUI_SCALE_LABELS, &game.settings.guiScaleIndex, game.settings.guiScaleDropdownEdit)) {
+    game.settings.guiScaleDropdownEdit = !game.settings.guiScaleDropdownEdit;
+  }
+
+  // Style Theme dropdown
+  // Get current style index
+  int currentStyleIndex = getStyleIndex(game.settings.styleTheme);
+  if (GuiDropdownBox(
+          Rectangle{(float)controlX, (float)styleThemeY - 5, (float)controlWidth, 30},
+          STYLE_LABELS_STRING.c_str(), &currentStyleIndex, game.settings.styleThemeDropdownEdit)) {
+    game.settings.styleThemeDropdownEdit = !game.settings.styleThemeDropdownEdit;
+  }
+  // Update style theme name if index changed
+  if (currentStyleIndex >= 0 && currentStyleIndex < (int)AVAILABLE_STYLES.size()) {
+    game.settings.styleTheme = AVAILABLE_STYLES[currentStyleIndex];
   }
 
   // Resolution dropdown (draw last so it's on top)
@@ -1022,6 +1143,8 @@ void saveConfig(const VideoSettings& settings) {
   configFile << "hexSize=" << settings.hexSize << "\n";
   configFile << "panSpeed=" << settings.panSpeed << "\n";
   configFile << "msaa=" << (settings.msaa ? 1 : 0) << "\n";
+  configFile << "guiScaleIndex=" << settings.guiScaleIndex << "\n";
+  configFile << "styleTheme=" << settings.styleTheme << "\n";
 
   configFile.close();
   TraceLog(LOG_INFO, "Config saved to config.txt");
@@ -1074,6 +1197,13 @@ void loadConfig(VideoSettings& settings) {
         }
       } else if (key == "msaa") {
         settings.msaa = (std::stoi(value) != 0);
+      } else if (key == "guiScaleIndex") {
+        int val = std::stoi(value);
+        if (val >= 0 && val < GUI_SCALE_COUNT) {
+          settings.guiScaleIndex = val;
+        }
+      } else if (key == "styleTheme") {
+        settings.styleTheme = value;
       }
     } catch (const std::exception& e) {
       // Ignore malformed values
@@ -1085,13 +1215,50 @@ void loadConfig(VideoSettings& settings) {
   TraceLog(LOG_INFO, "Config loaded from config.txt");
 }
 
+// Apply GUI scale to raygui
+void applyGuiScale(float scale) {
+  // Set text size for all controls
+  GuiSetStyle(DEFAULT, TEXT_SIZE, (int)(10 * scale));
+
+  // Set spacing and padding
+  GuiSetStyle(DEFAULT, TEXT_SPACING, (int)(1 * scale));
+
+  // Set border width
+  GuiSetStyle(DEFAULT, BORDER_WIDTH, (int)(1 * scale));
+
+  TraceLog(LOG_INFO, TextFormat("GUI scale applied: %.2f", scale));
+}
+
+// Load style theme
+void loadStyleTheme(const std::string& themeName) {
+  std::string stylePath = "resources/styles/" + themeName + "/style_" + themeName + ".rgs";
+
+  // Check if file exists
+  std::ifstream styleFile(stylePath);
+  if (!styleFile.good()) {
+    TraceLog(LOG_WARNING, TextFormat("Style file not found: %s", stylePath.c_str()));
+    return;
+  }
+  styleFile.close();
+
+  // Load the style
+  GuiLoadStyle(stylePath.c_str());
+  TraceLog(LOG_INFO, TextFormat("Style loaded: %s", themeName.c_str()));
+}
+
 int main() {
+  // Discover available styles first (before window init)
+  discoverStyles();
+
   // Create temporary settings to load config before window init
   VideoSettings tempSettings;
   loadConfig(tempSettings);
 
   // Set config flags before window creation
-  unsigned int flags = FLAG_VSYNC_HINT | FLAG_WINDOW_RESIZABLE;
+  unsigned int flags = FLAG_WINDOW_RESIZABLE;
+  if (tempSettings.vsync) {
+    flags |= FLAG_VSYNC_HINT;
+  }
   if (tempSettings.msaa) {
     flags |= FLAG_MSAA_4X_HINT;
   }
@@ -1115,6 +1282,12 @@ int main() {
 
   // Apply FPS from config
   SetTargetFPS(FPS_VALUES[tempSettings.fpsIndex]);
+
+  // Load style theme from config
+  loadStyleTheme(tempSettings.styleTheme);
+
+  // Apply GUI scale from config
+  applyGuiScale(GUI_SCALE_VALUES[tempSettings.guiScaleIndex]);
 
   GameState game;
   // Apply loaded settings to game state
@@ -1279,10 +1452,14 @@ int main() {
       // Close menu with ESC (close dropdowns first if open)
       if (IsKeyPressed(KEY_ESCAPE)) {
         if (game.settings.resolutionDropdownEdit ||
-            game.settings.fpsDropdownEdit) {
+            game.settings.fpsDropdownEdit ||
+            game.settings.guiScaleDropdownEdit ||
+            game.settings.styleThemeDropdownEdit) {
           // Close any open dropdowns first
           game.settings.resolutionDropdownEdit = false;
           game.settings.fpsDropdownEdit = false;
+          game.settings.guiScaleDropdownEdit = false;
+          game.settings.styleThemeDropdownEdit = false;
         } else {
           // Close the menu
           game.showOptionsMenu = false;
