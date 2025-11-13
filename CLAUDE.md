@@ -21,6 +21,11 @@ pip install arcade
 python main.py
 ```
 
+**Note for Claude Code:**
+- Dependencies are automatically installed via `.claude/settings.json` sessionStart hook
+- The hook runs `uv sync` which installs arcade and all dependencies from `pyproject.toml`
+- No manual dependency installation needed when starting a Claude Code session
+
 ## Project Structure
 
 ```
@@ -159,16 +164,52 @@ See: `doc/arcade/programming_guide/performance_tips.rst`
 
 ### Adding New Features
 
-1. **Define data structures** (constants.py) - Add enums, unit data, etc.
-2. **Implement domain logic** (hex_map.py, unit.py, game_state.py) - Core mechanics
-3. **Add presentation** (main.py) - Rendering and UI
-4. **Test thoroughly** - **ALWAYS test before committing**
+**CRITICAL: Always check Arcade documentation BEFORE implementing any GUI/rendering feature!**
+
+The workflow for any Arcade-related feature should be:
+
+1. **Check Arcade docs FIRST** (`doc/arcade/`) - Search for existing widgets, APIs, and patterns
+   - For GUI features: Check `doc/arcade/programming_guide/gui/`
+   - For drawing: Check `doc/arcade/api_docs/api/`
+   - For examples: Check `doc/arcade/example_code/`
+   - Use `grep` to search docs: `grep -r "keyword" doc/arcade/`
+
+2. **Use Arcade's built-in solutions** - Prefer Arcade's widgets and APIs over custom code
+   - Example: Use `UITextArea`, `UILabel`, `UIBoxLayout` instead of custom text rendering
+   - Example: Use `Camera2D` instead of manual viewport math
+   - Example: Use `UIBorder` instead of drawing custom borders
+
+3. **Only create custom code if:**
+   - No Arcade widget/API exists for the requirement
+   - Arcade's solution is insufficient for the specific use case
+   - Custom code is explicitly required by the design
+
+4. **Define data structures** (constants.py) - Add enums, unit data, etc.
+
+5. **Implement domain logic** (hex_map.py, unit.py, game_state.py) - Core mechanics
+
+6. **Add presentation** (main.py) - Rendering and UI using Arcade's APIs
+
+7. **Test thoroughly** - **ALWAYS test before committing**
    - Run the game: `uv run main.py` or `python main.py`
    - Verify all functionality works as expected
    - Check for runtime errors and exceptions
    - Test edge cases and interactions
-5. **Commit changes** - Only after successful testing
-6. **Update documentation** - If architecture changes
+
+8. **Commit changes** - Only after successful testing
+
+9. **Update documentation** - If architecture changes
+
+**Example workflow for adding a message box:**
+```bash
+# 1. Check Arcade docs for text/scroll widgets
+grep -r "UITextArea\|scroll" doc/arcade/programming_guide/gui/
+
+# 2. Found UITextArea widget - use it instead of custom implementation
+# 3. Check if UIBorder exists for borders
+# 4. Implement using Arcade's widgets
+# 5. Test and commit
+```
 
 ### Debugging Approach
 
@@ -270,7 +311,52 @@ All Arcade documentation is in `doc/arcade/`. Key references:
 ```bash
 # Find camera viewport documentation
 grep -r "viewport" doc/arcade/programming_guide/
+
+# Find available GUI widgets
+grep -r "class UI.*Widget" doc/arcade/programming_guide/gui/
+
+# Find text-related widgets
+grep -r "UIText\|UILabel" doc/arcade/
 ```
+
+## Environment Setup
+
+**Claude Code Integration:**
+
+The project uses `.claude/settings.json` for environment configuration:
+
+```json
+{
+  "sessionStart": {
+    "hook": {
+      "command": "uv sync"
+    }
+  },
+  "projectContext": {
+    "name": "OpenWanzer - Panzer General 2 Prototype",
+    "description": "Turn-based tactical strategy game built with Python Arcade 3.x",
+    "keyFiles": [
+      "main.py",
+      "constants.py",
+      "hex_map.py",
+      "unit.py",
+      "game_state.py",
+      "ai.py",
+      "CLAUDE.md"
+    ]
+  },
+  "tools": {
+    "packageManager": "uv",
+    "testRunner": "pytest"
+  }
+}
+```
+
+**Session Start Hook:**
+- Automatically runs `uv sync` when Claude Code session starts
+- Installs all dependencies from `pyproject.toml` (including arcade)
+- Creates/updates virtual environment in `.venv/`
+- No manual setup required for development
 
 ## Git Workflow
 
