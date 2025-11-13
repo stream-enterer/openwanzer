@@ -64,6 +64,7 @@ class PanzerGame(arcade.Window):
         # Message log
         self.messages = []
         self.max_messages = 100
+        self.needs_scroll = False  # Flag to trigger autoscroll
 
         # AI processing
         self.ai_thinking = False
@@ -299,21 +300,8 @@ class PanzerGame(arcade.Window):
             message_text = "=== Game Messages ===\n" + "\n".join(self.messages)
             self.message_box.text = message_text
 
-            # Schedule autoscroll for next frame to ensure layout is updated first
-            arcade.schedule(self._scroll_message_box_to_bottom, 0.0)
-
-    def _scroll_message_box_to_bottom(self, delta_time):
-        """Scroll the message box to show the latest messages at bottom"""
-        # Unschedule to prevent multiple calls
-        arcade.unschedule(self._scroll_message_box_to_bottom)
-
-        if self.message_box and hasattr(self.message_box, 'layout'):
-            layout = self.message_box.layout
-            # In pyglet ScrollableTextLayout, to scroll to bottom:
-            # view_y = -content_height
-            # This scrolls the content up so the bottom is visible
-            # Source: https://stackoverflow.com/questions/12555681/
-            layout.view_y = -layout.content_height
+            # Set flag to trigger scroll on next update
+            self.needs_scroll = True
 
     def on_resize(self, width, height):
         """Handle window resize"""
@@ -769,6 +757,13 @@ class PanzerGame(arcade.Window):
                     success, message = self.game_state.attack_unit(unit, target)
                     self.add_message(f"AI: {message}")
                     self.ai_delay = 0.3
+
+        # Handle autoscroll if needed
+        if self.needs_scroll and self.message_box and hasattr(self.message_box, 'layout'):
+            # Scroll to bottom to show latest messages
+            # In pyglet ScrollableTextLayout: view_y = -content_height scrolls to bottom
+            self.message_box.layout.view_y = -self.message_box.layout.content_height
+            self.needs_scroll = False
 
 
 def main():
