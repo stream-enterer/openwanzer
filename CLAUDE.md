@@ -1,408 +1,325 @@
-# OpenWanzer - LLM Development Context
+# Panzer General 2 Raylib Prototype
 
 ## Project Overview
 
-OpenWanzer is a turn-based tactical strategy game inspired by Panzer General 2, built with Python Arcade 3.x. This is an early-stage prototype focusing on core hex-based gameplay mechanics.
+This is a C++ prototype implementation of Panzer General 2, a classic hex-based turn-based strategy game. It uses **raylib** for graphics/input and **raygui** for the GUI. The prototype is based on an open-source JavaScript port and implements core gameplay mechanics with a modern options menu.
 
-**Technology Stack:**
-- Python 3.8+
-- Arcade 3.x (2D game engine)
-- Event-driven architecture
-- Component-based design pattern
+**Language**: C++17  
+**Graphics**: Raylib 4.0+  
+**GUI**: RayGUI (header-only, included with raylib)  
+**Platform**: Cross-platform (Linux, macOS, Windows)
 
-## Quick Start
+## Key Features
 
-```bash
-# Run the game
-uv run main.py
-
-# Or with pip
-pip install arcade
-python main.py
-```
-
-**Note for Claude Code:**
-- Dependencies are automatically installed via `.claude/settings.json` sessionStart hook
-- The hook runs `uv sync` which installs arcade and all dependencies from `pyproject.toml`
-- No manual dependency installation needed when starting a Claude Code session
+- Hex-based map with offset coordinate system
+- Turn-based gameplay (Axis vs Allied)
+- 6 unit classes: Infantry, Tank, Artillery, Recon, Anti-Tank, Air Defense
+- Combat system with experience and entrenchment
+- In-game options menu with live settings adjustment
+- Adjustable resolution, FPS, hex size, camera pan speed
 
 ## Project Structure
 
 ```
-openwanzer/
-├── main.py           # Game window, rendering, GUI, input handling
-├── constants.py      # Game data, enums, unit stats, configurations
-├── hex_map.py        # Hex grid system, coordinate math, pathfinding
-├── unit.py           # Unit class, combat mechanics, state
-├── game_state.py     # Game state management, turn logic, rules
-├── ai.py             # AI decision making
-├── doc/arcade/       # Python Arcade documentation (see doc/arcade/README.md)
-└── CLAUDE.md         # This file
+.
+├── openwanzer.cpp       # Main game file (single-file architecture)
+├── build.sh                # Bash build script
+├── Makefile                # Make build system
+├── README.md               # User documentation
+├── DESIGN.md               # Technical architecture details
+├── COMPARISON.md           # JS vs C++ feature comparison
+├── OPTIONS_GUIDE.md        # Options menu visual guide
+├── BUGFIXES.md             # Recent bug fixes
+├── QUICKSTART.md           # Quick setup guide
+└── /include/*		    # Raylib and raygui libraries
 ```
 
-## Architecture Guidelines
+## Architecture
 
-### Separation of Concerns
+### Single-File Design
+The entire game is in `openwanzer.cpp` (~820 lines) for simplicity. Structure:
 
-**main.py** - Presentation layer only
-- All rendering and visual presentation
-- GUI layout and HUD management
-- Input event handling (mouse, keyboard)
-- Camera and viewport control
-- NO game logic or state mutation (delegate to game_state.py)
-
-**game_state.py** - Business logic layer
-- Game rules and validation
-- Turn management and flow control
-- Victory condition checking
-- Unit action coordination (move, attack)
-
-**hex_map.py, unit.py** - Domain model
-- Core game entities and their behaviors
-- Coordinate systems and spatial calculations
-- Pathfinding and movement calculations
-- Combat resolution
-
-**constants.py** - Configuration
-- All configurable values
-- Enums for type safety
-- Static game data (unit stats, terrain properties)
-
-**ai.py** - AI agents
-- Autonomous decision making for computer players
-- Strategy and tactical evaluation
-
-### Key Design Patterns
-
-#### 1. Component-Based Architecture
-Each module has a single, well-defined responsibility. Avoid cross-cutting concerns.
-
-#### 2. Event-Driven Game Loop
-Arcade's event system (`on_draw`, `on_update`, `on_mouse_press`, etc.) drives all game interactions.
-
-#### 3. Separation of Data and Presentation
-- Game state is independent of rendering
-- Multiple views could render the same game state
-- Enables testing without graphics
-
-## Python Arcade 3.x Best Practices
-
-> **Full documentation:** See `doc/arcade/README.md` for quick reference to Arcade docs
-
-### Modern Drawing API (Critical)
-
-**Always use LRBT (Left-Right-Bottom-Top) format:**
-```python
-# ✅ CORRECT - LRBT format (bottom < top)
-arcade.draw_lrbt_rectangle_filled(left, right, bottom, top, color)
-# where bottom < top
-
-# ❌ WRONG - Will throw ValueError
-arcade.draw_lrbt_rectangle_filled(left, right, top, bottom, color)
+```cpp
+// Includes & Pragma (lines 1-18)
+// Constants & Enums (lines 20-95)
+// Data Structures (lines 97-235)
+//   - HexCoord, Hex, Unit, VideoSettings, GameState
+// Hex Math & Rendering (lines 237-380)
+// Game Logic (lines 382-520)
+// UI & Options Menu (lines 522-695)
+// Main Loop (lines 697-824)
 ```
 
-**Deprecated functions to avoid:**
-- ❌ `arcade.draw_rectangle_filled/outline()` - Use LRBT versions
-- ❌ `arcade.draw_text()` in game loop - Use `arcade.Text` objects or `arcade.gui.UILabel`
+### Key Data Structures
 
-### GUI System
+**GameState**: Main game container
+- `map`: 2D vector of Hex objects
+- `units`: Vector of Unit pointers
+- `selectedUnit`: Currently selected unit
+- `settings`: VideoSettings struct
+- `showOptionsMenu`: Menu visibility flag
 
-**UIManager and Layouts:**
-- `UIBoxLayout` - For horizontal/vertical splits (e.g., game panel + HUD)
-- `UIAnchorLayout` - For positioning widgets within containers
-- `UIGridLayout` - For grid-based layouts
-- `size_hint=(width_ratio, height_ratio)` - Proportional sizing (e.g., `(0.7, 1)` = 70% width)
+**Hex**: Single hexagonal tile
+- Terrain type, owner, victory hex flag
+- Selection states (isMoveSel, isAttackSel)
+- Spotting per side
 
-**Example: Two-panel layout**
-```python
-# Horizontal split: 70% game panel, 30% HUD
-main_layout = arcade.gui.UIBoxLayout(vertical=False)
-game_panel = arcade.gui.UISpace(size_hint=(0.7, 1), color=(0, 0, 0, 0))
-hud_panel = arcade.gui.UIAnchorLayout(size_hint=(0.3, 1))
-main_layout.add(game_panel)
-main_layout.add(hud_panel)
-```
+**Unit**: Military unit
+- Position, class, side, strength
+- Combat stats (attack, defense, initiative)
+- Status (hasMoved, hasFired, fuel, ammo)
+- Experience and entrenchment levels
 
-**Text Rendering:**
-```python
-# ✅ For HUD/GUI - Efficient, managed rendering
-label = arcade.gui.UILabel(text="Score: 100", font_size=14)
-hud_layout.add(label)
-label.text = "Score: 200"  # Update dynamically
+**VideoSettings**: Configurable options
+- Resolution, fullscreen, vsync, FPS
+- Hex size, camera pan speed, MSAA
+- Dropdown edit states (for menu functionality)
 
-# For game world text, use arcade.Text objects with batches
-```
+## Building
 
-### Camera and Viewport
-
-**Camera2D for scrollable viewports:**
-```python
-# Set viewport to constrain rendering area
-camera.viewport = arcade.types.LBWH(left, bottom, width, height)
-
-# Position camera in world space
-camera.position = (world_x, world_y)
-camera.use()
-
-# Camera position is where camera LOOKS in world space
-# Movement is INVERSE: pan view right → camera looks left (decrease camera_x)
-```
-
-See: `doc/arcade/programming_guide/camera.rst`
-
-### Performance Considerations
-
-1. **Text rendering:** Use UILabel (not draw_text in loops)
-2. **Sprite batching:** Use SpriteLists for many sprites
-3. **Texture atlases:** Combine textures to reduce draw calls
-4. **Viewport culling:** Only render what's visible
-5. **Cache calculations:** Avoid recalculating paths/ranges every frame
-
-See: `doc/arcade/programming_guide/performance_tips.rst`
-
-## Development Workflow
-
-### Adding New Features
-
-**CRITICAL: Always check Arcade documentation BEFORE implementing any GUI/rendering feature!**
-
-The workflow for any Arcade-related feature should be:
-
-1. **Check Arcade docs FIRST** (`doc/arcade/`) - Search for existing widgets, APIs, and patterns
-   - For GUI features: Check `doc/arcade/programming_guide/gui/`
-   - For drawing: Check `doc/arcade/api_docs/api/`
-   - For examples: Check `doc/arcade/example_code/`
-   - Use `grep` to search docs: `grep -r "keyword" doc/arcade/`
-
-2. **Use Arcade's built-in solutions** - Prefer Arcade's widgets and APIs over custom code
-   - Example: Use `UITextArea`, `UILabel`, `UIBoxLayout` instead of custom text rendering
-   - Example: Use `Camera2D` instead of manual viewport math
-   - Example: Use `UISpace` as backgrounds with padding to create border effects
-
-3. **Only create custom code if:**
-   - No Arcade widget/API exists for the requirement
-   - Arcade's solution is insufficient for the specific use case
-   - Custom code is explicitly required by the design
-
-4. **Define data structures** (constants.py) - Add enums, unit data, etc.
-
-5. **Implement domain logic** (hex_map.py, unit.py, game_state.py) - Core mechanics
-
-6. **Add presentation** (main.py) - Rendering and UI using Arcade's APIs
-
-7. **Test thoroughly** - **ALWAYS test before committing**
-   - Run the game: `uv run main.py` or `python main.py`
-   - Verify all functionality works as expected
-   - Check for runtime errors and exceptions
-   - Test edge cases and interactions
-
-8. **Commit changes** - Only after successful testing
-
-9. **Update documentation** - If architecture changes
-
-**Example workflow for adding a message box:**
+### Prerequisites
 ```bash
-# 1. Check Arcade docs for text/scroll widgets
-grep -r "UITextArea\|scroll" doc/arcade/programming_guide/gui/
+# Ubuntu/Debian
+sudo apt install libraylib-dev
 
-# 2. Found UITextArea widget - use it instead of custom implementation
-# 3. Use UISpace with padding to create border effects if needed
-# 4. Implement using Arcade's widgets
-# 5. Test and commit
+# Arch Linux
+sudo pacman -S raylib
+
+# macOS
+brew install raylib
 ```
 
-### Debugging Approach
+### Build Commands
+```fish
+# Fish shell
+./build.fish
 
-**Enable debug visualizations:**
-```python
-# In draw_map() - Show hex coordinates
-arcade.draw_text(f"{hex.row},{hex.col}", x, y, arcade.color.WHITE, 8,
-                 anchor_x="center", anchor_y="center")
+# Bash
+./build.sh
 
-# Print game state
-print(f"Camera: ({self.camera_x}, {self.camera_y})")
-print(f"Selected hex: {hex}")
+# Make
+make
+
+# Manual
+g++ pg2_prototype.cpp -o pg2_prototype \
+    $(pkg-config --cflags --libs raylib) \
+    -std=c++17 -O2 -Wall
 ```
 
-**Common issues:**
-- Hex selection not working? Check camera offset in `get_hex_at_position()`
-- GUI not updating? Ensure `update_hud()` called after state changes
-- Drawing errors? Verify LRBT format (bottom < top)
-- Mouse clicks wrong panel? Check `x < game_panel_width` boundaries
+## Common Tasks
 
-### Code Style
+### Adding a New Unit Type
+1. Add to `UnitClass` enum (line ~47)
+2. Update `getUnitSymbol()` (line ~301)
+3. Add initialization in `GameState::addUnit()` (line ~214)
 
-**Follow PEP 8 conventions:**
-- Classes: `PascalCase`
-- Functions/methods: `snake_case`
-- Constants: `UPPER_SNAKE_CASE`
-- Private methods: `_leading_underscore()`
+### Adding a New Terrain Type
+1. Add to `TerrainType` enum (line ~34)
+2. Update `getTerrainColor()` (line ~288)
+3. Update random generation in `initializeMap()` (line ~176)
 
-**Documentation:**
-- Docstrings for all classes and non-trivial methods
-- Inline comments for complex algorithms
-- Type hints encouraged but not required
+### Adding a New Video Setting
+1. Add field to `VideoSettings` struct (line ~61)
+2. Add GUI control in `drawOptionsMenu()` (line ~565)
+3. Add application logic in Apply button (line ~649)
+4. Initialize in `VideoSettings()` constructor (line ~73)
 
-## Hex Grid System
+### Modifying Combat
+- Combat calculation: `performAttack()` (line ~465)
+- Attack range: `highlightAttackRange()` (line ~424)
+- Movement range: `highlightMovementRange()` (line ~409)
 
-**Coordinate System:** Axial coordinates with offset columns
-- Even columns: straightforward neighbor calculation
-- Odd columns: row offset for neighbors
-- See: `hex_map.py:get_neighbors()` for neighbor calculation
+## Critical Implementation Details
 
-**Pixel Conversion:**
-```python
-x = offset_x + HEX_SIZE * 1.5 * col
-y = offset_y + HEX_HEIGHT * (row + 0.5 * (col % 2))
+### RayGUI Parameter Pattern
+RayGUI uses **immediate-mode GUI** with pointers:
+```cpp
+// CORRECT - Pass by pointer
+GuiCheckBox(bounds, label, &game.settings.vsync);
+GuiSlider(bounds, min, max, &game.settings.hexSize, 20, 80);
+
+// WRONG - Don't do this
+value = GuiCheckBox(bounds, label, value);  // Compile error
 ```
 
-**Pathfinding:**
-- Movement: Dijkstra (considers terrain cost)
-- Shortest path: A* with Manhattan heuristic
+### Dropdown State Management
+Dropdowns need explicit edit state:
+```cpp
+// VideoSettings must have:
+bool resolutionDropdownEdit;
+bool fpsDropdownEdit;
 
-**Reference:** https://www.redblobgames.com/grids/hexagons/
-
-## Game Controls
-
-**Keyboard:**
-- `SPACE` - End turn
-- `ESC` - Deselect unit
-- `R` - Restart (when game over)
-- `Arrow Keys / WASD` - Pan camera
-
-**Mouse:**
-- `Left Click` - Select unit / Move unit
-- `Right Click` - Attack
-- `Middle Click + Drag` - Pan camera
-- `Mouse Move` - Highlight hex
-
-## Current Limitations & TODOs
-
-**Known limitations:**
-- No save/load system
-- No campaign mode
-- Basic AI (no strategic planning)
-- No sound effects
-- Placeholder graphics (no sprites)
-- No fog of war
-- No multiplayer
-
-**Potential improvements:**
-- Unit veterancy/experience system
-- Supply lines and logistics
-- Weather and time-of-day effects
-- More terrain types (rivers, bridges)
-- Air and naval units
-- Unit production/deployment
-- Minimap
-- Strategic zoom levels
-
-## Arcade Documentation Quick Links
-
-All Arcade documentation is in `doc/arcade/`. Key references:
-
-- **Camera system:** `programming_guide/camera.rst`
-- **GUI system:** `programming_guide/gui/`
-- **Performance tips:** `programming_guide/performance_tips.rst`
-- **Drawing API:** `api_docs/api/`
-- **Keyboard input:** `programming_guide/keyboard.rst`
-
-**Search example:**
-```bash
-# Find camera viewport documentation
-grep -r "viewport" doc/arcade/programming_guide/
-
-# Find available GUI widgets
-grep -r "class UI.*Widget" doc/arcade/programming_guide/gui/
-
-# Find text-related widgets
-grep -r "UIText\|UILabel" doc/arcade/
-```
-
-## Environment Setup
-
-**Claude Code Integration:**
-
-The project uses `.claude/settings.json` for environment configuration:
-
-```json
-{
-  "sessionStart": {
-    "hook": {
-      "command": "uv sync"
-    }
-  },
-  "projectContext": {
-    "name": "OpenWanzer - Panzer General 2 Prototype",
-    "description": "Turn-based tactical strategy game built with Python Arcade 3.x",
-    "keyFiles": [
-      "main.py",
-      "constants.py",
-      "hex_map.py",
-      "unit.py",
-      "game_state.py",
-      "ai.py",
-      "CLAUDE.md"
-    ]
-  },
-  "tools": {
-    "packageManager": "uv",
-    "testRunner": "pytest"
-  }
+// In drawOptionsMenu():
+if (GuiDropdownBox(bounds, labels, &index, game.settings.resolutionDropdownEdit)) {
+    game.settings.resolutionDropdownEdit = !game.settings.resolutionDropdownEdit;
 }
 ```
 
-**Session Start Hook:**
-- Automatically runs `uv sync` when Claude Code session starts
-- Installs all dependencies from `pyproject.toml` (including arcade)
-- Creates/updates virtual environment in `.venv/`
-- No manual setup required for development
+### Hex Coordinate System
+Uses **offset coordinates** (not axial or cube):
+- Odd columns are shifted down by half a hex
+- Conversion functions: `hexToPixel()` (line ~237), `pixelToHex()` (line ~243)
+- Distance calculation: `hexDistance()` uses cube coordinate conversion (line ~397)
 
-## Git Workflow
-
-```bash
-# Feature branch
-git checkout -b feature/feature-name
-
-# Commit changes
-git add .
-git commit -m "Descriptive message"
-
-# Push to remote
-git push -u origin feature/feature-name
+### Warning Suppression
+RayGUI has unavoidable warnings from library code:
+```cpp
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-result"
+#pragma GCC diagnostic ignored "-Wstringop-overflow"
+#include "raygui.h"
+#pragma GCC diagnostic pop
 ```
 
-## Testing Checklist
+## Coding Conventions
 
-When making changes, verify:
-- [ ] Unit selection/deselection works
-- [ ] Movement range highlighting correct
-- [ ] Attack range highlighting correct (including artillery range-2)
-- [ ] Combat resolution produces expected results
-- [ ] Turn switching functions
-- [ ] AI takes reasonable actions
-- [ ] Victory conditions trigger correctly
-- [ ] HUD updates reflect current state
-- [ ] Mouse interactions respect panel boundaries
-- [ ] Camera panning works correctly
-- [ ] Window resize maintains layout
-- [ ] No console errors or warnings
+- **Constants**: `UPPER_SNAKE_CASE` (SCREEN_WIDTH, HEX_SIZE)
+- **Types**: `PascalCase` (GameState, Unit, VideoSettings)
+- **Functions**: `camelCase` (hexToPixel, drawMap, performAttack)
+- **Variables**: `camelCase` (selectedUnit, cameraOffsetX)
+- **Enums**: `enum class` for type safety
 
-## Resources
+## Dependencies
 
-- **Arcade API:** https://api.arcade.academy/
-- **Arcade Examples:** https://api.arcade.academy/en/latest/examples/index.html
-- **Hex Grid Math:** https://www.redblobgames.com/grids/hexagons/
-- **OpenPanzer (PG2 project):** http://openpanzer.net
+- **raylib 4.0+**: Graphics, input, window management
+- **raygui 3.0+**: GUI controls (included with raylib)
+- **C++17**: For modern features (structured bindings, std::optional if added)
+- **pkg-config**: For build system integration
+
+## Known Issues & Gotchas
+
+### Issue: ESC Key Behavior
+**Solution**: Use `SetExitKey(KEY_NULL)` to disable ESC from closing window.
+```cpp
+// In main():
+SetExitKey(KEY_NULL);  // Required for menu ESC handling
+```
+
+### Issue: Resolution Changes
+**Note**: Window resizing updates global variables:
+```cpp
+SCREEN_WIDTH = res.width;   // Must update globals
+SCREEN_HEIGHT = res.height; // for rendering to work
+```
+
+### Issue: Hex Size Changes
+**Note**: Must recalculate dependent values:
+```cpp
+HEX_SIZE = game.settings.hexSize;
+HEX_WIDTH = HEX_SIZE * 2.0f;        // Must update
+HEX_HEIGHT = sqrtf(3.0f) * HEX_SIZE; // Must update
+```
+
+### Issue: MSAA Requires Restart
+**Reason**: MSAA flag must be set before `InitWindow()`:
+```cpp
+SetConfigFlags(FLAG_MSAA_4X_HINT);  // Before InitWindow()
+InitWindow(width, height, title);
+```
+
+## Debug Tips
+
+### FPS Drops
+- Check map rendering loop (line ~330)
+- Watch for excessive unit count (>50 units)
+- Test with smaller hex sizes
+
+### Menu Not Appearing
+- Verify `game.showOptionsMenu = true`
+- Check that menu drawing happens after main game (line ~811)
+- Ensure overlay isn't blocking (z-order issue)
+
+### Dropdowns Not Working
+- Verify edit state variables exist in VideoSettings
+- Check toggle logic: `state = !state` on click
+- Ensure dropdowns close when buttons clicked
+
+### Units Not Selecting
+- Check mouse position conversion: `pixelToHex()`
+- Verify unit is at clicked hex: `getUnitAt()`
+- Ensure unit belongs to current player
+
+## Testing Scenarios
+
+### Basic Gameplay Test
+1. Select axis unit (red)
+2. Move to green hex
+3. Attack allied unit (blue) in red hex
+4. End turn (SPACE)
+5. Allied player moves
+6. End turn
+7. Repeat
+
+### Options Menu Test
+1. Open menu (ESC or OPTIONS button)
+2. Click resolution dropdown - should expand
+3. Select different resolution - should change immediately on Apply
+4. Adjust hex size slider - drag should work smoothly
+5. Toggle checkboxes - should toggle on/off
+6. Click Apply - menu should close, settings active
+7. Reopen menu - settings should persist
+
+### ESC Key Test
+1. Press ESC from game - menu opens
+2. Click resolution dropdown - expands
+3. Press ESC - dropdown closes (menu stays open)
+4. Press ESC again - menu closes
+5. Game continues (doesn't exit)
+
+## Performance Targets
+
+- **60 FPS** at 1920x1080 with 20 units
+- **< 10ms** map rendering time
+- **< 1ms** UI rendering time
+- **< 50MB** memory usage
+
+## Future Enhancements
+
+Priority features to add:
+1. **Save/Load System** - Serialize GameState to JSON
+2. **AI Opponent** - Basic minimax or rules-based AI
+3. **Zone of Control** - Restrict movement near enemies
+4. **Transport System** - Units carrying other units
+5. **Sound Effects** - Combat and UI sounds
+6. **Unit Sprites** - Replace rectangles with proper graphics
+7. **Campaign Mode** - Multi-scenario progression
+8. **Network Multiplayer** - Client-server architecture
+
+## References
+
+- **Original JavaScript Port**: /mnt/project/*.js files
+- **Raylib Docs**: https://www.raylib.com/cheatsheet/cheatsheet.html
+- **RayGUI Docs**: https://github.com/raysan5/raygui
+- **Hex Grid Guide**: https://www.redblobgames.com/grids/hexagons/
+- **PG2 Rules**: See DESIGN.md for combat formulas
+
+## Quick Reference
+
+### Key Functions
+- `hexToPixel()` - Convert hex coords to screen position
+- `pixelToHex()` - Convert screen position to hex coords
+- `hexDistance()` - Calculate distance between hexes
+- `moveUnit()` - Move unit to new position
+- `performAttack()` - Execute combat between units
+- `endTurn()` - Switch players and reset unit states
+- `drawOptionsMenu()` - Render and handle settings menu
+
+### Key Variables
+- `HEX_SIZE` - Radius of hexagon (adjustable)
+- `MAP_ROWS`, `MAP_COLS` - Map dimensions
+- `SCREEN_WIDTH`, `SCREEN_HEIGHT` - Window size (mutable)
+- `game.selectedUnit` - Currently selected unit pointer
+- `game.showOptionsMenu` - Menu visibility flag
+
+### Controls
+- **Left Click**: Select/Move/Attack
+- **Arrow Keys**: Pan camera
+- **SPACE**: End turn
+- **ESC**: Toggle options menu
+- **Close Window**: Exit game
 
 ---
 
-**Project Status:** Early prototype (v0.2.0)
-**Last Updated:** 2025-11-13
-
-**For LLM Developers:**
-- This file provides high-level architecture and patterns
-- Consult `doc/arcade/` for Arcade-specific implementation details
-- Code is self-documenting - read source files for specifics
-- Architecture may change as project matures
-- Focus on separation of concerns and maintainability
+**Last Updated**: November 2024  
+**Version**: 2.0 (With RayGUI Options Menu)  
+**License**: Educational Reference (Original PG2 IP rights retained by owners)

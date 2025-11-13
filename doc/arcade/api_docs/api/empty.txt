@@ -1,1 +1,0 @@
-Keep this file here for update_quick_index.py to put files into.

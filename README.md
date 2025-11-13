@@ -1,188 +1,252 @@
-# Panzer General 2 - Python Prototype v0.2.0
+# Panzer General 2 Raylib Prototype
 
-A Python prototype of Panzer General 2 using the Arcade game engine, based on the JavaScript open source implementation.
+A C++ prototype implementation of the Panzer General 2 hex-based turn-based strategy game using raylib for graphics.
 
-## 🎮 What's New in v0.2.0
+## Features Implemented
 
-### Optimized Text Rendering
-- Replaced slow `arcade.draw_text()` calls with efficient `arcade.Text` objects
-- Implemented batch rendering using Pyglet's Batch system
-- **10-100x performance improvement** for text rendering
-- Eliminates performance warnings
+Based on the original JavaScript source code, this prototype includes:
 
-### 2-Panel GUI Layout
-- Professional split-screen layout with game on left, HUD on right
-- Game view: 850px wide tactical map
-- HUD panel: 350px wide information display
-- Clean separation of gameplay and interface
-- Responsive layout using arcade.gui system
+### Core Game Mechanics
+- **Hex-based Map System**: Offset coordinate system with proper hex-to-pixel conversion
+- **Multiple Terrain Types**: Clear, Forest, Mountain, City, Water
+- **Turn-based Gameplay**: Alternating turns between Axis and Allied forces
+- **Victory Hexes**: Special objectives that can be captured
 
-### Enhanced HUD
-- Real-time turn counter and player info
-- Dynamic unit information display
-- Clear control instructions
-- Selected unit stats (strength, fuel, ammo, attack, defense)
-- Visual feedback for current player
+### Unit System
+- **Six Unit Classes**: 
+  - Infantry
+  - Tank
+  - Artillery (with extended range)
+  - Recon
+  - Anti-Tank
+  - Air Defense
+  
+- **Unit Statistics**:
+  - Strength (1-10, representing combat power)
+  - Experience (0-5 bars, increases through combat)
+  - Entrenchment (0-5, increases when stationary)
+  - Movement points and fuel consumption
+  - Ammunition tracking
+  - Attack and defense values
 
-## About
+### Combat System
+- **Attack Mechanics**: Range-based combat with different ranges per unit type
+- **Defense Modifiers**: Entrenchment and experience affect combat outcomes
+- **Experience Gain**: Units gain experience through successful attacks
+- **Fog of War**: Visual representation (units marked by side)
 
-This is a simplified but functional prototype featuring:
-- **Hex-based tactical map** with different terrain types
-- **Turn-based gameplay** with human vs AI
-- **Multiple unit types**: Infantry, Tanks, Recon, Artillery
-- **Combat system** with strength, fuel, and ammunition tracking
-- **Movement mechanics** based on terrain and unit type
-- **Objective capture** system
-- **Simple AI opponent** that can move and attack
-- **Optimized rendering** with Text batching
-- **Professional GUI** with 2-panel layout
+### User Interface
+- **Hex Grid Rendering**: Clean hexagonal grid with terrain colors
+- **Unit Display**: Units shown with class symbols and strength indicators
+- **Selection Highlighting**: Green for movement range, red for attack range
+- **Info Panel**: Displays selected unit's statistics
+- **Status Bar**: Shows current turn and active player
 
-## Requirements
+## Building the Prototype
 
-- Python 3.8+
-- Arcade library (automatically installed)
+### Prerequisites
+Install raylib development libraries:
 
-## Installation & Running
-
-### Using uv (Recommended - Fast!)
+**Ubuntu/Debian:**
 ```bash
-# Install uv if you don't have it
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Run the game directly (uv handles dependencies automatically)
-uv run main.py
+sudo apt install libraylib-dev
 ```
 
-### Using pip (Traditional method)
-
-#### On Linux/Mac:
+**Arch Linux:**
 ```bash
-# Install dependencies
-pip install arcade
-
-# Run the game
-python main.py
+sudo pacman -S raylib
 ```
 
-#### On Windows:
+**macOS:**
 ```bash
-# Install dependencies
-pip install arcade
-
-# Run the game
-python main.py
+brew install raylib
 ```
+
+### Compilation
+
+**Using Fish shell (preferred):**
+```fish
+chmod +x build.fish
+./build.fish
+```
+
+**Using bash:**
+```bash
+chmod +x build.sh
+./build.sh
+```
+
+**Manual compilation:**
+```bash
+g++ pg2_prototype.cpp -o pg2_prototype \
+    $(pkg-config --cflags --libs raylib) \
+    -std=c++17 -O2 -Wall
+```
+
+## Running
+
+```bash
+./pg2_prototype
+```
+
+## Controls
+
+- **Left Click**: Select unit / Move unit / Attack enemy
+- **Arrow Keys**: Pan camera view
+- **SPACE**: End current player's turn
+- **ESC**: Quit application
 
 ## How to Play
 
-### Controls
-- **Left Click**: Select your unit / Move selected unit to hex
-- **Right Click**: Attack with selected unit
-- **SPACE**: End your turn
-- **ESC**: Deselect current unit
-- **R**: Restart game (when game is over)
+1. **Unit Selection**: Left-click on a friendly unit (your color) to select it
+   - Axis units are RED
+   - Allied units are BLUE
 
-### Gameplay
-1. Select one of your units (red squares = Axis player)
-2. Green highlighted hexes show where you can move
-3. Red highlighted hexes show enemies you can attack
-4. Move units to capture objectives (white/colored circles)
-5. Check the HUD panel on the right for unit stats and info
-6. End your turn when done - AI will take its turn automatically
-7. Win by eliminating all enemy units or controlling objectives
+2. **Movement**: 
+   - After selecting a unit, hexes within movement range turn GREEN
+   - Click on a green hex to move the unit there
+   - Movement costs fuel and consumes movement points
 
-### Unit Types
-- **I** = Infantry (balanced, versatile)
-- **T** = Tank (strong attack and defense)
-- **R** = Recon (fast movement, good for scouting)
-- **X** = Artillery (long-range attacks, weak defense)
+3. **Combat**:
+   - After moving (or from starting position), hexes with enemy units in attack range turn RED
+   - Click on a red hex to attack the enemy unit
+   - Combat is resolved automatically based on unit stats
+   - Artillery has extended range (3 hexes vs 1 hex for other units)
 
-### Terrain Types
-- **Light Green**: Clear terrain (easy movement)
-- **Dark Green**: Forest (moderate cover, slower movement)
-- **Gray**: Mountains (strong cover, difficult movement)
-- **Dark Gray**: Cities (strong cover, objectives to capture)
-- **Brown**: Roads (fast movement)
-- **Blue**: Water (impassable for ground units)
+4. **Turn Management**:
+   - Each unit can move and attack once per turn
+   - Entrenchment increases when units remain stationary
+   - Press SPACE to end your turn and pass to the opponent
+   - Turn counter advances when both sides have played
 
-## Game Features
+5. **Strategy Tips**:
+   - Keep units stationary to build entrenchment (better defense)
+   - Artillery can attack from range without taking return fire
+   - Experienced units (shown with stars) perform better in combat
+   - Capture victory hexes (marked with gold circles) to win
 
-### Combat System
-- Units have strength (10 max), fuel, and ammunition
-- Combat effectiveness scales with unit strength
-- Terrain provides defensive bonuses
-- Units gain experience from combat
-- Artillery can attack at range 2 hexes
+## Architecture Overview
 
-### Movement System
-- Different terrain costs different movement points
-- Units consume fuel when moving
-- Recon units can move multiple times per turn
-- Roads provide fast movement
+### Key Data Structures
 
-### Victory Conditions
-- Eliminate all enemy units, OR
-- Control the most objectives after 20 turns
+**Hex**: Represents a single hexagonal tile
+- Terrain type and ownership
+- Victory hex and deployment zone flags
+- Spotting and selection states
 
-### Performance Features
-- Text rendering using pyglet Batch system for maximum efficiency
-- No performance warnings or lag from UI updates
-- Smooth 60 FPS gameplay
+**Unit**: Represents a military unit
+- Position, class, and allegiance
+- Combat statistics (attack/defense values)
+- Status tracking (moved, fired, fuel, ammo)
+- Experience and entrenchment levels
+
+**GameState**: Manages the entire game
+- Hex map grid
+- All units on the map
+- Current turn and active player
+- Selection state
+
+### Rendering System
+
+The rendering uses a layered approach:
+1. Terrain hexagons (filled with terrain color)
+2. Hex grid outlines
+3. Special markers (victory hexes, highlights)
+4. Unit sprites (rectangles with class symbols)
+5. UI overlay (panels, text information)
+
+### Combat Calculation
+
+Based on the original PG2 formula with simplifications:
+- Attack value = base attack + experience bonus + random roll
+- Defense value = base defense + entrenchment bonus + experience + random roll
+- Damage dealt = difference between attack and defense rolls
+- Both attacker and defender can take casualties
+- Experience increases for successful attacks
+
+## Differences from Original JavaScript
+
+This prototype simplifies some aspects for clarity:
+
+1. **No Transport System**: Units cannot carry or tow other units
+2. **Simplified Movement**: No ZOC (Zone of Control) mechanics
+3. **No Weather/Ground Conditions**: Combat not affected by atmospheric conditions
+4. **No Fuel-Based Range**: Movement range simplified
+5. **Limited Leader Abilities**: No special leader traits implemented
+6. **No Campaign Mode**: Single scenario play only
+7. **No AI**: Human vs Human only (hot-seat)
+
+## Future Enhancements
+
+Potential additions to bring closer to the full game:
+
+- [ ] Implement Zone of Control mechanics
+- [ ] Add transport/carrier system
+- [ ] Weather and ground condition effects
+- [ ] Leader traits and abilities
+- [ ] Supply line mechanics
+- [ ] AI opponent
+- [ ] Campaign progression system
+- [ ] Save/load game state
+- [ ] Scenario editor
+- [ ] Network multiplayer
+- [ ] Sound effects and music
+- [ ] Unit sprite graphics
+- [ ] Terrain graphics and animations
 
 ## Code Structure
 
-- `main.py` - Main game loop, Arcade rendering, and GUI layout
-- `constants.py` - Game constants, enums, and unit data
-- `hex_map.py` - Hex coordinate system and map generation
-- `unit.py` - Unit class with combat and movement
-- `game_state.py` - Game state management and rules
-- `ai.py` - Simple AI opponent logic
+```
+pg2_prototype.cpp
+├── Constants and Enums
+│   ├── TerrainType
+│   ├── UnitClass
+│   └── Side
+├── Data Structures
+│   ├── HexCoord
+│   ├── Hex
+│   ├── Unit
+│   └── GameState
+├── Rendering Functions
+│   ├── hexToPixel() / pixelToHex()
+│   ├── drawHexagon()
+│   ├── drawMap()
+│   └── drawUI()
+├── Game Logic
+│   ├── highlightMovementRange()
+│   ├── highlightAttackRange()
+│   ├── moveUnit()
+│   ├── performAttack()
+│   └── endTurn()
+└── Main Game Loop
+    ├── Input handling
+    ├── Game state updates
+    └── Rendering
+```
 
-## Technical Improvements
+## Performance
 
-### v0.2.0 Changes
+The prototype is optimized for:
+- 60 FPS gameplay
+- Real-time hex calculations
+- Efficient unit lookup
+- Minimal memory allocation during gameplay
 
-**Text Rendering Optimization:**
-- Migrated from `arcade.draw_text()` to `arcade.Text` objects
-- Implemented Pyglet Batch rendering for all static text
-- Dynamic text updates without recreating objects
-- Eliminated PerformanceWarnings
+Map size: 12 rows × 16 columns = 192 hexes
+Typical unit count: 6-20 units per side
 
-**GUI Architecture:**
-- Implemented `arcade.gui.UIManager` for layout management
-- Used `UIBoxLayout` for 2-panel horizontal split
-- Used `UISpace` for game panel background
-- Styled HUD with padding and background color
+## Credits
 
-**Code Organization:**
-- Separated text creation from text updates
-- Cleaner separation of concerns
-- More maintainable codebase
+Based on the open source JavaScript Panzer General 2 port by Nicu Pavel (http://openpanzer.net)
 
-## Based On
+Original Panzer General 2 by Strategic Simulations, Inc. (SSI)
 
-This prototype is based on the JavaScript open source port of Panzer General 2:
-- Original game: Panzer General 2 by SSI (1997)
-- JavaScript port: OpenPanzer (http://openpanzer.net)
-
-## Version History
-
-### v0.2.0 (Current)
-- ✅ Optimized text rendering with Batch system
-- ✅ Added 2-panel GUI layout
-- ✅ Enhanced HUD with better information display
-- ✅ Improved performance and eliminated warnings
-
-### v0.1.1
-- Fixed Arcade 3.x API compatibility
-- Updated rectangle drawing functions to use lrbt format
-
-### v0.1.0
-- Initial release
-- Basic hex-based tactical gameplay
-- Human vs AI
+This prototype uses raylib (https://www.raylib.com/) for graphics and input handling.
 
 ## License
 
-Based on the GPL-licensed OpenPanzer project.
-Educational prototype for demonstration purposes.
+This prototype is provided as educational reference material. The original Panzer General 2 game and assets are property of their respective owners.
+
+## Contact & Contributions
+
+This is a demonstration prototype showing how the JavaScript implementation could be adapted to C++ with raylib. Feel free to extend it with additional features from the original source code!
