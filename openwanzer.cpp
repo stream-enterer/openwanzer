@@ -381,23 +381,6 @@ std::string getUnitSymbol(UnitClass uClass) {
   }
 }
 
-// Global font and shader for SDF rendering
-Font g_fontSDF = { 0 };
-Shader g_sdfShader = { 0 };
-
-// Helper function to draw text with SDF font
-void DrawTextSDF(const char* text, int posX, int posY, float fontSize, Color color) {
-  if (g_fontSDF.texture.id == 0) {
-    // Fallback to regular text if font not loaded
-    DrawText(text, posX, posY, (int)fontSize, color);
-    return;
-  }
-
-  BeginShaderMode(g_sdfShader);
-  DrawTextEx(g_fontSDF, text, Vector2{(float)posX, (float)posY}, fontSize, 1.0f, color);
-  EndShaderMode();
-}
-
 void drawMap(GameState &game) {
   Layout layout = createHexLayout(HEX_SIZE, game.camera.offsetX,
                                   game.camera.offsetY, game.camera.zoom);
@@ -470,22 +453,22 @@ void drawMap(GameState &game) {
 
     // Draw unit symbol
     std::string symbol = getUnitSymbol(unit->unitClass);
-    float fontSize = 10.0f * game.camera.zoom;
-    if (fontSize >= 8.0f) {  // Only draw text if it's readable
-      Vector2 textSize = MeasureTextEx(g_fontSDF, symbol.c_str(), fontSize, 1.0f);
-      DrawTextSDF(symbol.c_str(),
-                  (int)(center.x - textSize.x / 2),
-                  (int)(center.y - unitHeight / 2 + 2),
-                  fontSize, WHITE);
+    int fontSize = (int)(10.0f * game.camera.zoom);
+    if (fontSize >= 8) {  // Only draw text if it's readable
+      int textWidth = MeasureText(symbol.c_str(), fontSize);
+      DrawText(symbol.c_str(),
+               (int)(center.x - textWidth / 2),
+               (int)(center.y - unitHeight / 2 + 2),
+               fontSize, WHITE);
 
       // Draw strength
       std::string strength = std::to_string(unit->strength);
-      fontSize = 12.0f * game.camera.zoom;
-      textSize = MeasureTextEx(g_fontSDF, strength.c_str(), fontSize, 1.0f);
-      DrawTextSDF(strength.c_str(),
-                  (int)(center.x - textSize.x / 2),
-                  (int)(center.y + 5 * game.camera.zoom),
-                  fontSize, YELLOW);
+      fontSize = (int)(12.0f * game.camera.zoom);
+      textWidth = MeasureText(strength.c_str(), fontSize);
+      DrawText(strength.c_str(),
+               (int)(center.x - textWidth / 2),
+               (int)(center.y + 5 * game.camera.zoom),
+               fontSize, YELLOW);
     }
 
     // Draw selection highlight
@@ -656,17 +639,17 @@ void drawUI(GameState &game) {
 
   std::string turnText = "Turn: " + std::to_string(game.currentTurn) + "/" +
                          std::to_string(game.maxTurns);
-  DrawTextSDF(turnText.c_str(), 10, 10, 20, WHITE);
+  DrawText(turnText.c_str(), 10, 10, 20, WHITE);
 
   std::string playerText = game.currentPlayer == 0 ? "Axis" : "Allied";
   playerText = "Current: " + playerText;
-  DrawTextSDF(playerText.c_str(), 200, 10, 20,
-              game.currentPlayer == 0 ? RED : BLUE);
+  DrawText(playerText.c_str(), 200, 10, 20,
+           game.currentPlayer == 0 ? RED : BLUE);
 
   // Zoom indicator
   char zoomText[32];
   snprintf(zoomText, sizeof(zoomText), "Zoom: %.0f%%", game.camera.zoom * 100);
-  DrawTextSDF(zoomText, 400, 10, 20, WHITE);
+  DrawText(zoomText, 400, 10, 20, WHITE);
 
   // Unit info panel
   if (game.selectedUnit && !game.showOptionsMenu) {
@@ -676,45 +659,45 @@ void drawUI(GameState &game) {
     int y = (int)game.layout.unitPanel.y + 10;
     int x = (int)game.layout.unitPanel.x + 10;
 
-    DrawTextSDF(unit->name.c_str(), x, y, 20, WHITE);
+    DrawText(unit->name.c_str(), x, y, 20, WHITE);
     y += 30;
 
     std::string info = "Strength: " + std::to_string(unit->strength) + "/" +
                        std::to_string(unit->maxStrength);
-    DrawTextSDF(info.c_str(), x, y, 16, WHITE);
+    DrawText(info.c_str(), x, y, 16, WHITE);
     y += 25;
 
     info = "Experience: " + std::string(unit->experience, '*');
-    DrawTextSDF(info.c_str(), x, y, 16, YELLOW);
+    DrawText(info.c_str(), x, y, 16, YELLOW);
     y += 25;
 
     info = "Moves: " + std::to_string(unit->movesLeft) + "/" +
            std::to_string(unit->movementPoints);
-    DrawTextSDF(info.c_str(), x, y, 16, WHITE);
+    DrawText(info.c_str(), x, y, 16, WHITE);
     y += 25;
 
     info = "Fuel: " + std::to_string(unit->fuel);
-    DrawTextSDF(info.c_str(), x, y, 16, WHITE);
+    DrawText(info.c_str(), x, y, 16, WHITE);
     y += 25;
 
     info = "Ammo: " + std::to_string(unit->ammo);
-    DrawTextSDF(info.c_str(), x, y, 16, WHITE);
+    DrawText(info.c_str(), x, y, 16, WHITE);
     y += 25;
 
     info = "Entrenchment: " + std::to_string(unit->entrenchment);
-    DrawTextSDF(info.c_str(), x, y, 16, WHITE);
+    DrawText(info.c_str(), x, y, 16, WHITE);
     y += 35;
 
-    DrawTextSDF("Stats:", x, y, 16, GRAY);
+    DrawText("Stats:", x, y, 16, GRAY);
     y += 20;
     info = "Hard Atk: " + std::to_string(unit->hardAttack);
-    DrawTextSDF(info.c_str(), x, y, 14, WHITE);
+    DrawText(info.c_str(), x, y, 14, WHITE);
     y += 20;
     info = "Soft Atk: " + std::to_string(unit->softAttack);
-    DrawTextSDF(info.c_str(), x, y, 14, WHITE);
+    DrawText(info.c_str(), x, y, 14, WHITE);
     y += 20;
     info = "Defense: " + std::to_string(unit->groundDefense);
-    DrawTextSDF(info.c_str(), x, y, 14, WHITE);
+    DrawText(info.c_str(), x, y, 14, WHITE);
   }
 }
 
@@ -1032,23 +1015,6 @@ int main() {
   // Apply FPS from config
   SetTargetFPS(FPS_VALUES[tempSettings.fpsIndex]);
 
-  // Load DejaVu Sans font with SDF support
-  int fileSize = 0;
-  unsigned char *fileData = LoadFileData("resources/fonts/DejaVuSans.ttf", &fileSize);
-
-  g_fontSDF.baseSize = 16;
-  g_fontSDF.glyphCount = 95;
-  g_fontSDF.glyphs = LoadFontData(fileData, fileSize, 16, 0, 95, FONT_SDF);
-
-  Image atlas = GenImageFontAtlas(g_fontSDF.glyphs, &g_fontSDF.recs, 95, 16, 0, 1);
-  g_fontSDF.texture = LoadTextureFromImage(atlas);
-  UnloadImage(atlas);
-  UnloadFileData(fileData);
-
-  // Load SDF shader
-  g_sdfShader = LoadShader(0, "resources/shaders/glsl330/sdf.fs");
-  SetTextureFilter(g_fontSDF.texture, TEXTURE_FILTER_BILINEAR);
-
   // Initialize ImGui
   rlImGuiSetup(true);
 
@@ -1214,10 +1180,10 @@ int main() {
     drawMap(game);
     drawUI(game);
 
-    // Draw FPS in bottom right corner with SDF font
+    // Draw FPS in bottom right corner
     char fpsText[32];
     snprintf(fpsText, sizeof(fpsText), "FPS: %d", GetFPS());
-    DrawTextSDF(fpsText, SCREEN_WIDTH - 100, SCREEN_HEIGHT - 30, 20, COLOR_FPS);
+    DrawText(fpsText, SCREEN_WIDTH - 100, SCREEN_HEIGHT - 30, 20, COLOR_FPS);
 
     // Draw options menu on top using ImGui
     if (game.showOptionsMenu) {
@@ -1233,8 +1199,6 @@ int main() {
   // Shutdown ImGui
   rlImGuiShutdown();
 
-  UnloadFont(g_fontSDF);  // Unload SDF font
-  UnloadShader(g_sdfShader);  // Unload SDF shader
   CloseWindow();
   return 0;
 }
