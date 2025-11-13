@@ -15,7 +15,9 @@
 
 #include <algorithm>
 #include <cmath>
+#include <fstream>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -638,6 +640,10 @@ void endTurn(GameState &game) {
   clearSelectionHighlights(game);
 }
 
+// Forward declarations
+void saveConfig(const VideoSettings& settings);
+void loadConfig(VideoSettings& settings);
+
 void drawUI(GameState &game) {
   // Turn info panel (status bar)
   DrawRectangleRec(game.layout.statusBar, Color{40, 40, 40, 240});
@@ -840,6 +846,9 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
     // Apply hex size
     HEX_SIZE = game.settings.hexSize;
 
+    // Save config to file
+    saveConfig(game.settings);
+
     game.showOptionsMenu = false;
   }
 
@@ -998,22 +1007,139 @@ void handlePan(GameState &game) {
   }
 }
 
+// Save config to file
+void saveConfig(const VideoSettings& settings) {
+  std::ofstream configFile("config.txt");
+  if (!configFile.is_open()) {
+    TraceLog(LOG_WARNING, "Failed to save config.txt");
+    return;
+  }
+
+  configFile << "resolutionIndex=" << settings.resolutionIndex << "\n";
+  configFile << "fullscreen=" << (settings.fullscreen ? 1 : 0) << "\n";
+  configFile << "vsync=" << (settings.vsync ? 1 : 0) << "\n";
+  configFile << "fpsIndex=" << settings.fpsIndex << "\n";
+  configFile << "hexSize=" << settings.hexSize << "\n";
+  configFile << "panSpeed=" << settings.panSpeed << "\n";
+  configFile << "msaa=" << (settings.msaa ? 1 : 0) << "\n";
+
+  configFile.close();
+  TraceLog(LOG_INFO, "Config saved to config.txt");
+}
+
+// Load config from file
+void loadConfig(VideoSettings& settings) {
+  std::ifstream configFile("config.txt");
+  if (!configFile.is_open()) {
+    TraceLog(LOG_INFO, "No config.txt found, creating default config");
+    saveConfig(settings);
+    return;
+  }
+
+  std::string line;
+  while (std::getline(configFile, line)) {
+    // Skip empty lines and comments
+    if (line.empty() || line[0] == '#') continue;
+
+    size_t equalPos = line.find('=');
+    if (equalPos == std::string::npos) continue;
+
+    std::string key = line.substr(0, equalPos);
+    std::string value = line.substr(equalPos + 1);
+
+    try {
+      if (key == "resolutionIndex") {
+        int val = std::stoi(value);
+        if (val >= 0 && val < RESOLUTION_COUNT) {
+          settings.resolutionIndex = val;
+        }
+      } else if (key == "fullscreen") {
+        settings.fullscreen = (std::stoi(value) != 0);
+      } else if (key == "vsync") {
+        settings.vsync = (std::stoi(value) != 0);
+      } else if (key == "fpsIndex") {
+        int val = std::stoi(value);
+        if (val >= 0 && val <= 6) {
+          settings.fpsIndex = val;
+        }
+      } else if (key == "hexSize") {
+        float val = std::stof(value);
+        if (val >= 20.0f && val <= 80.0f) {
+          settings.hexSize = val;
+        }
+      } else if (key == "panSpeed") {
+        float val = std::stof(value);
+        if (val >= 1.0f && val <= 20.0f) {
+          settings.panSpeed = val;
+        }
+      } else if (key == "msaa") {
+        settings.msaa = (std::stoi(value) != 0);
+      }
+    } catch (const std::exception& e) {
+      // Ignore malformed values
+      TraceLog(LOG_WARNING, TextFormat("Failed to parse config value: %s", key.c_str()));
+    }
+  }
+
+  configFile.close();
+  TraceLog(LOG_INFO, "Config loaded from config.txt");
+}
+
 int main() {
+  // Create temporary settings to load config before window init
+  VideoSettings tempSettings;
+  loadConfig(tempSettings);
+
   // Set config flags before window creation
-  SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_RESIZABLE);
+  unsigned int flags = FLAG_VSYNC_HINT | FLAG_WINDOW_RESIZABLE;
+  if (tempSettings.msaa) {
+    flags |= FLAG_MSAA_4X_HINT;
+  }
+  SetConfigFlags(flags);
+
+  // Apply resolution from config
+  SCREEN_WIDTH = RESOLUTIONS[tempSettings.resolutionIndex].width;
+  SCREEN_HEIGHT = RESOLUTIONS[tempSettings.resolutionIndex].height;
+  HEX_SIZE = tempSettings.hexSize;
 
   InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT,
              "Panzer General 2 Prototype - Raylib + RayGUI");
-  SetTargetFPS(60);
 
   // Disable ESC key to exit - we use it for menu control
   SetExitKey(KEY_NULL);
 
-  // Load ROMULUS font
-  Font romulusFont = LoadFont("resources/fonts/romulus.png");
-  GuiSetFont(romulusFont);  // Set as default font for raygui
+  // Apply fullscreen from config
+  if (tempSettings.fullscreen && !IsWindowFullscreen()) {
+    ToggleFullscreen();
+  }
+
+  // Apply FPS from config
+  SetTargetFPS(FPS_VALUES[tempSettings.fpsIndex]);
+
+  // Load DejaVu Sans font with SDF support
+  int fileSize = 0;
+  unsigned char *fileData = LoadFileData("resources/fonts/DejaVuSans.ttf", &fileSize);
+
+  Font fontSDF = { 0 };
+  fontSDF.baseSize = 16;
+  fontSDF.glyphCount = 95;
+  fontSDF.glyphs = LoadFontData(fileData, fileSize, 16, 0, 95, FONT_SDF);
+
+  Image atlas = GenImageFontAtlas(fontSDF.glyphs, &fontSDF.recs, 95, 16, 0, 1);
+  fontSDF.texture = LoadTextureFromImage(atlas);
+  UnloadImage(atlas);
+  UnloadFileData(fileData);
+
+  // Load SDF shader
+  Shader sdfShader = LoadShader(0, "resources/shaders/glsl330/sdf.fs");
+  SetTextureFilter(fontSDF.texture, TEXTURE_FILTER_BILINEAR);
+
+  // Set as GUI font
+  GuiSetFont(fontSDF);
 
   GameState game;
+  // Apply loaded settings to game state
+  game.settings = tempSettings;
 
   // Add some initial units
   game.addUnit(UnitClass::INFANTRY, 0, 2, 2);
@@ -1203,7 +1329,8 @@ int main() {
     EndDrawing();
   }
 
-  UnloadFont(romulusFont);  // Unload custom font
+  UnloadFont(fontSDF);  // Unload SDF font
+  UnloadShader(sdfShader);  // Unload SDF shader
   CloseWindow();
   return 0;
 }
