@@ -5,3 +5,5 @@ fpsIndex=6
 hexSize=45
 panSpeed=5
 msaa=0
+guiScaleIndex=2
+styleTheme=dark
