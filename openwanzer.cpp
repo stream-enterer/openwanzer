@@ -304,6 +304,8 @@ const int GUI_SCALE_COUNT = 3;
 // SECTION 5A: CONFIGURATION - STYLE DISCOVERY
 //==============================================================================
 
+namespace Config {
+
 // Global variables for style themes
 std::vector<std::string> AVAILABLE_STYLES;
 std::string STYLE_LABELS_STRING;
@@ -363,6 +365,8 @@ int getStyleIndex(const std::string& styleName) {
   }
   return 0; // Default to first style if not found
 }
+
+} // namespace Config
 
 // Structures
 struct HexCoord {
@@ -1342,11 +1346,16 @@ void calculateCenteredCameraOffset(CameraState& camera, int screenWidth, int scr
 
 } // namespace Input
 
-// Forward declarations (for Config namespace functions)
-void saveConfig(const VideoSettings& settings);
-void loadConfig(VideoSettings& settings);
-void applyGuiScale(float scale);
-void loadStyleTheme(const std::string& themeName);
+// Forward declarations for Config namespace (needed by Rendering::drawOptionsMenu)
+namespace Config {
+  void saveConfig(const VideoSettings& settings);
+  void loadConfig(VideoSettings& settings);
+  void applyGuiScale(float scale);
+  void loadStyleTheme(const std::string& themeName);
+  int getStyleIndex(const std::string& styleName);
+  extern std::vector<std::string> AVAILABLE_STYLES;
+  extern std::string STYLE_LABELS_STRING;
+}
 
 //==============================================================================
 // SECTION 6B: RENDERING FUNCTIONS - UI AND MENUS
@@ -1565,13 +1574,13 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
     HEX_SIZE = game.settings.hexSize;
 
     // Apply style theme
-    loadStyleTheme(game.settings.styleTheme);
+    Config::loadStyleTheme(game.settings.styleTheme);
 
     // Apply GUI scale (after style is loaded)
-    applyGuiScale(GUI_SCALE_VALUES[game.settings.guiScaleIndex]);
+    Config::applyGuiScale(GUI_SCALE_VALUES[game.settings.guiScaleIndex]);
 
     // Save config to file
-    saveConfig(game.settings);
+    Config::saveConfig(game.settings);
 
     // Menu stays open after applying settings
   }
@@ -1610,15 +1619,15 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
 
   // Style Theme dropdown (draw first - bottommost)
   // Get current style index
-  int currentStyleIndex = getStyleIndex(game.settings.styleTheme);
+  int currentStyleIndex = Config::getStyleIndex(game.settings.styleTheme);
   if (GuiDropdownBox(
           Rectangle{(float)controlX, (float)styleThemeY - 5, (float)controlWidth, 30},
-          STYLE_LABELS_STRING.c_str(), &currentStyleIndex, game.settings.styleThemeDropdownEdit)) {
+          Config::STYLE_LABELS_STRING.c_str(), &currentStyleIndex, game.settings.styleThemeDropdownEdit)) {
     game.settings.styleThemeDropdownEdit = !game.settings.styleThemeDropdownEdit;
   }
   // Update style theme name if index changed
-  if (currentStyleIndex >= 0 && currentStyleIndex < (int)AVAILABLE_STYLES.size()) {
-    game.settings.styleTheme = AVAILABLE_STYLES[currentStyleIndex];
+  if (currentStyleIndex >= 0 && currentStyleIndex < (int)Config::AVAILABLE_STYLES.size()) {
+    game.settings.styleTheme = Config::AVAILABLE_STYLES[currentStyleIndex];
   }
 
   // GUI Scale dropdown
@@ -1770,6 +1779,8 @@ void handlePan(GameState &game) {
 // SECTION 9: CONFIGURATION - SAVE/LOAD AND SETTINGS
 //==============================================================================
 
+namespace Config {
+
 // Save config to file
 void saveConfig(const VideoSettings& settings) {
   std::ofstream configFile("config.txt");
@@ -1881,17 +1892,19 @@ void loadStyleTheme(const std::string& themeName) {
   TraceLog(LOG_INFO, TextFormat("Style loaded: %s", themeName.c_str()));
 }
 
+} // namespace Config
+
 //==============================================================================
 // SECTION 10: MAIN LOOP
 //==============================================================================
 
 int main() {
   // Discover available styles first (before window init)
-  discoverStyles();
+  Config::discoverStyles();
 
   // Create temporary settings to load config before window init
   VideoSettings tempSettings;
-  loadConfig(tempSettings);
+  Config::loadConfig(tempSettings);
 
   // Set config flags before window creation
   unsigned int flags = FLAG_WINDOW_RESIZABLE;
@@ -1923,10 +1936,10 @@ int main() {
   SetTargetFPS(FPS_VALUES[tempSettings.fpsIndex]);
 
   // Load style theme from config
-  loadStyleTheme(tempSettings.styleTheme);
+  Config::loadStyleTheme(tempSettings.styleTheme);
 
   // Apply GUI scale from config
-  applyGuiScale(GUI_SCALE_VALUES[tempSettings.guiScaleIndex]);
+  Config::applyGuiScale(GUI_SCALE_VALUES[tempSettings.guiScaleIndex]);
 
   GameState game;
   // Apply loaded settings to game state
