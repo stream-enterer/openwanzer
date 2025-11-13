@@ -151,6 +151,39 @@ int getTerrainIndex(TerrainType terrain) {
   }
 }
 
+// Terrain entrenchment levels (max entrenchment from terrain)
+const int TERRAIN_ENTRENCHMENT[10] = {
+    0,  // PLAINS
+    3,  // CITY
+    2,  // FOREST
+    2,  // MOUNTAIN
+    1,  // HILL
+    0,  // DESERT
+    0,  // SWAMP
+    3,  // (unused - would be FORTIFICATION)
+    0,  // WATER
+    2   // ROUGH
+};
+
+// Unit entrenchment rates (how fast they entrench)
+const int UNIT_ENTRENCH_RATE[6] = {
+    3,  // INFANTRY (fast)
+    1,  // TANK (slow)
+    2,  // ARTILLERY (medium)
+    2,  // RECON (medium)
+    2,  // ANTI_TANK (medium)
+    1   // AIR_DEFENSE (slow)
+};
+
+// Get terrain entrenchment level
+int getTerrainEntrenchment(TerrainType terrain) {
+  int idx = static_cast<int>(terrain);
+  if (idx >= 0 && idx < 10) {
+    return TERRAIN_ENTRENCHMENT[idx];
+  }
+  return 0;
+}
+
 // Forward declaration for calculateCenteredCameraOffset
 struct CameraState;
 void calculateCenteredCameraOffset(CameraState& camera, int screenWidth, int screenHeight);
@@ -359,8 +392,13 @@ struct Unit {
   int movementPoints;
   int movesLeft;
   int fuel;
+  int maxFuel;
   int ammo;
+  int maxAmmo;
   int spotRange;
+  int rangeDefMod;  // Range defense modifier
+  int hits;         // Accumulated hits (reduces defense)
+  int entrenchTicks; // Ticks toward next entrenchment level
 
   bool hasMoved;
   bool hasFired;
@@ -370,8 +408,9 @@ struct Unit {
       : strength(10), maxStrength(10), experience(0), entrenchment(0),
         hardAttack(8), softAttack(10), groundDefense(6), closeDefense(5),
         initiative(5), movMethod(MovMethod::TRACKED), movementPoints(6),
-        movesLeft(6), fuel(50), ammo(20), spotRange(2), hasMoved(false),
-        hasFired(false), isCore(false) {}
+        movesLeft(6), fuel(50), maxFuel(50), ammo(20), maxAmmo(20),
+        spotRange(2), rangeDefMod(0), hits(0), entrenchTicks(0),
+        hasMoved(false), hasFired(false), isCore(false) {}
 };
 
 // Game State
@@ -729,6 +768,22 @@ bool isAir(Unit *unit) {
   return unit && unit->movMethod == MovMethod::AIR;
 }
 
+// Check if unit is a hard target (armored)
+bool isHardTarget(Unit *unit) {
+  if (!unit) return false;
+  return (unit->unitClass == UnitClass::TANK ||
+          unit->unitClass == UnitClass::ANTI_TANK ||
+          unit->unitClass == UnitClass::AIR_DEFENSE);
+}
+
+// Check if unit is sea unit
+bool isSea(Unit *unit) {
+  if (!unit) return false;
+  return (unit->movMethod == MovMethod::DEEP_NAVAL ||
+          unit->movMethod == MovMethod::COSTAL ||
+          unit->movMethod == MovMethod::NAVAL);
+}
+
 // Set or clear ZOC for a unit
 void setUnitZOC(GameState &game, Unit *unit, bool on) {
   if (!unit || isAir(unit)) return;
@@ -961,35 +1016,160 @@ void moveUnit(GameState &game, Unit *unit, const HexCoord &target) {
   }
 }
 
+// Calculate kills using PG2 formula
+int calculateKills(int atkVal, int defVal, Unit *attacker, Unit *defender) {
+  int kF = atkVal - defVal;
+
+  // PG2 formula: compress high values
+  if (kF > 4) {
+    kF = 4 + (2 * kF - 8) / 5;
+  }
+  kF += 6;
+
+  // Artillery/Bomber penalty (less effective at killing)
+  if (attacker->unitClass == UnitClass::ARTILLERY) {
+    kF -= 3;
+  }
+
+  // Clamp kill factor between 1 and 19
+  kF = std::max(1, std::min(19, kF));
+
+  // Calculate kills based on attacker strength
+  // Formula: (5 * kF * strength + 50) / 100 = (kF * strength) / 20 + 0.5
+  int kills = (5 * kF * attacker->strength + 50) / 100;
+
+  return kills;
+}
+
 void performAttack(GameState &game, Unit *attacker, Unit *defender) {
   if (!attacker || !defender || attacker->hasFired)
     return;
 
-  // Simple combat calculation
-  int attackValue = attacker->hardAttack + attacker->experience * 2;
-  int defenseValue = defender->groundDefense + defender->entrenchment * 2 +
-                     defender->experience;
+  // Get distance and hex information
+  int distance = hexDistance(attacker->position, defender->position);
+  GameHex &atkHex = game.map[attacker->position.row][attacker->position.col];
+  GameHex &defHex = game.map[defender->position.row][defender->position.col];
 
-  // Calculate damage
-  int attackRoll = GetRandomValue(1, 10);
-  int defenseRoll = GetRandomValue(1, 10);
+  // Determine attack/defense values based on target type
+  int aav, adv, dav, ddv;
 
-  int attackerDamage =
-      std::max(0, (attackValue + attackRoll) - (defenseValue + defenseRoll));
-  int defenderDamage = std::max(0, (defenseValue + defenseRoll / 2) -
-                                       (attackValue + attackRoll / 2));
+  // Attacker attack value (use hard attack for armored targets)
+  if (isHardTarget(defender)) {
+    aav = attacker->hardAttack;
+  } else {
+    aav = attacker->softAttack;
+  }
+
+  // Attacker defense value
+  adv = attacker->groundDefense;
+
+  // Defender attack value (for return fire)
+  if (isHardTarget(attacker)) {
+    dav = defender->hardAttack;
+  } else {
+    dav = defender->softAttack;
+  }
+
+  // Defender defense value
+  ddv = defender->groundDefense;
+
+  // 1. Apply experience modifiers (+1 per experience bar)
+  int aExpBars = attacker->experience / 100;
+  int dExpBars = defender->experience / 100;
+  aav += aExpBars;
+  adv += aExpBars;
+  dav += dExpBars;
+  ddv += dExpBars;
+
+  // 2. Apply entrenchment (adds to defense only)
+  adv += attacker->entrenchment;
+  ddv += defender->entrenchment;
+
+  // 3. Apply terrain modifiers
+  // Cities give +4 defense
+  if (defHex.terrain == TerrainType::CITY) {
+    ddv += 4;
+  }
+  if (atkHex.terrain == TerrainType::CITY) {
+    adv += 4;
+  }
+
+  // Water without road: -4 defense, attacker gets +4 attack
+  if (defHex.terrain == TerrainType::WATER) {
+    ddv -= 4;
+    aav += 4;
+  }
+  if (atkHex.terrain == TerrainType::WATER) {
+    adv -= 4;
+    dav += 4;
+  }
+
+  // 4. Apply initiative bonus (who shoots first gets advantage)
+  int initDiff = attacker->initiative - defender->initiative;
+  if (initDiff >= 0) {
+    // Attacker has initiative
+    adv += 4;  // Attacker defense bonus
+    aav += std::min(4, initDiff);  // Attack bonus (max +4)
+  } else {
+    // Defender has initiative
+    ddv += 4;  // Defender defense bonus
+    dav += std::min(4, -initDiff);  // Defender attack bonus (max +4)
+  }
+
+  // 5. Apply range defense modifier (for ranged combat)
+  if (distance > 1) {
+    adv += attacker->rangeDefMod;
+    ddv += defender->rangeDefMod;
+  }
+
+  // 6. Apply accumulated hits (reduces defense)
+  adv -= attacker->hits;
+  ddv -= defender->hits;
+
+  // Calculate kills
+  int kills = calculateKills(aav, ddv, attacker, defender);
+
+  // Defender can fire back if:
+  // - At range 1 (close combat), OR
+  // - Both are sea units (naval combat)
+  bool defCanFire = (distance <= 1 || (isSea(attacker) && isSea(defender)));
+  int losses = 0;
+
+  if (defCanFire && defender->ammo > 0) {
+    losses = calculateKills(dav, adv, defender, attacker);
+  }
 
   // Apply damage
-  defender->strength = std::max(0, defender->strength - attackerDamage / 3);
-  attacker->strength = std::max(0, attacker->strength - defenderDamage / 4);
+  defender->strength = std::max(0, defender->strength - kills);
+  attacker->strength = std::max(0, attacker->strength - losses);
 
-  // Increase experience
-  if (attackerDamage > 0)
-    attacker->experience = std::min(5, attacker->experience + 1);
+  // Experience gain
+  // Attacker gains based on defender's attack value and kills
+  int bonusAD = std::max(1, dav + 6 - adv);
+  int atkExpGain = (bonusAD * (defender->maxStrength / 10) + bonusAD) * kills;
+  attacker->experience = std::min(500, attacker->experience + atkExpGain);
 
-  // Mark as fired
+  // Defender gains 2 * losses
+  if (defCanFire) {
+    int defExpGain = 2 * losses;
+    defender->experience = std::min(500, defender->experience + defExpGain);
+  }
+
+  // Mark as fired and consume ammo
   attacker->hasFired = true;
   attacker->ammo = std::max(0, attacker->ammo - 1);
+
+  // Increment hits (reduces future defense)
+  attacker->hits++;
+  defender->hits++;
+
+  // Reduce entrenchment on hit
+  if (kills > 0 && defender->entrenchment > 0) {
+    defender->entrenchment--;
+  }
+  if (losses > 0 && attacker->entrenchment > 0) {
+    attacker->entrenchment--;
+  }
 
   // Clear ZOC and spotting for units about to be destroyed
   for (auto &unit : game.units) {
@@ -1007,25 +1187,70 @@ void performAttack(GameState &game, Unit *attacker, Unit *defender) {
                    game.units.end());
 }
 
+// Entrench a unit (called at end of turn if unit didn't move)
+void entrenchUnit(GameState &game, Unit *unit) {
+  if (!unit) return;
+
+  GameHex &hex = game.map[unit->position.row][unit->position.col];
+  int terrainEntrench = getTerrainEntrenchment(hex.terrain);
+  int uc = static_cast<int>(unit->unitClass);
+
+  if (unit->entrenchment >= terrainEntrench) {
+    // Slow gain above terrain level (ticks system)
+    int level = unit->entrenchment - terrainEntrench;
+    int nextThreshold = 9 * level + 4;
+    int expBars = unit->experience / 100;
+
+    // Add ticks based on experience, terrain, and unit type
+    unit->entrenchTicks += expBars + (terrainEntrench + 1) * UNIT_ENTRENCH_RATE[uc];
+
+    // Check if we've gained a level
+    while (unit->entrenchTicks >= nextThreshold &&
+           unit->entrenchment < terrainEntrench + 5) {
+      unit->entrenchTicks -= nextThreshold;
+      unit->entrenchment++;
+      level++;
+      nextThreshold = 9 * level + 4;
+    }
+  } else {
+    // Instant gain to terrain level
+    unit->entrenchment = terrainEntrench;
+    unit->entrenchTicks = 0;
+  }
+
+  // Max entrenchment is 5
+  unit->entrenchment = std::min(5, unit->entrenchment);
+}
+
 void endTurn(GameState &game) {
-  // Reset unit actions
+  // Process units ending their turn
   for (auto &unit : game.units) {
     if (unit->side == game.currentPlayer) {
-      unit->hasMoved = false;
-      unit->hasFired = false;
-      unit->movesLeft = unit->movementPoints;
-
-      // Increase entrenchment if unit didn't move
+      // Gain entrenchment if didn't move
       if (!unit->hasMoved) {
-        unit->entrenchment = std::min(5, unit->entrenchment + 1);
+        entrenchUnit(game, unit.get());
       } else {
+        // Lost entrenchment by moving
         unit->entrenchment = 0;
+        unit->entrenchTicks = 0;
       }
+
+      // Reset hits at end of turn
+      unit->hits = 0;
     }
   }
 
   // Switch player
   game.currentPlayer = 1 - game.currentPlayer;
+
+  // Reset actions for units about to start their turn
+  for (auto &unit : game.units) {
+    if (unit->side == game.currentPlayer) {
+      unit->hasMoved = false;
+      unit->hasFired = false;
+      unit->movesLeft = unit->movementPoints;
+    }
+  }
 
   // If both players have moved, advance turn
   if (game.currentPlayer == 0) {
