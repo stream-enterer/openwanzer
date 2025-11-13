@@ -1116,27 +1116,6 @@ int main() {
   // Apply FPS from config
   SetTargetFPS(FPS_VALUES[tempSettings.fpsIndex]);
 
-  // Load DejaVu Sans font with SDF support
-  int fileSize = 0;
-  unsigned char *fileData = LoadFileData("resources/fonts/DejaVuSans.ttf", &fileSize);
-
-  Font fontSDF = { 0 };
-  fontSDF.baseSize = 16;
-  fontSDF.glyphCount = 95;
-  fontSDF.glyphs = LoadFontData(fileData, fileSize, 16, 0, 95, FONT_SDF);
-
-  Image atlas = GenImageFontAtlas(fontSDF.glyphs, &fontSDF.recs, 95, 16, 0, 1);
-  fontSDF.texture = LoadTextureFromImage(atlas);
-  UnloadImage(atlas);
-  UnloadFileData(fileData);
-
-  // Load SDF shader
-  Shader sdfShader = LoadShader(0, "resources/shaders/glsl330/sdf.fs");
-  SetTextureFilter(fontSDF.texture, TEXTURE_FILTER_BILINEAR);
-
-  // Set as GUI font
-  GuiSetFont(fontSDF);
-
   GameState game;
   // Apply loaded settings to game state
   game.settings = tempSettings;
@@ -1329,8 +1308,6 @@ int main() {
     EndDrawing();
   }
 
-  UnloadFont(fontSDF);  // Unload SDF font
-  UnloadShader(sdfShader);  // Unload SDF shader
   CloseWindow();
   return 0;
 }
