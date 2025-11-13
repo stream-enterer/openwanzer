@@ -251,16 +251,9 @@ class PanzerGame(arcade.Window):
             text_color=arcade.color.WHITE
         )
 
-        # Create a bordered wrapper for the message box
-        message_border = arcade.gui.UIBorder(
-            child=self.message_box,
-            border_width=1,
-            border_color=arcade.color.WHITE
-        )
-
         # Position message box with padding
         message_box_container.add(
-            message_border,
+            self.message_box,
             anchor_x="left",
             anchor_y="bottom",
             align_x=20,
