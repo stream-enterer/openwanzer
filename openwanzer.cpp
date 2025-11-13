@@ -801,12 +801,12 @@ std::vector<HexCoord> getAdjacent(int row, int col) {
 }
 
 // Check if unit is air unit (ignores ZOC)
-bool isAir(Unit *unit) {
+bool isAir(const Unit *unit) {
   return unit && unit->movMethod == MovMethod::AIR;
 }
 
 // Check if unit is a hard target (armored)
-bool isHardTarget(Unit *unit) {
+bool isHardTarget(const Unit *unit) {
   if (!unit) return false;
   return (unit->unitClass == UnitClass::TANK ||
           unit->unitClass == UnitClass::ANTI_TANK ||
@@ -814,7 +814,7 @@ bool isHardTarget(Unit *unit) {
 }
 
 // Check if unit is sea unit
-bool isSea(Unit *unit) {
+bool isSea(const Unit *unit) {
   if (!unit) return false;
   return (unit->movMethod == MovMethod::DEEP_NAVAL ||
           unit->movMethod == MovMethod::COSTAL ||
@@ -1054,7 +1054,7 @@ void moveUnit(GameState &game, Unit *unit, const HexCoord &target) {
 }
 
 // Calculate kills using PG2 formula
-int calculateKills(int atkVal, int defVal, Unit *attacker, Unit *defender) {
+int calculateKills(int atkVal, int defVal, const Unit *attacker, const Unit *defender) {
   int kF = atkVal - defVal;
 
   // PG2 formula: compress high values
