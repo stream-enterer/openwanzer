@@ -11,6 +11,8 @@
 
 #pragma GCC diagnostic pop
 
+#include "hex.h"
+
 #include <algorithm>
 #include <cmath>
 #include <memory>
@@ -28,10 +30,13 @@ const int DEFAULT_MAP_COLS = 16;
 int SCREEN_WIDTH = DEFAULT_SCREEN_WIDTH;
 int SCREEN_HEIGHT = DEFAULT_SCREEN_HEIGHT;
 float HEX_SIZE = DEFAULT_HEX_SIZE;
-float HEX_WIDTH = HEX_SIZE * 2.0f;
-float HEX_HEIGHT = sqrtf(3.0f) * HEX_SIZE;
 int MAP_ROWS = DEFAULT_MAP_ROWS;
 int MAP_COLS = DEFAULT_MAP_COLS;
+
+// Color definitions
+const Color COLOR_BACKGROUND = BLACK;
+const Color COLOR_GRID = Color{245, 245, 220, 255}; // Pale beige
+const Color COLOR_FPS = Color{192, 192, 192, 255};   // Light grey
 
 // Enums
 enum class TerrainType { CLEAR, FOREST, MOUNTAIN, CITY, WATER, ROAD };
@@ -46,6 +51,21 @@ enum class UnitClass {
 };
 
 enum class Side { AXIS = 0, ALLIED = 1 };
+
+// Camera state structure
+struct CameraState {
+  float offsetX;
+  float offsetY;
+  float zoom;           // 0.5 to 2.0 (50% to 200%)
+  int zoomDirection;    // -1 for zooming out, 1 for zooming in, 0 for neutral
+  bool isPanning;
+  Vector2 panStartMouse;
+  Vector2 panStartOffset;
+
+  CameraState()
+      : offsetX(100.0f), offsetY(100.0f), zoom(1.0f), zoomDirection(0),
+        isPanning(false), panStartMouse{0, 0}, panStartOffset{0, 0} {}
+};
 
 // Settings Structure
 struct VideoSettings {
@@ -110,7 +130,7 @@ struct HexCoord {
   }
 };
 
-struct Hex {
+struct GameHex {
   HexCoord coord;
   TerrainType terrain;
   int owner; // -1 = neutral, 0 = axis, 1 = allied
@@ -120,7 +140,7 @@ struct Hex {
   bool isMoveSel;    // highlighted for movement
   bool isAttackSel;  // highlighted for attack
 
-  Hex()
+  GameHex()
       : terrain(TerrainType::CLEAR), owner(-1), isVictoryHex(false),
         isDeployment(false), isMoveSel(false), isAttackSel(false) {
     isSpotted[0] = false;
@@ -165,7 +185,7 @@ struct Unit {
 
 // Game State
 struct GameState {
-  std::vector<std::vector<Hex>> map;
+  std::vector<std::vector<GameHex>> map;
   std::vector<std::unique_ptr<Unit>> units;
   Unit *selectedUnit;
   int currentTurn;
@@ -174,6 +194,7 @@ struct GameState {
   bool showOptionsMenu;
   VideoSettings settings;
   GameLayout layout;
+  CameraState camera;
 
   GameState()
       : selectedUnit(nullptr), currentTurn(1), currentPlayer(0), maxTurns(20),
@@ -251,46 +272,51 @@ struct GameState {
   }
 };
 
-// Hex drawing functions
-Vector2 hexToPixel(int row, int col, float offsetX, float offsetY) {
-  float x = offsetX + col * HEX_WIDTH * 0.75f;
-  float y = offsetY + row * HEX_HEIGHT + (col % 2) * (HEX_HEIGHT * 0.5f);
-  return {x, y};
+// Create hex layout for rendering
+Layout createHexLayout(float hexSize, float offsetX, float offsetY, float zoom) {
+  Point size(hexSize * zoom, hexSize * zoom);
+  Point origin(offsetX, offsetY);
+  return Layout(layout_pointy, size, origin);
 }
 
-HexCoord pixelToHex(float x, float y, float offsetX, float offsetY) {
-  // Approximate hex coordinate (simplified axial to cube conversion)
-  float adjustedX = (x - offsetX) / (HEX_WIDTH * 0.75f);
-  int col = (int)roundf(adjustedX);
-
-  float adjustedY =
-      (y - offsetY - (col % 2) * (HEX_HEIGHT * 0.5f)) / HEX_HEIGHT;
-  int row = (int)roundf(adjustedY);
-
-  // Clamp to map bounds
-  row = Clamp(row, 0, MAP_ROWS - 1);
-  col = Clamp(col, 0, MAP_COLS - 1);
-
-  return {row, col};
+// Convert our game's row/col to hex library's offset coordinates
+OffsetCoord gameCoordToOffset(const HexCoord &coord) {
+  return OffsetCoord(coord.col, coord.row);
 }
 
-void drawHexagon(Vector2 center, float size, Color color, bool filled) {
-  Vector2 points[6];
-  for (int i = 0; i < 6; i++) {
-    float angle = (60.0f * i - 30.0f) * DEG2RAD;
-    points[i].x = center.x + size * cosf(angle);
-    points[i].y = center.y + size * sinf(angle);
-  }
+// Convert hex library's offset coordinates to our game's row/col
+HexCoord offsetToGameCoord(const OffsetCoord &offset) {
+  return HexCoord{offset.row, offset.col};
+}
 
+// Draw a hexagon using raylib
+void drawHexagon(const std::vector<Point> &corners, Color color, bool filled) {
   if (filled) {
-    // Draw filled hexagon using triangles
-    for (int i = 1; i < 5; i++) {
-      DrawTriangle(points[0], points[i], points[i + 1], color);
+    // Draw filled hexagon using triangles from center
+    Vector2 center = {0, 0};
+    for (const auto &corner : corners) {
+      center.x += corner.x;
+      center.y += corner.y;
+    }
+    center.x /= corners.size();
+    center.y /= corners.size();
+
+    for (size_t i = 0; i < corners.size(); i++) {
+      size_t next = (i + 1) % corners.size();
+      DrawTriangle(
+          Vector2{(float)corners[i].x, (float)corners[i].y},
+          Vector2{(float)corners[next].x, (float)corners[next].y},
+          center,
+          color);
     }
   } else {
     // Draw hexagon outline
-    for (int i = 0; i < 6; i++) {
-      DrawLineEx(points[i], points[(i + 1) % 6], 2.0f, color);
+    for (size_t i = 0; i < corners.size(); i++) {
+      size_t next = (i + 1) % corners.size();
+      DrawLineEx(
+          Vector2{(float)corners[i].x, (float)corners[i].y},
+          Vector2{(float)corners[next].x, (float)corners[next].y},
+          2.0f, color);
     }
   }
 }
@@ -335,60 +361,104 @@ std::string getUnitSymbol(UnitClass uClass) {
   }
 }
 
-void drawMap(GameState &game, float offsetX, float offsetY) {
+void drawMap(GameState &game) {
+  Layout layout = createHexLayout(HEX_SIZE, game.camera.offsetX,
+                                  game.camera.offsetY, game.camera.zoom);
+
   // Draw hexes
   for (int row = 0; row < MAP_ROWS; row++) {
     for (int col = 0; col < MAP_COLS; col++) {
-      Hex &hex = game.map[row][col];
-      Vector2 center = hexToPixel(row, col, offsetX, offsetY);
+      GameHex &hex = game.map[row][col];
+      OffsetCoord offset = gameCoordToOffset(hex.coord);
+      ::Hex cubeHex = offset_to_cube(offset);
+
+      std::vector<Point> corners = polygon_corners(layout, cubeHex);
 
       // Draw terrain
       Color terrainColor = getTerrainColor(hex.terrain);
-      drawHexagon(center, HEX_SIZE, terrainColor, true);
+      drawHexagon(corners, terrainColor, true);
 
       // Draw hex outline
-      drawHexagon(center, HEX_SIZE, BLACK, false);
+      drawHexagon(corners, COLOR_GRID, false);
 
       // Draw victory hex marker
       if (hex.isVictoryHex) {
-        DrawCircle((int)center.x, (int)center.y, 8, GOLD);
+        Point center = hex_to_pixel(layout, cubeHex);
+        DrawCircle((int)center.x, (int)center.y, 8 * game.camera.zoom, GOLD);
       }
 
       // Draw movement/attack selection highlights
       if (hex.isMoveSel) {
-        drawHexagon(center, HEX_SIZE - 3, Color{0, 255, 0, 100}, true);
+        std::vector<Point> innerCorners;
+        Point center = hex_to_pixel(layout, cubeHex);
+        for (int i = 0; i < 6; i++) {
+          Point offset = hex_corner_offset(layout, i);
+          float scale = 0.85f;
+          innerCorners.push_back(Point(center.x + offset.x * scale,
+                                      center.y + offset.y * scale));
+        }
+        drawHexagon(innerCorners, Color{0, 255, 0, 100}, true);
       }
       if (hex.isAttackSel) {
-        drawHexagon(center, HEX_SIZE - 3, Color{255, 0, 0, 100}, true);
+        std::vector<Point> innerCorners;
+        Point center = hex_to_pixel(layout, cubeHex);
+        for (int i = 0; i < 6; i++) {
+          Point offset = hex_corner_offset(layout, i);
+          float scale = 0.85f;
+          innerCorners.push_back(Point(center.x + offset.x * scale,
+                                      center.y + offset.y * scale));
+        }
+        drawHexagon(innerCorners, Color{255, 0, 0, 100}, true);
       }
     }
   }
 
   // Draw units
   for (auto &unit : game.units) {
-    Vector2 center =
-        hexToPixel(unit->position.row, unit->position.col, offsetX, offsetY);
+    OffsetCoord offset = gameCoordToOffset(unit->position);
+    ::Hex cubeHex = offset_to_cube(offset);
+    Point center = hex_to_pixel(layout, cubeHex);
+
+    float unitWidth = 40 * game.camera.zoom;
+    float unitHeight = 30 * game.camera.zoom;
 
     // Draw unit square
     Color unitColor = getUnitColor(unit->side);
-    DrawRectangle((int)center.x - 20, (int)center.y - 15, 40, 30, unitColor);
-    DrawRectangleLines((int)center.x - 20, (int)center.y - 15, 40, 30, BLACK);
+    DrawRectangle((int)(center.x - unitWidth / 2),
+                  (int)(center.y - unitHeight / 2),
+                  (int)unitWidth, (int)unitHeight, unitColor);
+    DrawRectangleLines((int)(center.x - unitWidth / 2),
+                       (int)(center.y - unitHeight / 2),
+                       (int)unitWidth, (int)unitHeight, BLACK);
 
     // Draw unit symbol
     std::string symbol = getUnitSymbol(unit->unitClass);
-    DrawText(symbol.c_str(), (int)center.x - 15, (int)center.y - 20, 10, WHITE);
+    int fontSize = (int)(10 * game.camera.zoom);
+    if (fontSize >= 8) {  // Only draw text if it's readable
+      int textWidth = MeasureText(symbol.c_str(), fontSize);
+      DrawText(symbol.c_str(),
+               (int)(center.x - textWidth / 2),
+               (int)(center.y - unitHeight / 2 + 2),
+               fontSize, WHITE);
 
-    // Draw strength
-    std::string strength = std::to_string(unit->strength);
-    DrawText(strength.c_str(), (int)center.x - 5, (int)center.y + 5, 12,
-             YELLOW);
+      // Draw strength
+      std::string strength = std::to_string(unit->strength);
+      fontSize = (int)(12 * game.camera.zoom);
+      textWidth = MeasureText(strength.c_str(), fontSize);
+      DrawText(strength.c_str(),
+               (int)(center.x - textWidth / 2),
+               (int)(center.y + 5 * game.camera.zoom),
+               fontSize, YELLOW);
+    }
 
     // Draw selection highlight
     if (unit.get() == game.selectedUnit) {
-      DrawRectangleLines((int)center.x - 22, (int)center.y - 17, 44, 34,
-                         YELLOW);
-      DrawRectangleLines((int)center.x - 23, (int)center.y - 18, 46, 36,
-                         YELLOW);
+      DrawRectangleLines((int)(center.x - unitWidth / 2 - 2),
+                         (int)(center.y - unitHeight / 2 - 2),
+                         (int)(unitWidth + 4), (int)(unitHeight + 4), YELLOW);
+      DrawRectangleLines((int)(center.x - unitWidth / 2 - 3),
+                         (int)(center.y - unitHeight / 2 - 3),
+                         (int)(unitWidth + 6), (int)(unitHeight + 6), YELLOW);
     }
   }
 }
@@ -402,18 +472,13 @@ void clearSelectionHighlights(GameState &game) {
   }
 }
 
-// Calculate Manhattan distance for hex grid
+// Calculate distance between two hexes using the hex library
 int hexDistance(const HexCoord &a, const HexCoord &b) {
-  // Convert to cube coordinates for distance calculation
-  int ax = a.col;
-  int az = a.row - (a.col - (a.col & 1)) / 2;
-  int ay = -ax - az;
-
-  int bx = b.col;
-  int bz = b.row - (b.col - (b.col & 1)) / 2;
-  int by = -bx - bz;
-
-  return (abs(ax - bx) + abs(ay - by) + abs(az - bz)) / 2;
+  OffsetCoord offsetA = gameCoordToOffset(a);
+  OffsetCoord offsetB = gameCoordToOffset(b);
+  ::Hex cubeA = offset_to_cube(offsetA);
+  ::Hex cubeB = offset_to_cube(offsetB);
+  return hex_distance(cubeA, cubeB);
 }
 
 void highlightMovementRange(GameState &game, Unit *unit) {
@@ -557,6 +622,11 @@ void drawUI(GameState &game) {
   DrawText(playerText.c_str(), 200, 10, 20,
            game.currentPlayer == 0 ? RED : BLUE);
 
+  // Zoom indicator
+  char zoomText[32];
+  snprintf(zoomText, sizeof(zoomText), "Zoom: %.0f%%", game.camera.zoom * 100);
+  DrawText(zoomText, 400, 10, 20, WHITE);
+
   // Options button
   if (GuiButton(Rectangle{game.layout.statusBar.width - 110, 5, 100, 30},
                 "OPTIONS")) {
@@ -615,7 +685,7 @@ void drawUI(GameState &game) {
   // Controls help (help bar)
   if (!game.showOptionsMenu) {
     DrawText(
-        "SPACE - End Turn | Left Click - Select/Move/Attack | ESC - Options",
+        "SPACE - End Turn | Left Click - Select/Move/Attack | Middle Click+Drag - Pan | Mouse Wheel - Zoom | ESC - Options",
         (int)game.layout.helpBar.x + 10,
         (int)game.layout.helpBar.y + 5, 16, WHITE);
   }
@@ -738,8 +808,6 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
 
     // Apply hex size
     HEX_SIZE = game.settings.hexSize;
-    HEX_WIDTH = HEX_SIZE * 2.0f;
-    HEX_HEIGHT = sqrtf(3.0f) * HEX_SIZE;
 
     game.showOptionsMenu = false;
   }
@@ -793,6 +861,124 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
   }
 }
 
+// Handle mouse zoom with special behavior
+void handleZoom(GameState &game) {
+  float wheelMove = GetMouseWheelMove();
+
+  if (wheelMove != 0) {
+    float oldZoom = game.camera.zoom;
+    int direction = wheelMove > 0 ? 1 : -1;  // 1 for zoom in, -1 for zoom out
+
+    // Check if we're continuing in the same direction or changing direction
+    bool changingDirection = (game.camera.zoomDirection != 0 &&
+                             game.camera.zoomDirection != direction);
+
+    // If we're at 100% and starting to zoom
+    bool startingFromNeutral = (oldZoom == 1.0f && game.camera.zoomDirection == 0);
+
+    // If changing direction from 100%, reset the direction counter
+    if (oldZoom == 1.0f && changingDirection) {
+      game.camera.zoomDirection = 0;
+    }
+
+    // Determine if we should actually zoom
+    bool shouldZoom = false;
+
+    if (startingFromNeutral) {
+      // Starting from 100% - zoom immediately
+      shouldZoom = true;
+      game.camera.zoomDirection = direction;
+    } else if (oldZoom == 1.0f && game.camera.zoomDirection == direction) {
+      // Second input in same direction from 100% - zoom again
+      shouldZoom = true;
+    } else if (oldZoom != 1.0f && changingDirection) {
+      // Changing direction while not at 100% - first input goes back to 100%
+      shouldZoom = true;
+      game.camera.zoomDirection = 0;  // Reset direction
+    } else if (oldZoom != 1.0f && game.camera.zoomDirection == direction) {
+      // Continuing in same direction - zoom normally
+      shouldZoom = true;
+    } else if (oldZoom != 1.0f && game.camera.zoomDirection == 0) {
+      // After returning to 100%, first input in any direction
+      shouldZoom = true;
+      game.camera.zoomDirection = direction;
+    }
+
+    if (shouldZoom) {
+      float newZoom = oldZoom + (direction * 0.25f);
+
+      // Clamp zoom between 0.5 (50%) and 2.0 (200%)
+      newZoom = Clamp(newZoom, 0.5f, 2.0f);
+
+      if (newZoom != oldZoom) {
+        // Get mouse position for zoom center
+        Vector2 mousePos = GetMousePosition();
+
+        // Calculate world position at mouse before zoom
+        Point worldPosOld((mousePos.x - game.camera.offsetX) / oldZoom,
+                         (mousePos.y - game.camera.offsetY) / oldZoom);
+
+        // Apply zoom
+        game.camera.zoom = newZoom;
+
+        // Calculate world position at mouse after zoom
+        Point worldPosNew((mousePos.x - game.camera.offsetX) / newZoom,
+                         (mousePos.y - game.camera.offsetY) / newZoom);
+
+        // Adjust offset to keep world position under mouse constant
+        game.camera.offsetX += (worldPosNew.x - worldPosOld.x) * newZoom;
+        game.camera.offsetY += (worldPosNew.y - worldPosOld.y) * newZoom;
+
+        // Update zoom direction if we're moving away from 100%
+        if (newZoom != 1.0f && game.camera.zoomDirection != direction) {
+          game.camera.zoomDirection = direction;
+        } else if (newZoom == 1.0f) {
+          // Reset direction when we reach 100%
+          game.camera.zoomDirection = 0;
+        }
+      }
+    }
+  }
+}
+
+// Handle middle mouse button panning
+void handlePan(GameState &game) {
+  if (IsMouseButtonPressed(MOUSE_BUTTON_MIDDLE)) {
+    game.camera.isPanning = true;
+    game.camera.panStartMouse = GetMousePosition();
+    game.camera.panStartOffset = Vector2{game.camera.offsetX, game.camera.offsetY};
+  }
+
+  if (IsMouseButtonReleased(MOUSE_BUTTON_MIDDLE)) {
+    game.camera.isPanning = false;
+  }
+
+  if (game.camera.isPanning) {
+    Vector2 currentMouse = GetMousePosition();
+    Vector2 delta = {
+      currentMouse.x - game.camera.panStartMouse.x,
+      currentMouse.y - game.camera.panStartMouse.y
+    };
+
+    game.camera.offsetX = game.camera.panStartOffset.x + delta.x;
+    game.camera.offsetY = game.camera.panStartOffset.y + delta.y;
+
+    // Constrain panning to prevent going completely off screen
+    // Calculate map bounds in pixels
+    float mapWidth = MAP_COLS * HEX_SIZE * 1.5f * game.camera.zoom;
+    float mapHeight = (MAP_ROWS + 0.5f) * HEX_SIZE * sqrtf(3.0f) * game.camera.zoom;
+
+    // Keep at least 100 pixels of the map visible
+    float margin = 100;
+    game.camera.offsetX = Clamp(game.camera.offsetX,
+                                -mapWidth + margin,
+                                SCREEN_WIDTH - margin);
+    game.camera.offsetY = Clamp(game.camera.offsetY,
+                                -mapHeight + margin,
+                                SCREEN_HEIGHT - margin);
+  }
+}
+
 int main() {
   // Set config flags before window creation
   SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_RESIZABLE);
@@ -815,14 +1001,17 @@ int main() {
   game.addUnit(UnitClass::TANK, 1, 9, 10);
   game.addUnit(UnitClass::RECON, 1, 8, 11);
 
-  float cameraOffsetX = 100.0f;
-  float cameraOffsetY = 100.0f;
-
   bool needsRestart = false;
 
   while (!WindowShouldClose()) {
     // Input handling (only when menu is closed)
     if (!game.showOptionsMenu) {
+      // Handle zoom
+      handleZoom(game);
+
+      // Handle middle mouse panning
+      handlePan(game);
+
       if (IsKeyPressed(KEY_SPACE)) {
         endTurn(game);
       }
@@ -831,11 +1020,18 @@ int main() {
         game.showOptionsMenu = true;
       }
 
-      // Mouse input
+      // Mouse input for unit selection
       if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
         Vector2 mousePos = GetMousePosition();
-        HexCoord clickedHex =
-            pixelToHex(mousePos.x, mousePos.y, cameraOffsetX, cameraOffsetY);
+
+        // Convert mouse position to hex coordinate
+        Layout layout = createHexLayout(HEX_SIZE, game.camera.offsetX,
+                                       game.camera.offsetY, game.camera.zoom);
+        Point mousePoint(mousePos.x, mousePos.y);
+        FractionalHex fracHex = pixel_to_hex(layout, mousePoint);
+        ::Hex cubeHex = hex_round(fracHex);
+        OffsetCoord offset = cube_to_offset(cubeHex);
+        HexCoord clickedHex = offsetToGameCoord(offset);
 
         // Check if clicked on a hex that's within map bounds
         if (clickedHex.row >= 0 && clickedHex.row < MAP_ROWS &&
@@ -874,16 +1070,27 @@ int main() {
         }
       }
 
-      // Camera panning with arrow keys
+      // Camera panning with arrow keys and WASD (absolute directions)
       float panSpeed = game.settings.panSpeed;
-      if (IsKeyDown(KEY_LEFT))
-        cameraOffsetX += panSpeed;
-      if (IsKeyDown(KEY_RIGHT))
-        cameraOffsetX -= panSpeed;
-      if (IsKeyDown(KEY_UP))
-        cameraOffsetY += panSpeed;
-      if (IsKeyDown(KEY_DOWN))
-        cameraOffsetY -= panSpeed;
+      if (IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_A))
+        game.camera.offsetX += panSpeed;  // Pan left = move camera view right
+      if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D))
+        game.camera.offsetX -= panSpeed;  // Pan right = move camera view left
+      if (IsKeyDown(KEY_UP) || IsKeyDown(KEY_W))
+        game.camera.offsetY += panSpeed;  // Pan up = move camera view down
+      if (IsKeyDown(KEY_DOWN) || IsKeyDown(KEY_S))
+        game.camera.offsetY -= panSpeed;  // Pan down = move camera view up
+
+      // Constrain keyboard panning as well
+      float mapWidth = MAP_COLS * HEX_SIZE * 1.5f * game.camera.zoom;
+      float mapHeight = (MAP_ROWS + 0.5f) * HEX_SIZE * sqrtf(3.0f) * game.camera.zoom;
+      float margin = 100;
+      game.camera.offsetX = Clamp(game.camera.offsetX,
+                                  -mapWidth + margin,
+                                  SCREEN_WIDTH - margin);
+      game.camera.offsetY = Clamp(game.camera.offsetY,
+                                  -mapHeight + margin,
+                                  SCREEN_HEIGHT - margin);
     } else {
       // Close menu with ESC (close dropdowns first if open)
       if (IsKeyPressed(KEY_ESCAPE)) {
@@ -901,9 +1108,9 @@ int main() {
 
     // Drawing
     BeginDrawing();
-    ClearBackground(Color{30, 30, 30, 255});
+    ClearBackground(COLOR_BACKGROUND);
 
-    drawMap(game, cameraOffsetX, cameraOffsetY);
+    drawMap(game);
     drawUI(game);
 
     // Draw options menu on top
@@ -911,7 +1118,8 @@ int main() {
       drawOptionsMenu(game, needsRestart);
     }
 
-    DrawFPS(SCREEN_WIDTH - 80, 10);
+    // Draw FPS in bottom right corner
+    DrawFPS(SCREEN_WIDTH - 100, SCREEN_HEIGHT - 30);
 
     EndDrawing();
   }
