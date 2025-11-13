@@ -1,3 +1,14 @@
+//==============================================================================
+// PANZER GENERAL 2 PROTOTYPE - SINGLE FILE ARCHITECTURE
+//==============================================================================
+// A hex-based turn-based strategy game using raylib and raygui
+// Organized with namespaces for maintainability while keeping single-file structure
+//==============================================================================
+
+//==============================================================================
+// SECTION 1: INCLUDES AND PREPROCESSOR
+//==============================================================================
+
 #include "raylib.h"
 #include "raymath.h"
 
@@ -23,14 +34,18 @@
 #include <dirent.h>
 #include <sys/stat.h>
 
-// Constants
+//==============================================================================
+// SECTION 2: CONSTANTS AND GLOBALS
+//==============================================================================
+
+// Default configuration values
 const int DEFAULT_SCREEN_WIDTH = 1920;
 const int DEFAULT_SCREEN_HEIGHT = 1080;
 const float DEFAULT_HEX_SIZE = 40.0f;
 const int DEFAULT_MAP_ROWS = 12;
 const int DEFAULT_MAP_COLS = 16;
 
-// Current settings (can be modified)
+// Current settings (can be modified at runtime)
 int SCREEN_WIDTH = DEFAULT_SCREEN_WIDTH;
 int SCREEN_HEIGHT = DEFAULT_SCREEN_HEIGHT;
 float HEX_SIZE = DEFAULT_HEX_SIZE;
@@ -41,6 +56,10 @@ int MAP_COLS = DEFAULT_MAP_COLS;
 const Color COLOR_BACKGROUND = BLACK;
 const Color COLOR_GRID = Color{245, 245, 220, 255}; // Pale beige
 const Color COLOR_FPS = Color{192, 192, 192, 255};   // Light grey
+
+//==============================================================================
+// SECTION 3: ENUMS AND DATA TABLES
+//==============================================================================
 
 // Enums
 enum class TerrainType {
@@ -123,6 +142,10 @@ const int MOV_TABLE_DRY[12][18] = {
     {1, 1, 1, 1, 2, 1, 1, 2, 2, 255, 254, 1, 1, 1, 255, 255, 1, 1} // All Terrain Leg (Mountain)
 };
 
+//==============================================================================
+// SECTION 4: UTILITY FUNCTIONS (GAME LOGIC)
+//==============================================================================
+
 // Helper function to map TerrainType to movement table index
 int getTerrainIndex(TerrainType terrain) {
   switch (terrain) {
@@ -183,6 +206,10 @@ int getTerrainEntrenchment(TerrainType terrain) {
   }
   return 0;
 }
+
+//==============================================================================
+// SECTION 5: DATA STRUCTURES
+//==============================================================================
 
 // Forward declaration for calculateCenteredCameraOffset
 struct CameraState;
@@ -268,6 +295,10 @@ const char *FPS_LABELS = "30;60;75;120;144;240;Unlimited";
 const float GUI_SCALE_VALUES[] = {1.0f, 1.5f, 2.0f};
 const char *GUI_SCALE_LABELS = "1.00;1.50;2.00";
 const int GUI_SCALE_COUNT = 3;
+
+//==============================================================================
+// SECTION 5A: CONFIGURATION - STYLE DISCOVERY
+//==============================================================================
 
 // Global variables for style themes
 std::vector<std::string> AVAILABLE_STYLES;
@@ -516,7 +547,11 @@ struct GameState {
   }
 };
 
-// Create hex layout for rendering
+//==============================================================================
+// SECTION 6: RENDERING FUNCTIONS
+//==============================================================================
+
+// Hex layout and coordinate conversion functions
 Layout createHexLayout(float hexSize, float offsetX, float offsetY, float zoom) {
   Point size(hexSize * zoom, hexSize * zoom);
   Point origin(offsetX, offsetY);
@@ -733,7 +768,11 @@ void clearSelectionHighlights(GameState &game) {
   }
 }
 
-// Calculate distance between two hexes using the hex library
+//==============================================================================
+// SECTION 7: GAME LOGIC FUNCTIONS
+//==============================================================================
+
+// Hex math and distance calculations
 int hexDistance(const HexCoord &a, const HexCoord &b) {
   OffsetCoord offsetA = gameCoordToOffset(a);
   OffsetCoord offsetB = gameCoordToOffset(b);
@@ -1260,6 +1299,10 @@ void endTurn(GameState &game) {
   clearSelectionHighlights(game);
 }
 
+//==============================================================================
+// SECTION 8: INPUT AND CAMERA FUNCTIONS
+//==============================================================================
+
 // Calculate centered camera offset to center the hex map in the play area
 void calculateCenteredCameraOffset(CameraState& camera, int screenWidth, int screenHeight) {
   // Play area: excludes top bar (40px) and right panel (250px) and bottom bar (30px)
@@ -1691,6 +1734,10 @@ void handlePan(GameState &game) {
   }
 }
 
+//==============================================================================
+// SECTION 9: CONFIGURATION - SAVE/LOAD AND SETTINGS
+//==============================================================================
+
 // Save config to file
 void saveConfig(const VideoSettings& settings) {
   std::ofstream configFile("config.txt");
@@ -1801,6 +1848,10 @@ void loadStyleTheme(const std::string& themeName) {
   GuiLoadStyle(stylePath.c_str());
   TraceLog(LOG_INFO, TextFormat("Style loaded: %s", themeName.c_str()));
 }
+
+//==============================================================================
+// SECTION 10: MAIN LOOP
+//==============================================================================
 
 int main() {
   // Discover available styles first (before window init)
