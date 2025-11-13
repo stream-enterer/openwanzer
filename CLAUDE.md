@@ -162,8 +162,13 @@ See: `doc/arcade/programming_guide/performance_tips.rst`
 1. **Define data structures** (constants.py) - Add enums, unit data, etc.
 2. **Implement domain logic** (hex_map.py, unit.py, game_state.py) - Core mechanics
 3. **Add presentation** (main.py) - Rendering and UI
-4. **Test manually** - Run game and verify behavior
-5. **Update documentation** - If architecture changes
+4. **Test thoroughly** - **ALWAYS test before committing**
+   - Run the game: `uv run main.py` or `python main.py`
+   - Verify all functionality works as expected
+   - Check for runtime errors and exceptions
+   - Test edge cases and interactions
+5. **Commit changes** - Only after successful testing
+6. **Update documentation** - If architecture changes
 
 ### Debugging Approach
 
