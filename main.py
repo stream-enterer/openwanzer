@@ -16,7 +16,7 @@ class PanzerGame(arcade.Window):
     """Main game window"""
     
     def __init__(self):
-        super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE, resizable=True)
+        super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE, resizable=True, vsync=False, update_rate=1/120)
 
         arcade.set_background_color(arcade.color.BLACK)
 
@@ -72,9 +72,19 @@ class PanzerGame(arcade.Window):
         self.reachable_hexes = {}
         self.attackable_hexes = []
 
-        # Reset camera to origin
-        self.camera_x = 0
-        self.camera_y = 0
+        # Center camera on the hex grid
+        # Calculate the center of the hex map in world coordinates
+        # The map spans from offset to offset + (map dimensions)
+        map_center_col = MAP_COLS / 2
+        map_center_row = MAP_ROWS / 2
+
+        # Use the same offset values as in hex_map.py get_pixel_position()
+        offset_x = 100
+        offset_y = 50
+
+        # Calculate center position using hex pixel conversion
+        self.camera_x = offset_x + HEX_SIZE * 1.5 * map_center_col
+        self.camera_y = offset_y + HEX_HEIGHT * (map_center_row + 0.5 * (int(map_center_col) % 2))
 
         # Setup GUI
         self.setup_gui()
@@ -251,6 +261,9 @@ class PanzerGame(arcade.Window):
 
         # Position camera for scrollable viewport
         self.game_camera.position = (self.camera_x, self.camera_y)
+
+        # Use the camera with 1:1 pixel projection (prevents squashing/stretching)
+        # This ensures hex grid maintains its dimensions regardless of window size
         self.game_camera.use()
 
         # Draw map
@@ -515,15 +528,21 @@ class PanzerGame(arcade.Window):
     
     def get_hex_at_position(self, x, y):
         """Find hex at screen position"""
-        # Adjust for camera position
-        map_x = x + self.camera_x
-        map_y = y + self.camera_y
+        # Convert screen position to world position
+        # Camera position is the center of the view in world space
+        # Calculate offset from viewport center
+        viewport_center_x = self.game_panel_width / 2
+        viewport_center_y = self.height / 2
+
+        # World position = camera position + offset from viewport center
+        world_x = self.camera_x + (x - viewport_center_x)
+        world_y = self.camera_y + (y - viewport_center_y)
 
         # Check each hex
         for row in self.game_state.hex_map.hexes:
             for hex_tile in row:
                 hex_x, hex_y = hex_tile.get_pixel_position()
-                distance = math.sqrt((map_x - hex_x)**2 + (map_y - hex_y)**2)
+                distance = math.sqrt((world_x - hex_x)**2 + (world_y - hex_y)**2)
                 if distance < HEX_SIZE:
                     return hex_tile
         return None
