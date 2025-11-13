@@ -1,0 +1,22 @@
+# Compiled binary
+openwanzer
+
+# Object files
+*.o
+*.obj
+
+# Build artifacts
+*.exe
+*.out
+*.app
+
+# Editor and IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
