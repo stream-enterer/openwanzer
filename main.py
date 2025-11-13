@@ -74,7 +74,6 @@ class PanzerGame(arcade.Window):
 
         # Center camera on the hex grid
         # Calculate the center of the hex map in world coordinates
-        # The map spans from offset to offset + (map dimensions)
         map_center_col = MAP_COLS / 2
         map_center_row = MAP_ROWS / 2
 
@@ -82,9 +81,17 @@ class PanzerGame(arcade.Window):
         offset_x = 100
         offset_y = 50
 
-        # Calculate center position using hex pixel conversion
-        self.camera_x = offset_x + HEX_SIZE * 1.5 * map_center_col
-        self.camera_y = offset_y + HEX_HEIGHT * (map_center_row + 0.5 * (int(map_center_col) % 2))
+        # Calculate world position of map center using hex pixel conversion
+        map_center_world_x = offset_x + HEX_SIZE * 1.5 * map_center_col
+        map_center_world_y = offset_y + HEX_HEIGHT * (map_center_row + 0.5 * (int(map_center_col) % 2))
+
+        # Camera position is what world position appears at screen (0,0)
+        # To center the map, we want map_center to appear at viewport center
+        # viewport_center = (game_panel_width/2, height/2)
+        # So: map_center_world = viewport_center + camera_position
+        # Therefore: camera_position = map_center_world - viewport_center
+        self.camera_x = map_center_world_x - (self.game_panel_width / 2)
+        self.camera_y = map_center_world_y - (self.height / 2)
 
         # Setup GUI
         self.setup_gui()
@@ -259,11 +266,15 @@ class PanzerGame(arcade.Window):
         # LBWH = left, bottom, width, height
         self.game_camera.viewport = LBWH(0, 0, self.game_panel_width, self.height)
 
+        # Update projection to match viewport for 1:1 pixel ratio
+        # This prevents squashing/stretching when window is resized
+        # Projection defines the orthographic bounds: left, right, bottom, top
+        self.game_camera.projection = (0, self.game_panel_width, 0, self.height)
+
         # Position camera for scrollable viewport
         self.game_camera.position = (self.camera_x, self.camera_y)
 
-        # Use the camera with 1:1 pixel projection (prevents squashing/stretching)
-        # This ensures hex grid maintains its dimensions regardless of window size
+        # Use the camera
         self.game_camera.use()
 
         # Draw map
@@ -529,14 +540,10 @@ class PanzerGame(arcade.Window):
     def get_hex_at_position(self, x, y):
         """Find hex at screen position"""
         # Convert screen position to world position
-        # Camera position is the center of the view in world space
-        # Calculate offset from viewport center
-        viewport_center_x = self.game_panel_width / 2
-        viewport_center_y = self.height / 2
-
-        # World position = camera position + offset from viewport center
-        world_x = self.camera_x + (x - viewport_center_x)
-        world_y = self.camera_y + (y - viewport_center_y)
+        # Camera position defines what world position appears at screen (0, 0)
+        # Therefore: world_position = screen_position + camera_position
+        world_x = x + self.camera_x
+        world_y = y + self.camera_y
 
         # Check each hex
         for row in self.game_state.hex_map.hexes:
