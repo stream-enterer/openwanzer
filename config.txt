@@ -1,0 +1,7 @@
+resolutionIndex=6
+fullscreen=1
+vsync=0
+fpsIndex=6
+hexSize=40
+panSpeed=5
+msaa=0
