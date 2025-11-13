@@ -1,1 +1,0 @@
-Images created by Iulian Luca lucaiuli@gmail.com & Nicu Pavel panickiss@gmail.com

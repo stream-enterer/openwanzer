@@ -1,1 +1,0 @@
-Most of the images here were taken from OpenGeneral (http://opengeneral.sf.net)
