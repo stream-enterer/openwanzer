@@ -1315,6 +1315,8 @@ void endTurn(GameState &game) {
 // SECTION 8: INPUT AND CAMERA FUNCTIONS
 //==============================================================================
 
+namespace Input {
+
 // Calculate centered camera offset to center the hex map in the play area
 void calculateCenteredCameraOffset(CameraState& camera, int screenWidth, int screenHeight) {
   // Play area: excludes top bar (40px) and right panel (250px) and bottom bar (30px)
@@ -1337,6 +1339,8 @@ void calculateCenteredCameraOffset(CameraState& camera, int screenWidth, int scr
   camera.offsetX = playAreaCenterX - mapCenterPixel.x;
   camera.offsetY = playAreaCenterY - mapCenterPixel.y;
 }
+
+} // namespace Input
 
 // Forward declarations (for Config namespace functions)
 void saveConfig(const VideoSettings& settings);
@@ -1374,7 +1378,7 @@ void drawUI(GameState &game) {
     // Reset camera to center and 100% zoom
     game.camera.zoom = 1.0f;
     game.camera.zoomDirection = 0;
-    calculateCenteredCameraOffset(game.camera, SCREEN_WIDTH, SCREEN_HEIGHT);
+    Input::calculateCenteredCameraOffset(game.camera, SCREEN_WIDTH, SCREEN_HEIGHT);
   }
 
   // Options button
@@ -1650,6 +1654,12 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
 
 } // namespace Rendering
 
+//==============================================================================
+// SECTION 8B: INPUT FUNCTIONS - ZOOM AND PAN HANDLERS
+//==============================================================================
+
+namespace Input {
+
 // Handle mouse zoom with special behavior
 void handleZoom(GameState &game) {
   float wheelMove = GetMouseWheelMove();
@@ -1753,6 +1763,8 @@ void handlePan(GameState &game) {
     game.camera.offsetY = game.camera.panStartOffset.y + delta.y;
   }
 }
+
+} // namespace Input
 
 //==============================================================================
 // SECTION 9: CONFIGURATION - SAVE/LOAD AND SETTINGS
@@ -1921,7 +1933,7 @@ int main() {
   game.settings = tempSettings;
 
   // Center the camera on the hex map
-  calculateCenteredCameraOffset(game.camera, SCREEN_WIDTH, SCREEN_HEIGHT);
+  Input::calculateCenteredCameraOffset(game.camera, SCREEN_WIDTH, SCREEN_HEIGHT);
 
   // Add some initial units
   game.addUnit(UnitClass::INFANTRY, 0, 2, 2);
@@ -1942,10 +1954,10 @@ int main() {
     // Input handling (only when menu is closed)
     if (!game.showOptionsMenu) {
       // Handle zoom
-      handleZoom(game);
+      Input::handleZoom(game);
 
       // Handle middle mouse panning
-      handlePan(game);
+      Input::handlePan(game);
 
       if (IsKeyPressed(KEY_SPACE)) {
         GameLogic::endTurn(game);
