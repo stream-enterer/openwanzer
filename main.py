@@ -29,9 +29,11 @@ class PanzerGame(arcade.Window):
         self.attackable_hexes = []
         self.highlighted_hex = None
 
-        # Camera for game viewport
+        # Camera for scrollable game viewport
         self.game_camera = Camera2D()
-        self.ui_camera = Camera2D()
+        self.camera_x = 0  # Camera position for panning
+        self.camera_y = 0
+        self.camera_speed = 10  # Pixels per frame when panning
 
         # UI Manager
         self.ui_manager = arcade.gui.UIManager()
@@ -44,13 +46,13 @@ class PanzerGame(arcade.Window):
         self.game_panel_width = int(self.width * self.game_panel_ratio)
         self.hud_panel_width = int(self.width * self.hud_panel_ratio)
 
-        # Map scaling and offset for centering
-        self.map_scale = 1.0
-        self.map_offset_x = 0
-        self.map_offset_y = 0
-
-        # Info panel
-        self.info_text = ""
+        # HUD widgets (references for updating)
+        self.turn_label = None
+        self.player_label = None
+        self.units_label = None
+        self.selected_unit_label = None
+        self.ai_thinking_label = None
+        self.hud_box = None
 
         # AI processing
         self.ai_thinking = False
@@ -64,54 +66,18 @@ class PanzerGame(arcade.Window):
         self.reachable_hexes = {}
         self.attackable_hexes = []
 
-        # Calculate map scaling and centering
-        self.calculate_map_transform()
+        # Reset camera to origin
+        self.camera_x = 0
+        self.camera_y = 0
 
         # Setup GUI
         self.setup_gui()
 
-    def calculate_map_transform(self):
-        """Calculate map scaling and offset to center it in the game panel"""
-        if not self.game_state:
-            return
-
-        # Calculate map bounds
-        min_x, max_x = float('inf'), float('-inf')
-        min_y, max_y = float('inf'), float('-inf')
-
-        for row in self.game_state.hex_map.hexes:
-            for hex_tile in row:
-                x, y = hex_tile.get_pixel_position()
-                min_x = min(min_x, x - HEX_SIZE)
-                max_x = max(max_x, x + HEX_SIZE)
-                min_y = min(min_y, y - HEX_SIZE)
-                max_y = max(max_y, y + HEX_SIZE)
-
-        map_width = max_x - min_x
-        map_height = max_y - min_y
-
-        # Calculate scale to fit in game panel with padding
-        padding = 20
-        available_width = self.game_panel_width - (2 * padding)
-        available_height = self.height - (2 * padding)
-
-        scale_x = available_width / map_width if map_width > 0 else 1.0
-        scale_y = available_height / map_height if map_height > 0 else 1.0
-        self.map_scale = min(scale_x, scale_y, 1.0)  # Don't scale up, only down
-
-        # Calculate offset to center the map
-        scaled_map_width = map_width * self.map_scale
-        scaled_map_height = map_height * self.map_scale
-
-        self.map_offset_x = (self.game_panel_width - scaled_map_width) / 2 - (min_x * self.map_scale)
-        self.map_offset_y = (self.height - scaled_map_height) / 2 - (min_y * self.map_scale)
-
     def setup_gui(self):
-        """Setup the GUI layout with UIGridLayout"""
+        """Setup the GUI layout with UIGridLayout and HUD widgets"""
         self.ui_manager.clear()
 
         # Create a grid layout with 2 columns (game panel + HUD panel)
-        # The grid layout will handle the layout of the two panels
         grid = arcade.gui.UIGridLayout(
             column_count=2,
             row_count=1,
@@ -127,20 +93,106 @@ class PanzerGame(arcade.Window):
             color=(0, 0, 0, 0)  # Transparent
         )
 
-        # Create HUD panel (right side)
-        hud_panel = arcade.gui.UISpace(
+        # Create HUD panel (right side) with dark background and widgets
+        hud_background = arcade.gui.UISpace(
             width=self.hud_panel_width,
             height=self.height,
             color=(20, 20, 20, 255)  # Dark background
         )
 
+        # Create a vertical box layout for HUD content
+        self.hud_box = arcade.gui.UIBoxLayout(
+            vertical=True,
+            space_between=10
+        )
+
+        # Create HUD labels
+        self.turn_label = arcade.gui.UILabel(
+            text="Turn: 1/20",
+            font_size=14,
+            bold=True,
+            text_color=arcade.color.WHITE,
+            width=self.hud_panel_width - 40
+        )
+
+        self.player_label = arcade.gui.UILabel(
+            text="Current: Axis",
+            font_size=14,
+            bold=True,
+            text_color=arcade.color.RED,
+            width=self.hud_panel_width - 40
+        )
+
+        self.units_label = arcade.gui.UILabel(
+            text="Units: 0",
+            font_size=12,
+            text_color=arcade.color.WHITE,
+            width=self.hud_panel_width - 40
+        )
+
+        # Spacer
+        spacer1 = arcade.gui.UISpace(height=20, color=(0, 0, 0, 0))
+
+        self.selected_unit_label = arcade.gui.UILabel(
+            text="",
+            font_size=10,
+            text_color=arcade.color.WHITE,
+            width=self.hud_panel_width - 40,
+            multiline=True
+        )
+
+        # Spacer
+        spacer2 = arcade.gui.UISpace(height=40, color=(0, 0, 0, 0))
+
+        # Controls label
+        controls_label = arcade.gui.UILabel(
+            text="Controls:\nLeft Click: Select/Move\nRight Click: Attack\nSPACE: End turn\nESC: Deselect\nArrows/WASD: Pan camera",
+            font_size=10,
+            text_color=arcade.color.WHITE,
+            width=self.hud_panel_width - 40,
+            multiline=True
+        )
+
+        # AI thinking indicator
+        self.ai_thinking_label = arcade.gui.UILabel(
+            text="",
+            font_size=14,
+            bold=True,
+            text_color=arcade.color.YELLOW,
+            width=self.hud_panel_width - 40
+        )
+
+        # Add widgets to HUD box
+        self.hud_box.add(self.turn_label)
+        self.hud_box.add(self.player_label)
+        self.hud_box.add(self.units_label)
+        self.hud_box.add(spacer1)
+        self.hud_box.add(self.selected_unit_label)
+        self.hud_box.add(spacer2)
+        self.hud_box.add(controls_label)
+        self.hud_box.add(self.ai_thinking_label)
+
+        # Create an anchor layout to position HUD box in the HUD panel
+        hud_anchor = arcade.gui.UIAnchorLayout()
+        hud_anchor.add(hud_background, anchor_x="left", anchor_y="top")
+        hud_anchor.add(
+            self.hud_box,
+            anchor_x="left",
+            anchor_y="top",
+            align_x=20,
+            align_y=-20
+        )
+
         # Add panels to grid
         grid.add(game_panel, column=0, row=0)
-        grid.add(hud_panel, column=1, row=0)
+        grid.add(hud_anchor, column=1, row=0)
 
         # Add grid to UI manager
         self.ui_manager.add(grid)
         self.ui_manager.enable()
+
+        # Initial update of HUD
+        self.update_hud()
 
     def on_resize(self, width, height):
         """Handle window resize"""
@@ -150,32 +202,48 @@ class PanzerGame(arcade.Window):
         self.game_panel_width = int(width * self.game_panel_ratio)
         self.hud_panel_width = int(width * self.hud_panel_ratio)
 
-        # Recalculate map transform
-        if self.game_state:
-            self.calculate_map_transform()
-
         # Rebuild GUI with new dimensions
-        self.setup_gui()
+        if self.game_state:
+            self.setup_gui()
 
-    def transform_position(self, x, y):
-        """Transform a position using map scale and offset"""
-        return (x * self.map_scale + self.map_offset_x,
-                y * self.map_scale + self.map_offset_y)
+    def update_hud(self):
+        """Update HUD labels with current game state"""
+        if not self.game_state:
+            return
 
-    def inverse_transform_position(self, screen_x, screen_y):
-        """Transform screen position back to map coordinates"""
-        map_x = (screen_x - self.map_offset_x) / self.map_scale
-        map_y = (screen_y - self.map_offset_y) / self.map_scale
-        return (map_x, map_y)
+        # Update turn
+        self.turn_label.text = f"Turn: {self.game_state.turn}/{self.game_state.max_turns}"
+
+        # Update player
+        player = self.game_state.get_current_player()
+        self.player_label.text = f"Current: {player.get_name()}"
+        self.player_label.text_color = player.get_color()
+
+        # Update units
+        self.units_label.text = f"Units: {len(player.get_active_units())}"
+
+        # Update selected unit info
+        if self.selected_unit:
+            self.selected_unit_label.text = f"Selected Unit:\n{self.selected_unit.get_info_string()}"
+        else:
+            self.selected_unit_label.text = ""
+
+        # Update AI thinking indicator
+        if self.ai_thinking:
+            self.ai_thinking_label.text = "AI Thinking..."
+        else:
+            self.ai_thinking_label.text = ""
         
     def on_draw(self):
         """Render the game"""
         self.clear()
 
-        # Draw the UI manager (background panels)
-        self.ui_manager.draw()
+        # Set up scissor test to clip game panel rendering
+        self.ctx.enable(self.ctx.SCISSOR_TEST)
+        self.ctx.scissor = (0, 0, self.game_panel_width, self.height)
 
-        # Use game camera for game viewport
+        # Position camera for scrollable viewport
+        self.game_camera.position = (self.camera_x, self.camera_y)
         self.game_camera.use()
 
         # Draw map
@@ -184,11 +252,11 @@ class PanzerGame(arcade.Window):
         # Draw units
         self.draw_units()
 
-        # Use UI camera for UI elements
-        self.ui_camera.use()
+        # Disable scissor test
+        self.ctx.disable(self.ctx.SCISSOR_TEST)
 
-        # Draw UI
-        self.draw_ui()
+        # Draw UI manager (HUD panels and widgets)
+        self.ui_manager.draw()
 
         # Draw game over screen
         if self.game_state.game_over:
@@ -199,12 +267,6 @@ class PanzerGame(arcade.Window):
         for row in self.game_state.hex_map.hexes:
             for hex_tile in row:
                 x, y = hex_tile.get_pixel_position()
-                # Transform position for scaling and centering
-                x, y = self.transform_position(x, y)
-
-                # Skip hexes outside game panel
-                if x > self.game_panel_width or x < 0 or y > self.height or y < 0:
-                    continue
 
                 # Get color based on terrain
                 color = TERRAIN_COLORS[hex_tile.terrain]
@@ -228,9 +290,8 @@ class PanzerGame(arcade.Window):
                     marker_color = arcade.color.WHITE
                     if hex_tile.owner is not None:
                         marker_color = SIDE_COLORS[hex_tile.owner]
-                    marker_size = 8 * self.map_scale
-                    arcade.draw_circle_filled(x, y, marker_size, marker_color)
-                    arcade.draw_circle_outline(x, y, marker_size, arcade.color.BLACK, 2)
+                    arcade.draw_circle_filled(x, y, 8, marker_color)
+                    arcade.draw_circle_outline(x, y, 8, arcade.color.BLACK, 2)
     
     def draw_hex(self, x, y, color, filled=True):
         """Draw a hexagon"""
@@ -249,11 +310,10 @@ class PanzerGame(arcade.Window):
     def get_hex_points(self, x, y):
         """Get the corner points of a hex"""
         points = []
-        scaled_hex_size = HEX_SIZE * self.map_scale
         for i in range(6):
             angle = math.pi / 3 * i
-            point_x = x + scaled_hex_size * math.cos(angle)
-            point_y = y + scaled_hex_size * math.sin(angle)
+            point_x = x + HEX_SIZE * math.cos(angle)
+            point_y = y + HEX_SIZE * math.sin(angle)
             points.append((point_x, point_y))
         return points
     
@@ -263,18 +323,12 @@ class PanzerGame(arcade.Window):
             for unit in player.get_active_units():
                 if unit.hex:
                     x, y = unit.hex.get_pixel_position()
-                    # Transform position for scaling and centering
-                    x, y = self.transform_position(x, y)
-
-                    # Skip units outside game panel
-                    if x > self.game_panel_width or x < 0 or y > self.height or y < 0:
-                        continue
 
                     # Unit color based on side
                     color = SIDE_COLORS[unit.owner]
 
-                    # Draw unit as rectangle (scaled)
-                    size = 20 * self.map_scale
+                    # Draw unit as rectangle
+                    size = 20
                     # lrbt = left, right, bottom, top (bottom < top)
                     arcade.draw_lrbt_rectangle_filled(
                         x - size/2, x + size/2, y - size/2, y + size/2, color
@@ -286,16 +340,15 @@ class PanzerGame(arcade.Window):
 
                     # Draw unit type indicator
                     unit_text = self.get_unit_symbol(unit)
-                    font_size = max(8, int(12 * self.map_scale))
                     arcade.draw_text(unit_text, x, y, arcade.color.WHITE,
-                                   font_size, anchor_x="center", anchor_y="center",
+                                   12, anchor_x="center", anchor_y="center",
                                    bold=True)
 
-                    # Draw strength bar (scaled)
-                    bar_width = 20 * self.map_scale
-                    bar_height = 3 * self.map_scale
+                    # Draw strength bar
+                    bar_width = 20
+                    bar_height = 3
                     bar_x = x
-                    bar_y = y - size / 2 - (8 * self.map_scale)
+                    bar_y = y - size / 2 - 8
 
                     # Background (red) - lrbt format
                     arcade.draw_lrbt_rectangle_filled(
@@ -313,10 +366,9 @@ class PanzerGame(arcade.Window):
 
                     # Highlight selected unit
                     if unit == self.selected_unit:
-                        highlight_size = size + (4 * self.map_scale)
                         arcade.draw_lrbt_rectangle_outline(
-                            x - highlight_size/2, x + highlight_size/2,
-                            y - highlight_size/2, y + highlight_size/2,
+                            x - (size + 4)/2, x + (size + 4)/2,
+                            y - (size + 4)/2, y + (size + 4)/2,
                             COLOR_SELECTED, 3
                         )
     
@@ -333,61 +385,7 @@ class PanzerGame(arcade.Window):
             UnitClass.BOMBER: "B"
         }
         return symbols.get(unit_class, "?")
-    
-    def draw_ui(self):
-        """Draw UI elements"""
-        # HUD panel starts at game_panel_width
-        hud_x = self.game_panel_width + 20
-        hud_y = self.height - 40
 
-        # Turn info
-        turn_text = f"Turn: {self.game_state.turn}/{self.game_state.max_turns}"
-        arcade.draw_text(turn_text, hud_x, hud_y, arcade.color.WHITE, 14, bold=True)
-
-        # Current player
-        player = self.game_state.get_current_player()
-        player_text = f"Current: {player.get_name()}"
-        arcade.draw_text(player_text, hud_x, hud_y - 30,
-                        player.get_color(), 14, bold=True)
-
-        # Unit count
-        units_text = f"Units: {len(player.get_active_units())}"
-        arcade.draw_text(units_text, hud_x, hud_y - 60,
-                        arcade.color.WHITE, 12)
-
-        # Selected unit info
-        if self.selected_unit:
-            info_y = hud_y - 120
-            arcade.draw_text("Selected Unit:", hud_x, info_y,
-                           arcade.color.WHITE, 12, bold=True)
-
-            lines = self.selected_unit.get_info_string().split('\n')
-            for i, line in enumerate(lines):
-                arcade.draw_text(line, hud_x, info_y - 20 - (i * 15),
-                               arcade.color.WHITE, 10)
-
-        # Instructions (bottom of HUD)
-        inst_y = 180
-        instructions = [
-            "Left Click: Select/Move",
-            "Right Click: Attack",
-            "SPACE: End turn",
-            "ESC: Deselect"
-        ]
-
-        arcade.draw_text("Controls:", hud_x, inst_y + 60,
-                        arcade.color.WHITE, 12, bold=True)
-        for i, inst in enumerate(instructions):
-            arcade.draw_text(inst, hud_x, inst_y + 40 - (i * 15),
-                           arcade.color.WHITE, 10)
-
-        # AI thinking indicator (centered on screen)
-        if self.ai_thinking:
-            arcade.draw_text("AI Thinking...", self.width // 2,
-                           self.height - 50,
-                           arcade.color.YELLOW, 16, bold=True,
-                           anchor_x="center")
-    
     def draw_game_over(self):
         """Draw game over screen"""
         # Semi-transparent overlay - lrbt format (left, right, bottom, top)
@@ -450,12 +448,14 @@ class PanzerGame(arcade.Window):
             if hex_tile in self.reachable_hexes:
                 self.game_state.move_unit(self.selected_unit, hex_tile)
                 self.deselect_unit()
-    
+        self.update_hud()
+
     def handle_right_click(self, hex_tile):
         """Handle right mouse button click"""
         if self.selected_unit and hex_tile in self.attackable_hexes:
             self.game_state.attack_unit(self.selected_unit, hex_tile)
             self.deselect_unit()
+        self.update_hud()
     
     def select_unit(self, unit):
         """Select a unit"""
@@ -495,8 +495,9 @@ class PanzerGame(arcade.Window):
     
     def get_hex_at_position(self, x, y):
         """Find hex at screen position"""
-        # Transform screen coordinates to map coordinates
-        map_x, map_y = self.inverse_transform_position(x, y)
+        # Adjust for camera position
+        map_x = x + self.camera_x
+        map_y = y + self.camera_y
 
         # Check each hex
         for row in self.game_state.hex_map.hexes:
@@ -522,35 +523,49 @@ class PanzerGame(arcade.Window):
             if not self.game_state.game_over:
                 self.deselect_unit()
                 self.game_state.end_turn()
-        
+                self.update_hud()
+
         elif key == arcade.key.ESCAPE:
             # Deselect
             self.deselect_unit()
-        
+            self.update_hud()
+
         elif key == arcade.key.R:
             # Restart game
             if self.game_state.game_over:
                 self.setup()
+
+        # Camera pan controls
+        elif key in (arcade.key.UP, arcade.key.W):
+            self.camera_y += self.camera_speed
+        elif key in (arcade.key.DOWN, arcade.key.S):
+            self.camera_y -= self.camera_speed
+        elif key in (arcade.key.LEFT, arcade.key.A):
+            self.camera_x -= self.camera_speed
+        elif key in (arcade.key.RIGHT, arcade.key.D):
+            self.camera_x += self.camera_speed
     
     def on_update(self, delta_time):
         """Update game logic"""
         if self.game_state.game_over:
             return
-        
+
         # Process AI turn
         current_player = self.game_state.get_current_player()
         if current_player.player_type == PlayerType.AI:
             if not self.ai_thinking:
                 self.ai_thinking = True
                 self.ai_delay = 0.5  # Delay so we can see what AI is doing
-            
+                self.update_hud()
+
             self.ai_delay -= delta_time
             if self.ai_delay <= 0:
                 action_type, unit, target = self.ai.get_action()
-                
+
                 if action_type == ActionType.END_TURN:
                     self.game_state.end_turn()
                     self.ai_thinking = False
+                    self.update_hud()
                 elif action_type == ActionType.MOVE:
                     self.game_state.move_unit(unit, target)
                     self.ai_delay = 0.3  # Small delay between actions
