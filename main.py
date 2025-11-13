@@ -35,6 +35,11 @@ class PanzerGame(arcade.Window):
         self.camera_y = 0
         self.camera_speed = 10  # Pixels per frame when panning
 
+        # Middle mouse drag state
+        self.middle_mouse_pressed = False
+        self.last_mouse_x = 0
+        self.last_mouse_y = 0
+
         # UI Manager
         self.ui_manager = arcade.gui.UIManager()
 
@@ -87,17 +92,17 @@ class PanzerGame(arcade.Window):
         )
 
         # Create game panel (left side) - just a spacer to reserve space
+        # Use size_hint to fill available space instead of fixed dimensions
         game_panel = arcade.gui.UISpace(
-            width=self.game_panel_width,
-            height=self.height,
-            color=(0, 0, 0, 0)  # Transparent
+            color=(0, 0, 0, 0),  # Transparent
+            size_hint=(self.game_panel_ratio, 1)
         )
 
         # Create HUD panel (right side) with dark background and widgets
+        # Use size_hint to fill available space instead of fixed dimensions
         hud_background = arcade.gui.UISpace(
-            width=self.hud_panel_width,
-            height=self.height,
-            color=(20, 20, 20, 255)  # Dark background
+            color=(20, 20, 20, 255),  # Dark background
+            size_hint=(self.hud_panel_ratio, 1)
         )
 
         # Create a vertical box layout for HUD content
@@ -146,7 +151,7 @@ class PanzerGame(arcade.Window):
 
         # Controls label
         controls_label = arcade.gui.UILabel(
-            text="Controls:\nLeft Click: Select/Move\nRight Click: Attack\nSPACE: End turn\nESC: Deselect\nArrows/WASD: Pan camera",
+            text="Controls:\nLeft Click: Select/Move\nRight Click: Attack\nMiddle Click+Drag: Pan\nSPACE: End turn\nESC: Deselect\nArrows/WASD: Pan camera",
             font_size=10,
             text_color=arcade.color.WHITE,
             width=self.hud_panel_width - 40,
@@ -411,6 +416,14 @@ class PanzerGame(arcade.Window):
     
     def on_mouse_press(self, x, y, button, modifiers):
         """Handle mouse clicks"""
+        # Handle middle mouse button for camera panning (works in game panel)
+        if button == arcade.MOUSE_BUTTON_MIDDLE:
+            if x < self.game_panel_width:
+                self.middle_mouse_pressed = True
+                self.last_mouse_x = x
+                self.last_mouse_y = y
+            return
+
         if self.game_state.game_over:
             return
 
@@ -432,7 +445,12 @@ class PanzerGame(arcade.Window):
             self.handle_left_click(clicked_hex)
         elif button == arcade.MOUSE_BUTTON_RIGHT:
             self.handle_right_click(clicked_hex)
-    
+
+    def on_mouse_release(self, x, y, button, modifiers):
+        """Handle mouse button release"""
+        if button == arcade.MOUSE_BUTTON_MIDDLE:
+            self.middle_mouse_pressed = False
+
     def handle_left_click(self, hex_tile):
         """Handle left mouse button click"""
         # If no unit selected, try to select unit
@@ -505,8 +523,20 @@ class PanzerGame(arcade.Window):
         return None
     
     def on_mouse_motion(self, x, y, dx, dy):
-        """Track mouse for highlighting"""
-        # Only track mouse in game panel
+        """Track mouse for highlighting and handle middle-click drag"""
+        # Handle middle mouse drag for camera panning
+        if self.middle_mouse_pressed:
+            # Calculate drag delta and update camera position
+            # Note: we subtract because dragging right should pan view left
+            delta_x = x - self.last_mouse_x
+            delta_y = y - self.last_mouse_y
+            self.camera_x -= delta_x
+            self.camera_y -= delta_y
+            self.last_mouse_x = x
+            self.last_mouse_y = y
+            return
+
+        # Only track mouse in game panel for highlighting
         if x >= self.game_panel_width:
             self.highlighted_hex = None
         else:
