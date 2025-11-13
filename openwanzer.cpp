@@ -1,15 +1,8 @@
 #include "raylib.h"
 #include "raymath.h"
 
-// Suppress warnings from raygui.h (external library)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-result"
-#pragma GCC diagnostic ignored "-Wstringop-overflow"
-
-#define RAYGUI_IMPLEMENTATION
-#include "raygui.h"
-
-#pragma GCC diagnostic pop
+#include "imgui.h"
+#include "rlImGui.h"
 
 #include "hex.h"
 
@@ -70,13 +63,12 @@ struct CameraState {
   float offsetX;
   float offsetY;
   float zoom;           // 0.5 to 2.0 (50% to 200%)
-  int zoomDirection;    // -1 for zooming out, 1 for zooming in, 0 for neutral
   bool isPanning;
   Vector2 panStartMouse;
   Vector2 panStartOffset;
 
   CameraState()
-      : offsetX(100.0f), offsetY(100.0f), zoom(1.0f), zoomDirection(0),
+      : offsetX(100.0f), offsetY(100.0f), zoom(1.0f),
         isPanning(false), panStartMouse{0, 0}, panStartOffset{0, 0} {}
 };
 
@@ -89,13 +81,10 @@ struct VideoSettings {
   float hexSize;
   float panSpeed;
   bool msaa;
-  bool resolutionDropdownEdit;
-  bool fpsDropdownEdit;
 
   VideoSettings()
       : resolutionIndex(6), fullscreen(true), vsync(false), fpsIndex(6),
-        hexSize(40.0f), panSpeed(5.0f), msaa(false),
-        resolutionDropdownEdit(false), fpsDropdownEdit(false) {}
+        hexSize(40.0f), panSpeed(5.0f), msaa(false) {}
 };
 
 // Game Layout Structure
@@ -392,6 +381,23 @@ std::string getUnitSymbol(UnitClass uClass) {
   }
 }
 
+// Global font and shader for SDF rendering
+Font g_fontSDF = { 0 };
+Shader g_sdfShader = { 0 };
+
+// Helper function to draw text with SDF font
+void DrawTextSDF(const char* text, int posX, int posY, float fontSize, Color color) {
+  if (g_fontSDF.texture.id == 0) {
+    // Fallback to regular text if font not loaded
+    DrawText(text, posX, posY, (int)fontSize, color);
+    return;
+  }
+
+  BeginShaderMode(g_sdfShader);
+  DrawTextEx(g_fontSDF, text, Vector2{(float)posX, (float)posY}, fontSize, 1.0f, color);
+  EndShaderMode();
+}
+
 void drawMap(GameState &game) {
   Layout layout = createHexLayout(HEX_SIZE, game.camera.offsetX,
                                   game.camera.offsetY, game.camera.zoom);
@@ -464,22 +470,22 @@ void drawMap(GameState &game) {
 
     // Draw unit symbol
     std::string symbol = getUnitSymbol(unit->unitClass);
-    int fontSize = (int)(10 * game.camera.zoom);
-    if (fontSize >= 8) {  // Only draw text if it's readable
-      int textWidth = MeasureText(symbol.c_str(), fontSize);
-      DrawText(symbol.c_str(),
-               (int)(center.x - textWidth / 2),
-               (int)(center.y - unitHeight / 2 + 2),
-               fontSize, WHITE);
+    float fontSize = 10.0f * game.camera.zoom;
+    if (fontSize >= 8.0f) {  // Only draw text if it's readable
+      Vector2 textSize = MeasureTextEx(g_fontSDF, symbol.c_str(), fontSize, 1.0f);
+      DrawTextSDF(symbol.c_str(),
+                  (int)(center.x - textSize.x / 2),
+                  (int)(center.y - unitHeight / 2 + 2),
+                  fontSize, WHITE);
 
       // Draw strength
       std::string strength = std::to_string(unit->strength);
-      fontSize = (int)(12 * game.camera.zoom);
-      textWidth = MeasureText(strength.c_str(), fontSize);
-      DrawText(strength.c_str(),
-               (int)(center.x - textWidth / 2),
-               (int)(center.y + 5 * game.camera.zoom),
-               fontSize, YELLOW);
+      fontSize = 12.0f * game.camera.zoom;
+      textSize = MeasureTextEx(g_fontSDF, strength.c_str(), fontSize, 1.0f);
+      DrawTextSDF(strength.c_str(),
+                  (int)(center.x - textSize.x / 2),
+                  (int)(center.y + 5 * game.camera.zoom),
+                  fontSize, YELLOW);
     }
 
     // Draw selection highlight
@@ -650,33 +656,17 @@ void drawUI(GameState &game) {
 
   std::string turnText = "Turn: " + std::to_string(game.currentTurn) + "/" +
                          std::to_string(game.maxTurns);
-  DrawText(turnText.c_str(), 10, 10, 20, WHITE);
+  DrawTextSDF(turnText.c_str(), 10, 10, 20, WHITE);
 
   std::string playerText = game.currentPlayer == 0 ? "Axis" : "Allied";
   playerText = "Current: " + playerText;
-  DrawText(playerText.c_str(), 200, 10, 20,
-           game.currentPlayer == 0 ? RED : BLUE);
+  DrawTextSDF(playerText.c_str(), 200, 10, 20,
+              game.currentPlayer == 0 ? RED : BLUE);
 
   // Zoom indicator
   char zoomText[32];
   snprintf(zoomText, sizeof(zoomText), "Zoom: %.0f%%", game.camera.zoom * 100);
-  DrawText(zoomText, 400, 10, 20, WHITE);
-
-  // Reset Map button
-  if (GuiButton(Rectangle{game.layout.statusBar.width - 240, 5, 120, 30},
-                "RESET MAP")) {
-    // Reset camera to center and 100% zoom
-    game.camera.offsetX = 100.0f;
-    game.camera.offsetY = 100.0f;
-    game.camera.zoom = 1.0f;
-    game.camera.zoomDirection = 0;
-  }
-
-  // Options button
-  if (GuiButton(Rectangle{game.layout.statusBar.width - 110, 5, 100, 30},
-                "OPTIONS")) {
-    game.showOptionsMenu = !game.showOptionsMenu;
-  }
+  DrawTextSDF(zoomText, 400, 10, 20, WHITE);
 
   // Unit info panel
   if (game.selectedUnit && !game.showOptionsMenu) {
@@ -686,299 +676,225 @@ void drawUI(GameState &game) {
     int y = (int)game.layout.unitPanel.y + 10;
     int x = (int)game.layout.unitPanel.x + 10;
 
-    DrawText(unit->name.c_str(), x, y, 20, WHITE);
+    DrawTextSDF(unit->name.c_str(), x, y, 20, WHITE);
     y += 30;
 
     std::string info = "Strength: " + std::to_string(unit->strength) + "/" +
                        std::to_string(unit->maxStrength);
-    DrawText(info.c_str(), x, y, 16, WHITE);
+    DrawTextSDF(info.c_str(), x, y, 16, WHITE);
     y += 25;
 
     info = "Experience: " + std::string(unit->experience, '*');
-    DrawText(info.c_str(), x, y, 16, YELLOW);
+    DrawTextSDF(info.c_str(), x, y, 16, YELLOW);
     y += 25;
 
     info = "Moves: " + std::to_string(unit->movesLeft) + "/" +
            std::to_string(unit->movementPoints);
-    DrawText(info.c_str(), x, y, 16, WHITE);
+    DrawTextSDF(info.c_str(), x, y, 16, WHITE);
     y += 25;
 
     info = "Fuel: " + std::to_string(unit->fuel);
-    DrawText(info.c_str(), x, y, 16, WHITE);
+    DrawTextSDF(info.c_str(), x, y, 16, WHITE);
     y += 25;
 
     info = "Ammo: " + std::to_string(unit->ammo);
-    DrawText(info.c_str(), x, y, 16, WHITE);
+    DrawTextSDF(info.c_str(), x, y, 16, WHITE);
     y += 25;
 
     info = "Entrenchment: " + std::to_string(unit->entrenchment);
-    DrawText(info.c_str(), x, y, 16, WHITE);
+    DrawTextSDF(info.c_str(), x, y, 16, WHITE);
     y += 35;
 
-    DrawText("Stats:", x, y, 16, GRAY);
+    DrawTextSDF("Stats:", x, y, 16, GRAY);
     y += 20;
     info = "Hard Atk: " + std::to_string(unit->hardAttack);
-    DrawText(info.c_str(), x, y, 14, WHITE);
+    DrawTextSDF(info.c_str(), x, y, 14, WHITE);
     y += 20;
     info = "Soft Atk: " + std::to_string(unit->softAttack);
-    DrawText(info.c_str(), x, y, 14, WHITE);
+    DrawTextSDF(info.c_str(), x, y, 14, WHITE);
     y += 20;
     info = "Defense: " + std::to_string(unit->groundDefense);
-    DrawText(info.c_str(), x, y, 14, WHITE);
+    DrawTextSDF(info.c_str(), x, y, 14, WHITE);
   }
 }
 
 void drawOptionsMenu(GameState &game, bool &needsRestart) {
-  int menuWidth = 600;
-  int menuHeight = 550;
-  int menuX = (SCREEN_WIDTH - menuWidth) / 2;
-  int menuY = (SCREEN_HEIGHT - menuHeight) / 2;
+  // Set up ImGui window
+  ImGui::SetNextWindowSize(ImVec2(600, 550), ImGuiCond_FirstUseEver);
+  ImGui::SetNextWindowPos(ImVec2((SCREEN_WIDTH - 600) / 2.0f, (SCREEN_HEIGHT - 550) / 2.0f), ImGuiCond_FirstUseEver);
 
-  // Draw background overlay
-  DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, Color{0, 0, 0, 180});
+  if (ImGui::Begin("Video Options", &game.showOptionsMenu, ImGuiWindowFlags_NoResize)) {
+    ImGui::Spacing();
 
-  // Draw menu panel
-  DrawRectangle(menuX, menuY, menuWidth, menuHeight, Color{40, 40, 40, 255});
-  DrawRectangleLines(menuX, menuY, menuWidth, menuHeight, GOLD);
+    // Resolution dropdown
+    ImGui::Text("Resolution:");
+    ImGui::SameLine(200);
+    if (ImGui::BeginCombo("##resolution", RESOLUTIONS[game.settings.resolutionIndex].label)) {
+      for (int i = 0; i < RESOLUTION_COUNT; i++) {
+        bool isSelected = (game.settings.resolutionIndex == i);
+        if (ImGui::Selectable(RESOLUTIONS[i].label, isSelected)) {
+          game.settings.resolutionIndex = i;
+        }
+        if (isSelected) {
+          ImGui::SetItemDefaultFocus();
+        }
+      }
+      ImGui::EndCombo();
+    }
 
-  // Title
-  DrawText("VIDEO OPTIONS", menuX + 20, menuY + 15, 30, GOLD);
+    ImGui::Spacing();
 
-  int y = menuY + 70;
-  int labelX = menuX + 30;
-  int controlX = menuX + 250;
-  int controlWidth = 300;
+    // Fullscreen checkbox
+    ImGui::Text("Fullscreen:");
+    ImGui::SameLine(200);
+    ImGui::Checkbox("##fullscreen", &game.settings.fullscreen);
 
-  // Store positions for dropdowns to draw them last
-  int resolutionY = y;
-  y += 50;
-  int fullscreenY = y;
-  y += 50;
-  int vsyncY = y;
-  y += 50;
-  int fpsY = y;
-  y += 50;
+    ImGui::Spacing();
 
-  // Draw labels and non-dropdown controls first
-  // Resolution label
-  DrawText("Resolution:", labelX, resolutionY, 20, WHITE);
+    // VSync checkbox
+    ImGui::Text("VSync:");
+    ImGui::SameLine(200);
+    ImGui::Checkbox("##vsync", &game.settings.vsync);
 
-  // Fullscreen
-  DrawText("Fullscreen:", labelX, fullscreenY, 20, WHITE);
-  if (!game.settings.resolutionDropdownEdit) {
-    GuiCheckBox(Rectangle{(float)controlX, (float)fullscreenY - 5, 30, 30}, "",
-                &game.settings.fullscreen);
-  }
+    ImGui::Spacing();
 
-  // VSync
-  DrawText("VSync:", labelX, vsyncY, 20, WHITE);
-  if (!game.settings.resolutionDropdownEdit) {
-    GuiCheckBox(Rectangle{(float)controlX, (float)vsyncY - 5, 30, 30}, "",
-                &game.settings.vsync);
-  }
+    // FPS Target dropdown
+    ImGui::Text("FPS Target:");
+    ImGui::SameLine(200);
+    const char* fpsLabel = game.settings.fpsIndex == 6 ? "Unlimited" :
+                           (std::to_string(FPS_VALUES[game.settings.fpsIndex])).c_str();
+    if (ImGui::BeginCombo("##fps", fpsLabel)) {
+      const char* fpsOptions[] = {"30", "60", "75", "120", "144", "240", "Unlimited"};
+      for (int i = 0; i < 7; i++) {
+        bool isSelected = (game.settings.fpsIndex == i);
+        if (ImGui::Selectable(fpsOptions[i], isSelected)) {
+          game.settings.fpsIndex = i;
+        }
+        if (isSelected) {
+          ImGui::SetItemDefaultFocus();
+        }
+      }
+      ImGui::EndCombo();
+    }
 
-  // FPS Target label
-  DrawText("FPS Target:", labelX, fpsY, 20, WHITE);
-  std::string currentFps =
-      game.settings.fpsIndex == 6
-          ? "Unlimited"
-          : std::to_string(FPS_VALUES[game.settings.fpsIndex]);
-  if (!game.settings.resolutionDropdownEdit && !game.settings.fpsDropdownEdit) {
-    DrawText(currentFps.c_str(), controlX + controlWidth + 15, fpsY, 20, GRAY);
-  }
+    ImGui::Spacing();
 
-  // MSAA
-  DrawText("Anti-Aliasing (4x):", labelX, y, 20, WHITE);
-  bool oldMsaa = game.settings.msaa;
-  if (!game.settings.resolutionDropdownEdit && !game.settings.fpsDropdownEdit) {
-    GuiCheckBox(Rectangle{(float)controlX, (float)y - 5, 30, 30}, "",
-                &game.settings.msaa);
-    if (game.settings.msaa != oldMsaa)
+    // MSAA checkbox
+    ImGui::Text("Anti-Aliasing (4x):");
+    ImGui::SameLine(200);
+    bool oldMsaa = game.settings.msaa;
+    ImGui::Checkbox("##msaa", &game.settings.msaa);
+    if (game.settings.msaa != oldMsaa) {
       needsRestart = true;
-  }
-  y += 50;
-
-  // Hex Size Slider
-  DrawText("Hex Size:", labelX, y, 20, WHITE);
-  if (!game.settings.resolutionDropdownEdit && !game.settings.fpsDropdownEdit) {
-    GuiSlider(Rectangle{(float)controlX, (float)y, (float)controlWidth, 20}, "20",
-              "80", &game.settings.hexSize, 20, 80);
-    std::string hexSizeStr = std::to_string((int)game.settings.hexSize);
-    DrawText(hexSizeStr.c_str(), controlX + controlWidth + 15, y, 20, GRAY);
-  }
-  y += 50;
-
-  // Pan Speed Slider
-  DrawText("Camera Pan Speed:", labelX, y, 20, WHITE);
-  if (!game.settings.resolutionDropdownEdit && !game.settings.fpsDropdownEdit) {
-    GuiSlider(Rectangle{(float)controlX, (float)y, (float)controlWidth, 20}, "1",
-              "20", &game.settings.panSpeed, 1, 20);
-    std::string panSpeedStr = std::to_string((int)game.settings.panSpeed);
-    DrawText(panSpeedStr.c_str(), controlX + controlWidth + 15, y, 20, GRAY);
-  }
-  y += 60;
-
-  // Buttons
-  int buttonY = menuY + menuHeight - 70;
-  if (GuiButton(Rectangle{(float)menuX + 30, (float)buttonY, 150, 40},
-                "Apply")) {
-    // Close any open dropdowns
-    game.settings.resolutionDropdownEdit = false;
-    game.settings.fpsDropdownEdit = false;
-
-    // Apply settings
-    Resolution res = RESOLUTIONS[game.settings.resolutionIndex];
-
-    if (res.width != SCREEN_WIDTH || res.height != SCREEN_HEIGHT) {
-      SetWindowSize(res.width, res.height);
-      SCREEN_WIDTH = res.width;
-      SCREEN_HEIGHT = res.height;
-      game.layout.recalculate(res.width, res.height);
     }
 
-    if (game.settings.fullscreen != IsWindowFullscreen()) {
-      ToggleFullscreen();
-      game.layout.recalculate(GetScreenWidth(), GetScreenHeight());
+    ImGui::Spacing();
+
+    // Hex Size slider
+    ImGui::Text("Hex Size:");
+    ImGui::SameLine(200);
+    ImGui::SetNextItemWidth(300);
+    ImGui::SliderFloat("##hexsize", &game.settings.hexSize, 20.0f, 80.0f, "%.0f");
+
+    ImGui::Spacing();
+
+    // Pan Speed slider
+    ImGui::Text("Camera Pan Speed:");
+    ImGui::SameLine(200);
+    ImGui::SetNextItemWidth(300);
+    ImGui::SliderFloat("##panspeed", &game.settings.panSpeed, 1.0f, 20.0f, "%.0f");
+
+    ImGui::Spacing();
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    // Buttons
+    if (ImGui::Button("Apply", ImVec2(150, 40))) {
+      // Apply settings
+      Resolution res = RESOLUTIONS[game.settings.resolutionIndex];
+
+      if (res.width != SCREEN_WIDTH || res.height != SCREEN_HEIGHT) {
+        SetWindowSize(res.width, res.height);
+        SCREEN_WIDTH = res.width;
+        SCREEN_HEIGHT = res.height;
+        game.layout.recalculate(res.width, res.height);
+      }
+
+      if (game.settings.fullscreen != IsWindowFullscreen()) {
+        ToggleFullscreen();
+        game.layout.recalculate(GetScreenWidth(), GetScreenHeight());
+      }
+
+      SetTargetFPS(FPS_VALUES[game.settings.fpsIndex]);
+
+      // Apply hex size
+      HEX_SIZE = game.settings.hexSize;
+
+      // Save config to file
+      saveConfig(game.settings);
+
+      game.showOptionsMenu = false;
     }
 
-    SetTargetFPS(FPS_VALUES[game.settings.fpsIndex]);
+    ImGui::SameLine();
 
-    // Apply hex size
-    HEX_SIZE = game.settings.hexSize;
+    if (ImGui::Button("Cancel", ImVec2(150, 40))) {
+      game.showOptionsMenu = false;
+    }
 
-    // Save config to file
-    saveConfig(game.settings);
+    ImGui::SameLine();
 
-    game.showOptionsMenu = false;
+    if (ImGui::Button("Defaults", ImVec2(150, 40))) {
+      game.settings.resolutionIndex = 6; // 1920x1080
+      game.settings.fullscreen = true;
+      game.settings.vsync = false;
+      game.settings.fpsIndex = 6; // Unlimited FPS
+      game.settings.hexSize = 40.0f;
+      game.settings.panSpeed = 5.0f;
+      game.settings.msaa = false;
+    }
+
+    // Restart warning
+    if (needsRestart) {
+      ImGui::Spacing();
+      ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Note: MSAA requires restart to take effect");
+    }
   }
-
-  if (GuiButton(Rectangle{(float)menuX + 220, (float)buttonY, 150, 40},
-                "Cancel")) {
-    // Close any open dropdowns
-    game.settings.resolutionDropdownEdit = false;
-    game.settings.fpsDropdownEdit = false;
-    game.showOptionsMenu = false;
-  }
-
-  if (GuiButton(Rectangle{(float)menuX + 410, (float)buttonY, 150, 40},
-                "Defaults")) {
-    game.settings.resolutionIndex = 6; // 1920x1080
-    game.settings.fullscreen = true;
-    game.settings.vsync = false;
-    game.settings.fpsIndex = 6; // Unlimited FPS
-    game.settings.hexSize = 40.0f;
-    game.settings.panSpeed = 5.0f;
-    game.settings.msaa = false;
-  }
-
-  // Draw dropdowns last so they appear on top
-  // Draw FPS dropdown first, then resolution dropdown so resolution appears on top
-  std::string resLabels;
-  for (int i = 0; i < RESOLUTION_COUNT; i++) {
-    if (i > 0)
-      resLabels += ";";
-    resLabels += RESOLUTIONS[i].label;
-  }
-
-  // FPS Target dropdown (draw first)
-  if (GuiDropdownBox(
-          Rectangle{(float)controlX, (float)fpsY - 5, (float)controlWidth, 30},
-          FPS_LABELS, &game.settings.fpsIndex, game.settings.fpsDropdownEdit)) {
-    game.settings.fpsDropdownEdit = !game.settings.fpsDropdownEdit;
-  }
-
-  // Resolution dropdown (draw last so it's on top)
-  if (GuiDropdownBox(
-          Rectangle{(float)controlX, (float)resolutionY - 5, (float)controlWidth, 30},
-          resLabels.c_str(), &game.settings.resolutionIndex,
-          game.settings.resolutionDropdownEdit)) {
-    game.settings.resolutionDropdownEdit =
-        !game.settings.resolutionDropdownEdit;
-  }
-
-  // Restart warning
-  if (needsRestart) {
-    DrawText("Note: MSAA requires restart to take effect", menuX + 30,
-             menuY + menuHeight - 25, 14, YELLOW);
-  }
+  ImGui::End();
 }
 
-// Handle mouse zoom with special behavior
+// Handle mouse zoom - simple and straightforward
 void handleZoom(GameState &game) {
   float wheelMove = GetMouseWheelMove();
 
   if (wheelMove != 0) {
     float oldZoom = game.camera.zoom;
-    int direction = wheelMove > 0 ? 1 : -1;  // 1 for zoom in, -1 for zoom out
+    float zoomDelta = wheelMove * 0.1f;  // 10% per scroll
 
-    // Check if we're continuing in the same direction or changing direction
-    bool changingDirection = (game.camera.zoomDirection != 0 &&
-                             game.camera.zoomDirection != direction);
+    float newZoom = oldZoom + zoomDelta;
 
-    // If we're at 100% and starting to zoom
-    bool startingFromNeutral = (oldZoom == 1.0f && game.camera.zoomDirection == 0);
+    // Clamp zoom between 0.5 (50%) and 2.0 (200%)
+    newZoom = Clamp(newZoom, 0.5f, 2.0f);
 
-    // If changing direction from 100%, reset the direction counter
-    if (oldZoom == 1.0f && changingDirection) {
-      game.camera.zoomDirection = 0;
-    }
+    if (newZoom != oldZoom) {
+      // Get mouse position for zoom center
+      Vector2 mousePos = GetMousePosition();
 
-    // Determine if we should actually zoom
-    bool shouldZoom = false;
+      // Calculate world position at mouse before zoom
+      Point worldPosOld((mousePos.x - game.camera.offsetX) / oldZoom,
+                       (mousePos.y - game.camera.offsetY) / oldZoom);
 
-    if (startingFromNeutral) {
-      // Starting from 100% - zoom immediately
-      shouldZoom = true;
-      game.camera.zoomDirection = direction;
-    } else if (oldZoom == 1.0f && game.camera.zoomDirection == direction) {
-      // Second input in same direction from 100% - zoom again
-      shouldZoom = true;
-    } else if (oldZoom != 1.0f && changingDirection) {
-      // Changing direction while not at 100% - first input goes back to 100%
-      shouldZoom = true;
-      game.camera.zoomDirection = 0;  // Reset direction
-    } else if (oldZoom != 1.0f && game.camera.zoomDirection == direction) {
-      // Continuing in same direction - zoom normally
-      shouldZoom = true;
-    } else if (oldZoom != 1.0f && game.camera.zoomDirection == 0) {
-      // After returning to 100%, first input in any direction
-      shouldZoom = true;
-      game.camera.zoomDirection = direction;
-    }
+      // Apply zoom
+      game.camera.zoom = newZoom;
 
-    if (shouldZoom) {
-      float newZoom = oldZoom + (direction * 0.25f);
+      // Calculate world position at mouse after zoom
+      Point worldPosNew((mousePos.x - game.camera.offsetX) / newZoom,
+                       (mousePos.y - game.camera.offsetY) / newZoom);
 
-      // Clamp zoom between 0.5 (50%) and 2.0 (200%)
-      newZoom = Clamp(newZoom, 0.5f, 2.0f);
-
-      if (newZoom != oldZoom) {
-        // Get mouse position for zoom center
-        Vector2 mousePos = GetMousePosition();
-
-        // Calculate world position at mouse before zoom
-        Point worldPosOld((mousePos.x - game.camera.offsetX) / oldZoom,
-                         (mousePos.y - game.camera.offsetY) / oldZoom);
-
-        // Apply zoom
-        game.camera.zoom = newZoom;
-
-        // Calculate world position at mouse after zoom
-        Point worldPosNew((mousePos.x - game.camera.offsetX) / newZoom,
-                         (mousePos.y - game.camera.offsetY) / newZoom);
-
-        // Adjust offset to keep world position under mouse constant
-        game.camera.offsetX += (worldPosNew.x - worldPosOld.x) * newZoom;
-        game.camera.offsetY += (worldPosNew.y - worldPosOld.y) * newZoom;
-
-        // Update zoom direction if we're moving away from 100%
-        if (newZoom != 1.0f && game.camera.zoomDirection != direction) {
-          game.camera.zoomDirection = direction;
-        } else if (newZoom == 1.0f) {
-          // Reset direction when we reach 100%
-          game.camera.zoomDirection = 0;
-        }
-      }
+      // Adjust offset to keep world position under mouse constant
+      game.camera.offsetX += (worldPosNew.x - worldPosOld.x) * newZoom;
+      game.camera.offsetY += (worldPosNew.y - worldPosOld.y) * newZoom;
     }
   }
 }
@@ -1120,22 +1036,21 @@ int main() {
   int fileSize = 0;
   unsigned char *fileData = LoadFileData("resources/fonts/DejaVuSans.ttf", &fileSize);
 
-  Font fontSDF = { 0 };
-  fontSDF.baseSize = 16;
-  fontSDF.glyphCount = 95;
-  fontSDF.glyphs = LoadFontData(fileData, fileSize, 16, 0, 95, FONT_SDF);
+  g_fontSDF.baseSize = 16;
+  g_fontSDF.glyphCount = 95;
+  g_fontSDF.glyphs = LoadFontData(fileData, fileSize, 16, 0, 95, FONT_SDF);
 
-  Image atlas = GenImageFontAtlas(fontSDF.glyphs, &fontSDF.recs, 95, 16, 0, 1);
-  fontSDF.texture = LoadTextureFromImage(atlas);
+  Image atlas = GenImageFontAtlas(g_fontSDF.glyphs, &g_fontSDF.recs, 95, 16, 0, 1);
+  g_fontSDF.texture = LoadTextureFromImage(atlas);
   UnloadImage(atlas);
   UnloadFileData(fileData);
 
   // Load SDF shader
-  Shader sdfShader = LoadShader(0, "resources/shaders/glsl330/sdf.fs");
-  SetTextureFilter(fontSDF.texture, TEXTURE_FILTER_BILINEAR);
+  g_sdfShader = LoadShader(0, "resources/shaders/glsl330/sdf.fs");
+  SetTextureFilter(g_fontSDF.texture, TEXTURE_FILTER_BILINEAR);
 
-  // Set as GUI font
-  GuiSetFont(fontSDF);
+  // Initialize ImGui
+  rlImGuiSetup(true);
 
   GameState game;
   // Apply loaded settings to game state
@@ -1153,6 +1068,9 @@ int main() {
   bool needsRestart = false;
 
   while (!WindowShouldClose()) {
+    // Begin ImGui frame
+    rlImGuiBegin();
+
     // Input handling (only when menu is closed)
     if (!game.showOptionsMenu) {
       // Handle zoom
@@ -1167,6 +1085,11 @@ int main() {
 
       if (IsKeyPressed(KEY_ESCAPE)) {
         game.showOptionsMenu = true;
+      }
+
+      // Toggle options menu with O key
+      if (IsKeyPressed(KEY_O)) {
+        game.showOptionsMenu = !game.showOptionsMenu;
       }
 
       // Mouse input for unit selection
@@ -1243,13 +1166,6 @@ int main() {
           // Adjust offset to keep world position under center constant
           game.camera.offsetX += (worldPosNew.x - worldPosOld.x) * newZoom;
           game.camera.offsetY += (worldPosNew.y - worldPosOld.y) * newZoom;
-
-          // Update zoom direction
-          if (newZoom != 1.0f) {
-            game.camera.zoomDirection = 1;  // Zooming in
-          } else {
-            game.camera.zoomDirection = 0;
-          }
         }
       }
 
@@ -1276,13 +1192,6 @@ int main() {
           // Adjust offset to keep world position under center constant
           game.camera.offsetX += (worldPosNew.x - worldPosOld.x) * newZoom;
           game.camera.offsetY += (worldPosNew.y - worldPosOld.y) * newZoom;
-
-          // Update zoom direction
-          if (newZoom != 1.0f) {
-            game.camera.zoomDirection = -1;  // Zooming out
-          } else {
-            game.camera.zoomDirection = 0;
-          }
         }
       }
 
@@ -1296,19 +1205,6 @@ int main() {
         game.camera.offsetY -= panSpeed;  // Pan up
       if (IsKeyDown(KEY_DOWN) || IsKeyDown(KEY_S))
         game.camera.offsetY += panSpeed;  // Pan down
-    } else {
-      // Close menu with ESC (close dropdowns first if open)
-      if (IsKeyPressed(KEY_ESCAPE)) {
-        if (game.settings.resolutionDropdownEdit ||
-            game.settings.fpsDropdownEdit) {
-          // Close any open dropdowns first
-          game.settings.resolutionDropdownEdit = false;
-          game.settings.fpsDropdownEdit = false;
-        } else {
-          // Close the menu
-          game.showOptionsMenu = false;
-        }
-      }
     }
 
     // Drawing
@@ -1318,19 +1214,27 @@ int main() {
     drawMap(game);
     drawUI(game);
 
-    // Draw options menu on top
+    // Draw FPS in bottom right corner with SDF font
+    char fpsText[32];
+    snprintf(fpsText, sizeof(fpsText), "FPS: %d", GetFPS());
+    DrawTextSDF(fpsText, SCREEN_WIDTH - 100, SCREEN_HEIGHT - 30, 20, COLOR_FPS);
+
+    // Draw options menu on top using ImGui
     if (game.showOptionsMenu) {
       drawOptionsMenu(game, needsRestart);
     }
 
-    // Draw FPS in bottom right corner
-    DrawFPS(SCREEN_WIDTH - 100, SCREEN_HEIGHT - 30);
+    // End ImGui frame
+    rlImGuiEnd();
 
     EndDrawing();
   }
 
-  UnloadFont(fontSDF);  // Unload SDF font
-  UnloadShader(sdfShader);  // Unload SDF shader
+  // Shutdown ImGui
+  rlImGuiShutdown();
+
+  UnloadFont(g_fontSDF);  // Unload SDF font
+  UnloadShader(g_sdfShader);  // Unload SDF shader
   CloseWindow();
   return 0;
 }

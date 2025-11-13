@@ -93,3 +93,4 @@ test-results/
 
 # Documentation builds
 docs/_build/
+*.o
