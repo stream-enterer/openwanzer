@@ -79,31 +79,34 @@ class PanzerGame(arcade.Window):
         self.setup_gui()
 
     def setup_gui(self):
-        """Setup the GUI layout with UIGridLayout and HUD widgets"""
+        """Setup the GUI layout with horizontal UIBoxLayout for 70/30 split"""
         self.ui_manager.clear()
 
-        # Create a grid layout with 2 columns (game panel + HUD panel)
-        grid = arcade.gui.UIGridLayout(
-            column_count=2,
-            row_count=1,
-            horizontal_spacing=0,
-            vertical_spacing=0,
-            size_hint=(1, 1)
+        # Create a horizontal box layout for the main 70/30 split
+        main_layout = arcade.gui.UIBoxLayout(
+            vertical=False,  # Horizontal layout
+            space_between=0
         )
 
-        # Create game panel (left side) - just a spacer to reserve space
-        # Use size_hint to fill available space instead of fixed dimensions
+        # Create game panel (left side) - transparent spacer to reserve space
         game_panel = arcade.gui.UISpace(
             color=(0, 0, 0, 0),  # Transparent
-            size_hint=(self.game_panel_ratio, 1)
+            size_hint=(self.game_panel_ratio, 1),
+            size_hint_min=(int(self.width * self.game_panel_ratio), self.height)
         )
 
-        # Create HUD panel (right side) with dark background and widgets
-        # Use size_hint to fill available space instead of fixed dimensions
-        hud_background = arcade.gui.UISpace(
-            color=(20, 20, 20, 255),  # Dark background
-            size_hint=(self.hud_panel_ratio, 1)
+        # Create HUD panel container with dark background
+        hud_container = arcade.gui.UIAnchorLayout(
+            size_hint=(self.hud_panel_ratio, 1),
+            size_hint_min=(int(self.width * self.hud_panel_ratio), self.height)
         )
+
+        # Dark background for HUD
+        hud_background = arcade.gui.UISpace(
+            color=(20, 20, 20, 255),
+            size_hint=(1, 1)
+        )
+        hud_container.add(hud_background, anchor_x="left", anchor_y="top")
 
         # Create a vertical box layout for HUD content
         self.hud_box = arcade.gui.UIBoxLayout(
@@ -177,10 +180,8 @@ class PanzerGame(arcade.Window):
         self.hud_box.add(controls_label)
         self.hud_box.add(self.ai_thinking_label)
 
-        # Create an anchor layout to position HUD box in the HUD panel
-        hud_anchor = arcade.gui.UIAnchorLayout()
-        hud_anchor.add(hud_background, anchor_x="left", anchor_y="top")
-        hud_anchor.add(
+        # Position HUD box in the HUD container
+        hud_container.add(
             self.hud_box,
             anchor_x="left",
             anchor_y="top",
@@ -188,12 +189,12 @@ class PanzerGame(arcade.Window):
             align_y=-20
         )
 
-        # Add panels to grid
-        grid.add(game_panel, column=0, row=0)
-        grid.add(hud_anchor, column=1, row=0)
+        # Add both panels to main layout
+        main_layout.add(game_panel)
+        main_layout.add(hud_container)
 
-        # Add grid to UI manager
-        self.ui_manager.add(grid)
+        # Add main layout to UI manager
+        self.ui_manager.add(main_layout)
         self.ui_manager.enable()
 
         # Initial update of HUD
@@ -243,6 +244,9 @@ class PanzerGame(arcade.Window):
         """Render the game"""
         self.clear()
 
+        # Set viewport to game panel area only (left 70%)
+        self.game_camera.viewport = (0, 0, self.game_panel_width, self.height)
+
         # Position camera for scrollable viewport
         self.game_camera.position = (self.camera_x, self.camera_y)
         self.game_camera.use()
@@ -253,7 +257,7 @@ class PanzerGame(arcade.Window):
         # Draw units
         self.draw_units()
 
-        # Reset to default camera for UI rendering
+        # Reset to default camera for UI rendering (full screen viewport)
         self.default_camera.use()
 
         # Draw UI manager (HUD panels and widgets)
@@ -563,13 +567,13 @@ class PanzerGame(arcade.Window):
 
         # Camera pan controls
         elif key in (arcade.key.UP, arcade.key.W):
-            self.camera_y += self.camera_speed
-        elif key in (arcade.key.DOWN, arcade.key.S):
             self.camera_y -= self.camera_speed
+        elif key in (arcade.key.DOWN, arcade.key.S):
+            self.camera_y += self.camera_speed
         elif key in (arcade.key.LEFT, arcade.key.A):
-            self.camera_x -= self.camera_speed
-        elif key in (arcade.key.RIGHT, arcade.key.D):
             self.camera_x += self.camera_speed
+        elif key in (arcade.key.RIGHT, arcade.key.D):
+            self.camera_x -= self.camera_speed
     
     def on_update(self, delta_time):
         """Update game logic"""
