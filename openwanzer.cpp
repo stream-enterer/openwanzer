@@ -39,7 +39,18 @@ const Color COLOR_GRID = Color{245, 245, 220, 255}; // Pale beige
 const Color COLOR_FPS = Color{192, 192, 192, 255};   // Light grey
 
 // Enums
-enum class TerrainType { CLEAR, FOREST, MOUNTAIN, CITY, WATER, ROAD };
+enum class TerrainType {
+  PLAINS,      // Open grassland
+  FOREST,      // Woods/Trees
+  MOUNTAIN,    // High elevation
+  HILL,        // Low elevation
+  DESERT,      // Sandy/arid
+  SWAMP,       // Marsh/wetland
+  CITY,        // Urban
+  WATER,       // River/lake
+  ROAD,        // Paved road
+  ROUGH        // Rocky/broken terrain
+};
 
 enum class UnitClass {
   INFANTRY,
@@ -141,7 +152,7 @@ struct GameHex {
   bool isAttackSel;  // highlighted for attack
 
   GameHex()
-      : terrain(TerrainType::CLEAR), owner(-1), isVictoryHex(false),
+      : terrain(TerrainType::PLAINS), owner(-1), isVictoryHex(false),
         isDeployment(false), isMoveSel(false), isAttackSel(false) {
     isSpotted[0] = false;
     isSpotted[1] = false;
@@ -209,18 +220,26 @@ struct GameState {
       for (int col = 0; col < MAP_COLS; col++) {
         map[row][col].coord = {row, col};
 
-        // Random terrain generation
+        // Wargame terrain generation with realistic distribution
         int randVal = GetRandomValue(0, 100);
-        if (randVal < 60)
-          map[row][col].terrain = TerrainType::CLEAR;
+        if (randVal < 35)
+          map[row][col].terrain = TerrainType::PLAINS;      // 35% plains (most common)
+        else if (randVal < 55)
+          map[row][col].terrain = TerrainType::FOREST;      // 20% forest
+        else if (randVal < 68)
+          map[row][col].terrain = TerrainType::HILL;        // 13% hills
         else if (randVal < 75)
-          map[row][col].terrain = TerrainType::FOREST;
-        else if (randVal < 85)
-          map[row][col].terrain = TerrainType::MOUNTAIN;
-        else if (randVal < 92)
-          map[row][col].terrain = TerrainType::CITY;
+          map[row][col].terrain = TerrainType::ROUGH;       // 7% rough
+        else if (randVal < 82)
+          map[row][col].terrain = TerrainType::DESERT;      // 7% desert
+        else if (randVal < 87)
+          map[row][col].terrain = TerrainType::MOUNTAIN;    // 5% mountain
+        else if (randVal < 91)
+          map[row][col].terrain = TerrainType::SWAMP;       // 4% swamp
+        else if (randVal < 95)
+          map[row][col].terrain = TerrainType::CITY;        // 4% city
         else
-          map[row][col].terrain = TerrainType::WATER;
+          map[row][col].terrain = TerrainType::WATER;       // 5% water
 
         // Set some victory hexes
         if (row == 5 && (col == 4 || col == 12)) {
@@ -323,16 +342,26 @@ void drawHexagon(const std::vector<Point> &corners, Color color, bool filled) {
 
 Color getTerrainColor(TerrainType terrain) {
   switch (terrain) {
-  case TerrainType::CLEAR:
-    return Color{220, 220, 180, 255};
+  case TerrainType::PLAINS:
+    return Color{144, 186, 96, 255};   // Light green grass
   case TerrainType::FOREST:
-    return Color{34, 139, 34, 255};
+    return Color{34, 102, 34, 255};    // Dark green woods
   case TerrainType::MOUNTAIN:
-    return Color{139, 90, 43, 255};
+    return Color{120, 100, 80, 255};   // Gray-brown peaks
+  case TerrainType::HILL:
+    return Color{160, 140, 100, 255};  // Tan hills
+  case TerrainType::DESERT:
+    return Color{220, 200, 140, 255};  // Sandy yellow
+  case TerrainType::SWAMP:
+    return Color{100, 120, 80, 255};   // Murky green-brown
   case TerrainType::CITY:
-    return Color{128, 128, 128, 255};
+    return Color{140, 140, 140, 255};  // Gray urban
   case TerrainType::WATER:
-    return Color{64, 164, 223, 255};
+    return Color{80, 140, 200, 255};   // Blue water
+  case TerrainType::ROAD:
+    return Color{100, 100, 100, 255};  // Dark gray pavement
+  case TerrainType::ROUGH:
+    return Color{130, 110, 90, 255};   // Brown rocky
   default:
     return GRAY;
   }
@@ -627,6 +656,16 @@ void drawUI(GameState &game) {
   snprintf(zoomText, sizeof(zoomText), "Zoom: %.0f%%", game.camera.zoom * 100);
   DrawText(zoomText, 400, 10, 20, WHITE);
 
+  // Reset Map button
+  if (GuiButton(Rectangle{game.layout.statusBar.width - 240, 5, 120, 30},
+                "RESET MAP")) {
+    // Reset camera to center and 100% zoom
+    game.camera.offsetX = 100.0f;
+    game.camera.offsetY = 100.0f;
+    game.camera.zoom = 1.0f;
+    game.camera.zoomDirection = 0;
+  }
+
   // Options button
   if (GuiButton(Rectangle{game.layout.statusBar.width - 110, 5, 100, 30},
                 "OPTIONS")) {
@@ -680,14 +719,6 @@ void drawUI(GameState &game) {
     y += 20;
     info = "Defense: " + std::to_string(unit->groundDefense);
     DrawText(info.c_str(), x, y, 14, WHITE);
-  }
-
-  // Controls help (help bar)
-  if (!game.showOptionsMenu) {
-    DrawText(
-        "SPACE - End Turn | Left Click - Select/Move/Attack | Middle Click+Drag - Pan | Mouse Wheel - Zoom | ESC - Options",
-        (int)game.layout.helpBar.x + 10,
-        (int)game.layout.helpBar.y + 5, 16, WHITE);
   }
 }
 
@@ -832,26 +863,28 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
   }
 
   // Draw dropdowns last so they appear on top
-  // Resolution dropdown
+  // Draw FPS dropdown first, then resolution dropdown so resolution appears on top
   std::string resLabels;
   for (int i = 0; i < RESOLUTION_COUNT; i++) {
     if (i > 0)
       resLabels += ";";
     resLabels += RESOLUTIONS[i].label;
   }
+
+  // FPS Target dropdown (draw first)
+  if (GuiDropdownBox(
+          Rectangle{(float)controlX, (float)fpsY - 5, (float)controlWidth, 30},
+          FPS_LABELS, &game.settings.fpsIndex, game.settings.fpsDropdownEdit)) {
+    game.settings.fpsDropdownEdit = !game.settings.fpsDropdownEdit;
+  }
+
+  // Resolution dropdown (draw last so it's on top)
   if (GuiDropdownBox(
           Rectangle{(float)controlX, (float)resolutionY - 5, (float)controlWidth, 30},
           resLabels.c_str(), &game.settings.resolutionIndex,
           game.settings.resolutionDropdownEdit)) {
     game.settings.resolutionDropdownEdit =
         !game.settings.resolutionDropdownEdit;
-  }
-
-  // FPS Target dropdown
-  if (GuiDropdownBox(
-          Rectangle{(float)controlX, (float)fpsY - 5, (float)controlWidth, 30},
-          FPS_LABELS, &game.settings.fpsIndex, game.settings.fpsDropdownEdit)) {
-    game.settings.fpsDropdownEdit = !game.settings.fpsDropdownEdit;
   }
 
   // Restart warning
@@ -962,20 +995,6 @@ void handlePan(GameState &game) {
 
     game.camera.offsetX = game.camera.panStartOffset.x + delta.x;
     game.camera.offsetY = game.camera.panStartOffset.y + delta.y;
-
-    // Constrain panning to prevent going completely off screen
-    // Calculate map bounds in pixels
-    float mapWidth = MAP_COLS * HEX_SIZE * 1.5f * game.camera.zoom;
-    float mapHeight = (MAP_ROWS + 0.5f) * HEX_SIZE * sqrtf(3.0f) * game.camera.zoom;
-
-    // Keep at least 100 pixels of the map visible
-    float margin = 100;
-    game.camera.offsetX = Clamp(game.camera.offsetX,
-                                -mapWidth + margin,
-                                SCREEN_WIDTH - margin);
-    game.camera.offsetY = Clamp(game.camera.offsetY,
-                                -mapHeight + margin,
-                                SCREEN_HEIGHT - margin);
   }
 }
 
@@ -989,6 +1008,10 @@ int main() {
 
   // Disable ESC key to exit - we use it for menu control
   SetExitKey(KEY_NULL);
+
+  // Load ROMULUS font
+  Font romulusFont = LoadFont("resources/fonts/romulus.png");
+  GuiSetFont(romulusFont);  // Set as default font for raygui
 
   GameState game;
 
@@ -1070,27 +1093,83 @@ int main() {
         }
       }
 
+      // Keyboard zoom controls (R = zoom in, F = zoom out)
+      if (IsKeyPressed(KEY_R)) {
+        float oldZoom = game.camera.zoom;
+        float newZoom = oldZoom + 0.25f;
+        newZoom = Clamp(newZoom, 0.5f, 2.0f);
+
+        if (newZoom != oldZoom) {
+          // Get screen center for zoom
+          Vector2 centerPos = {SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f};
+
+          // Calculate world position at center before zoom
+          Point worldPosOld((centerPos.x - game.camera.offsetX) / oldZoom,
+                           (centerPos.y - game.camera.offsetY) / oldZoom);
+
+          // Apply zoom
+          game.camera.zoom = newZoom;
+
+          // Calculate world position at center after zoom
+          Point worldPosNew((centerPos.x - game.camera.offsetX) / newZoom,
+                           (centerPos.y - game.camera.offsetY) / newZoom);
+
+          // Adjust offset to keep world position under center constant
+          game.camera.offsetX += (worldPosNew.x - worldPosOld.x) * newZoom;
+          game.camera.offsetY += (worldPosNew.y - worldPosOld.y) * newZoom;
+
+          // Update zoom direction
+          if (newZoom != 1.0f) {
+            game.camera.zoomDirection = 1;  // Zooming in
+          } else {
+            game.camera.zoomDirection = 0;
+          }
+        }
+      }
+
+      if (IsKeyPressed(KEY_F)) {
+        float oldZoom = game.camera.zoom;
+        float newZoom = oldZoom - 0.25f;
+        newZoom = Clamp(newZoom, 0.5f, 2.0f);
+
+        if (newZoom != oldZoom) {
+          // Get screen center for zoom
+          Vector2 centerPos = {SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f};
+
+          // Calculate world position at center before zoom
+          Point worldPosOld((centerPos.x - game.camera.offsetX) / oldZoom,
+                           (centerPos.y - game.camera.offsetY) / oldZoom);
+
+          // Apply zoom
+          game.camera.zoom = newZoom;
+
+          // Calculate world position at center after zoom
+          Point worldPosNew((centerPos.x - game.camera.offsetX) / newZoom,
+                           (centerPos.y - game.camera.offsetY) / newZoom);
+
+          // Adjust offset to keep world position under center constant
+          game.camera.offsetX += (worldPosNew.x - worldPosOld.x) * newZoom;
+          game.camera.offsetY += (worldPosNew.y - worldPosOld.y) * newZoom;
+
+          // Update zoom direction
+          if (newZoom != 1.0f) {
+            game.camera.zoomDirection = -1;  // Zooming out
+          } else {
+            game.camera.zoomDirection = 0;
+          }
+        }
+      }
+
       // Camera panning with arrow keys and WASD (absolute directions)
       float panSpeed = game.settings.panSpeed;
       if (IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_A))
-        game.camera.offsetX += panSpeed;  // Pan left = move camera view right
+        game.camera.offsetX -= panSpeed;  // Pan left
       if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D))
-        game.camera.offsetX -= panSpeed;  // Pan right = move camera view left
+        game.camera.offsetX += panSpeed;  // Pan right
       if (IsKeyDown(KEY_UP) || IsKeyDown(KEY_W))
-        game.camera.offsetY += panSpeed;  // Pan up = move camera view down
+        game.camera.offsetY -= panSpeed;  // Pan up
       if (IsKeyDown(KEY_DOWN) || IsKeyDown(KEY_S))
-        game.camera.offsetY -= panSpeed;  // Pan down = move camera view up
-
-      // Constrain keyboard panning as well
-      float mapWidth = MAP_COLS * HEX_SIZE * 1.5f * game.camera.zoom;
-      float mapHeight = (MAP_ROWS + 0.5f) * HEX_SIZE * sqrtf(3.0f) * game.camera.zoom;
-      float margin = 100;
-      game.camera.offsetX = Clamp(game.camera.offsetX,
-                                  -mapWidth + margin,
-                                  SCREEN_WIDTH - margin);
-      game.camera.offsetY = Clamp(game.camera.offsetY,
-                                  -mapHeight + margin,
-                                  SCREEN_HEIGHT - margin);
+        game.camera.offsetY += panSpeed;  // Pan down
     } else {
       // Close menu with ESC (close dropdowns first if open)
       if (IsKeyPressed(KEY_ESCAPE)) {
@@ -1124,6 +1203,7 @@ int main() {
     EndDrawing();
   }
 
+  UnloadFont(romulusFont);  // Unload custom font
   CloseWindow();
   return 0;
 }
