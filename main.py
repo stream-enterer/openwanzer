@@ -238,10 +238,6 @@ class PanzerGame(arcade.Window):
         """Render the game"""
         self.clear()
 
-        # Set up scissor test to clip game panel rendering
-        self.ctx.enable(self.ctx.SCISSOR_TEST)
-        self.ctx.scissor = (0, 0, self.game_panel_width, self.height)
-
         # Position camera for scrollable viewport
         self.game_camera.position = (self.camera_x, self.camera_y)
         self.game_camera.use()
@@ -252,8 +248,8 @@ class PanzerGame(arcade.Window):
         # Draw units
         self.draw_units()
 
-        # Disable scissor test
-        self.ctx.disable(self.ctx.SCISSOR_TEST)
+        # Reset to default camera for UI rendering
+        self.window.default_camera.use()
 
         # Draw UI manager (HUD panels and widgets)
         self.ui_manager.draw()
