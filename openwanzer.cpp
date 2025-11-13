@@ -452,6 +452,35 @@ struct Unit {
         hasMoved(false), hasFired(false), isCore(false) {}
 };
 
+// Combat Log Message
+struct LogMessage {
+  int turn;
+  std::string message;
+  int count;
+
+  LogMessage(int t, const std::string& msg)
+      : turn(t), message(msg), count(1) {}
+};
+
+// Combat Log Display
+struct CombatLog {
+  std::vector<LogMessage> messages;
+  float scrollOffset;      // Current scroll position (0 = top, higher = scrolled down more)
+  float maxScrollOffset;   // Maximum scroll offset
+  Rectangle bounds;        // Display area
+  bool isHovering;        // Is mouse hovering over log?
+
+  CombatLog() : scrollOffset(0.0f), maxScrollOffset(0.0f), isHovering(false) {
+    // Upper right corner, below status bar (40px), 350px wide, 400px tall
+    bounds = {SCREEN_WIDTH - 360.0f, 50.0f, 350.0f, 400.0f};
+  }
+
+  void recalculateBounds(int screenWidth, int screenHeight) {
+    // Position in upper right, below status bar
+    bounds = {screenWidth - 360.0f, 50.0f, 350.0f, 400.0f};
+  }
+};
+
 // Game State
 struct GameState {
   std::vector<std::vector<GameHex>> map;
@@ -464,6 +493,7 @@ struct GameState {
   VideoSettings settings;
   GameLayout layout;
   CameraState camera;
+  CombatLog combatLog;
 
   GameState()
       : selectedUnit(nullptr), currentTurn(1), currentPlayer(0), maxTurns(20),
@@ -786,6 +816,25 @@ void clearSelectionHighlights(GameState &game) {
 
 namespace GameLogic {
 
+// Combat Log Functions
+void addLogMessage(GameState& game, const std::string& message) {
+  // Check if last message is the same (for deduplication)
+  if (!game.combatLog.messages.empty()) {
+    LogMessage& last = game.combatLog.messages.back();
+    if (last.turn == game.currentTurn && last.message == message) {
+      last.count++;
+      return;
+    }
+  }
+
+  // Add new message
+  game.combatLog.messages.emplace_back(game.currentTurn, message);
+
+  // Auto-scroll to bottom (most recent) by setting scroll to max
+  // We'll calculate the actual max in the rendering function
+  game.combatLog.scrollOffset = 999999.0f;  // Large value to force scroll to bottom
+}
+
 // Hex math and distance calculations
 int hexDistance(const HexCoord &a, const HexCoord &b) {
   OffsetCoord offsetA = Rendering::gameCoordToOffset(a);
@@ -1064,6 +1113,10 @@ void moveUnit(GameState &game, Unit *unit, const HexCoord &target) {
     // Reduce fuel by hex distance (not terrain cost)
     int distance = hexDistance(oldPos, target);
     unit->fuel = std::max(0, unit->fuel - distance);
+
+    // Log movement
+    std::string unitName = unit->name + " (" + (unit->side == 0 ? "Axis" : "Allied") + ")";
+    addLogMessage(game, unitName + " moves to (" + std::to_string(target.row) + "," + std::to_string(target.col) + ")");
   }
 }
 
@@ -1095,6 +1148,11 @@ int calculateKills(int atkVal, int defVal, const Unit *attacker, const Unit *def
 void performAttack(GameState &game, Unit *attacker, Unit *defender) {
   if (!attacker || !defender || attacker->hasFired)
     return;
+
+  // Log combat initiation
+  std::string attackerName = attacker->name + " (" + (attacker->side == 0 ? "Axis" : "Allied") + ")";
+  std::string defenderName = defender->name + " (" + (defender->side == 0 ? "Axis" : "Allied") + ")";
+  addLogMessage(game, attackerName + " attacks " + defenderName);
 
   // Get distance and hex information
   int distance = hexDistance(attacker->position, defender->position);
@@ -1194,6 +1252,14 @@ void performAttack(GameState &game, Unit *attacker, Unit *defender) {
   defender->strength = std::max(0, defender->strength - kills);
   attacker->strength = std::max(0, attacker->strength - losses);
 
+  // Log damage
+  if (kills > 0) {
+    addLogMessage(game, attackerName + " deals " + std::to_string(kills) + " damage to " + defenderName);
+  }
+  if (losses > 0 && defCanFire) {
+    addLogMessage(game, defenderName + " returns fire, dealing " + std::to_string(losses) + " damage");
+  }
+
   // Experience gain
   // Attacker gains based on defender's attack value and kills
   int bonusAD = std::max(1, dav + 6 - adv);
@@ -1222,11 +1288,15 @@ void performAttack(GameState &game, Unit *attacker, Unit *defender) {
     attacker->entrenchment--;
   }
 
-  // Clear ZOC and spotting for units about to be destroyed
+  // Clear ZOC and spotting for units about to be destroyed, and log destruction
   for (auto &unit : game.units) {
     if (unit->strength <= 0) {
       setUnitZOC(game, unit.get(), false);
       setUnitSpotRange(game, unit.get(), false);
+
+      // Log unit destruction
+      std::string unitName = unit->name + " (" + (unit->side == 0 ? "Axis" : "Allied") + ")";
+      addLogMessage(game, unitName + " destroyed!");
     }
   }
 
@@ -1291,8 +1361,22 @@ void endTurn(GameState &game) {
     }
   }
 
+  // Log turn end
+  std::string playerName = game.currentPlayer == 0 ? "Axis" : "Allied";
+  addLogMessage(game, playerName + " turn ended");
+
   // Switch player
   game.currentPlayer = 1 - game.currentPlayer;
+
+  // If both players have moved, advance turn
+  if (game.currentPlayer == 0) {
+    game.currentTurn++;
+    addLogMessage(game, "--- Turn " + std::to_string(game.currentTurn) + " ---");
+  }
+
+  // Log new player turn
+  playerName = game.currentPlayer == 0 ? "Axis" : "Allied";
+  addLogMessage(game, playerName + " turn begins");
 
   // Reset actions for units about to start their turn
   for (auto &unit : game.units) {
@@ -1301,11 +1385,6 @@ void endTurn(GameState &game) {
       unit->hasFired = false;
       unit->movesLeft = unit->movementPoints;
     }
-  }
-
-  // If both players have moved, advance turn
-  if (game.currentPlayer == 0) {
-    game.currentTurn++;
   }
 
   // Clear selection
@@ -1363,6 +1442,128 @@ namespace Config {
 
 namespace Rendering {
 
+void drawCombatLog(GameState &game) {
+  const int fontSize = 14;
+  const int lineSpacing = 18;
+  const float scrollBarWidth = 15.0f;
+  const float padding = 10.0f;
+  const int titleHeight = 25;
+
+  Rectangle bounds = game.combatLog.bounds;
+
+  // Draw background
+  DrawRectangleRec(bounds, Color{40, 40, 40, 240});
+  DrawRectangleLinesEx(bounds, 2, COLOR_GRID);
+
+  // Draw title
+  DrawText("Combat Log", (int)(bounds.x + padding), (int)(bounds.y + 5), 16, WHITE);
+
+  // Calculate text area (below title, with padding, leaving space for scrollbar)
+  Rectangle textArea = {
+    bounds.x + padding,
+    bounds.y + titleHeight,
+    bounds.width - (2 * padding) - scrollBarWidth,
+    bounds.height - titleHeight - padding
+  };
+
+  // Check if mouse is hovering over the log
+  Vector2 mousePos = GetMousePosition();
+  game.combatLog.isHovering = CheckCollisionPointRec(mousePos, bounds);
+
+  // Build display lines with word wrapping
+  std::vector<std::string> displayLines;
+  std::vector<Color> lineColors;
+
+  for (const auto& msg : game.combatLog.messages) {
+    // Format message with turn prefix and count
+    std::string prefix = "[T" + std::to_string(msg.turn) + "] ";
+    std::string fullMsg = prefix + msg.message;
+    if (msg.count > 1) {
+      fullMsg += " (x" + std::to_string(msg.count) + ")";
+    }
+
+    // Word wrap the message
+    int maxWidth = (int)textArea.width;
+    std::string currentLine;
+    std::istringstream words(fullMsg);
+    std::string word;
+
+    while (words >> word) {
+      std::string testLine = currentLine.empty() ? word : currentLine + " " + word;
+      int textWidth = MeasureText(testLine.c_str(), fontSize);
+
+      if (textWidth > maxWidth && !currentLine.empty()) {
+        // Current line is full, save it
+        displayLines.push_back(currentLine);
+        lineColors.push_back(WHITE);
+        currentLine = word;
+      } else {
+        currentLine = testLine;
+      }
+    }
+
+    // Add remaining text
+    if (!currentLine.empty()) {
+      displayLines.push_back(currentLine);
+      lineColors.push_back(WHITE);
+    }
+  }
+
+  // Calculate total content height
+  float totalContentHeight = displayLines.size() * lineSpacing;
+  float visibleHeight = textArea.height;
+
+  // Update max scroll offset
+  game.combatLog.maxScrollOffset = std::max(0.0f, totalContentHeight - visibleHeight);
+
+  // Clamp scroll offset
+  game.combatLog.scrollOffset = Clamp(game.combatLog.scrollOffset, 0.0f, game.combatLog.maxScrollOffset);
+
+  // Enable scissor mode for clipping
+  BeginScissorMode((int)textArea.x, (int)textArea.y, (int)textArea.width, (int)textArea.height);
+
+  // Draw messages from top to bottom, applying scroll offset
+  int yPos = (int)(textArea.y - game.combatLog.scrollOffset);
+
+  for (size_t i = 0; i < displayLines.size(); i++) {
+    if (yPos + lineSpacing >= textArea.y && yPos <= textArea.y + textArea.height) {
+      DrawText(displayLines[i].c_str(), (int)textArea.x, yPos, fontSize, lineColors[i]);
+    }
+    yPos += lineSpacing;
+  }
+
+  EndScissorMode();
+
+  // Draw scrollbar if needed
+  if (game.combatLog.maxScrollOffset > 0) {
+    Rectangle scrollBarBounds = {
+      bounds.x + bounds.width - scrollBarWidth - padding,
+      bounds.y + titleHeight,
+      scrollBarWidth,
+      bounds.height - titleHeight - padding
+    };
+
+    // Calculate scroll bar handle size and position
+    float handleRatio = visibleHeight / totalContentHeight;
+    float handleHeight = std::max(20.0f, scrollBarBounds.height * handleRatio);
+    float scrollRatio = game.combatLog.scrollOffset / game.combatLog.maxScrollOffset;
+    float handleY = scrollBarBounds.y + scrollRatio * (scrollBarBounds.height - handleHeight);
+
+    // Draw scrollbar track
+    DrawRectangleRec(scrollBarBounds, Color{60, 60, 60, 255});
+
+    // Draw scrollbar handle
+    Rectangle handleBounds = {
+      scrollBarBounds.x,
+      handleY,
+      scrollBarWidth,
+      handleHeight
+    };
+    DrawRectangleRec(handleBounds, Color{120, 120, 120, 255});
+    DrawRectangleLinesEx(handleBounds, 1, Color{140, 140, 140, 255});
+  }
+}
+
 void drawUI(GameState &game) {
   // Turn info panel (status bar)
   DrawRectangleRec(game.layout.statusBar, Color{40, 40, 40, 240});
@@ -1395,6 +1596,9 @@ void drawUI(GameState &game) {
                 "OPTIONS")) {
     game.showOptionsMenu = !game.showOptionsMenu;
   }
+
+  // Draw combat log
+  drawCombatLog(game);
 
   // Unit info panel
   if (game.selectedUnit && !game.showOptionsMenu) {
@@ -1561,11 +1765,13 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
       SCREEN_WIDTH = res.width;
       SCREEN_HEIGHT = res.height;
       game.layout.recalculate(res.width, res.height);
+      game.combatLog.recalculateBounds(res.width, res.height);
     }
 
     if (game.settings.fullscreen != IsWindowFullscreen()) {
       ToggleFullscreen();
       game.layout.recalculate(GetScreenWidth(), GetScreenHeight());
+      game.combatLog.recalculateBounds(GetScreenWidth(), GetScreenHeight());
     }
 
     SetTargetFPS(FPS_VALUES[game.settings.fpsIndex]);
@@ -1669,8 +1875,27 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
 
 namespace Input {
 
+// Handle combat log scrolling (must be called before handleZoom)
+void handleCombatLogScroll(GameState &game) {
+  // Only scroll if hovering over the combat log
+  if (!game.combatLog.isHovering) return;
+
+  float wheelMove = GetMouseWheelMove();
+  if (wheelMove != 0) {
+    // Scroll speed: 3 lines per wheel notch
+    const float scrollSpeed = 3.0f * 18.0f;  // 18 is line spacing
+    game.combatLog.scrollOffset -= wheelMove * scrollSpeed;
+
+    // Clamp to valid range
+    game.combatLog.scrollOffset = Clamp(game.combatLog.scrollOffset, 0.0f, game.combatLog.maxScrollOffset);
+  }
+}
+
 // Handle mouse zoom with special behavior
 void handleZoom(GameState &game) {
+  // Don't zoom if hovering over combat log
+  if (game.combatLog.isHovering) return;
+
   float wheelMove = GetMouseWheelMove();
 
   if (wheelMove != 0) {
@@ -1961,11 +2186,18 @@ int main() {
   GameLogic::initializeAllZOC(game);
   GameLogic::initializeAllSpotting(game);
 
+  // Add initial combat log messages
+  GameLogic::addLogMessage(game, "=== Battle Start ===");
+  GameLogic::addLogMessage(game, "Axis turn begins");
+
   bool needsRestart = false;
 
   while (!WindowShouldClose()) {
     // Input handling (only when menu is closed)
     if (!game.showOptionsMenu) {
+      // Handle combat log scrolling (must be before zoom)
+      Input::handleCombatLogScroll(game);
+
       // Handle zoom
       Input::handleZoom(game);
 
