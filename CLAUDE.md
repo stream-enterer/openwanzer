@@ -1,5 +1,21 @@
 # Panzer General 2 Raylib Prototype
 
+## ⚠️ MANDATORY: READ CONVENTIONS.md FIRST ⚠️
+
+**BEFORE WRITING ANY CODE, YOU MUST READ AND FOLLOW `CONVENTIONS.md`.**
+
+This file (`CONVENTIONS.md`) contains the definitive coding standards, namespace organization, and architectural conventions for this project. **ALL CODE MUST COMPLY WITH THESE CONVENTIONS. NO EXCEPTIONS.**
+
+Key requirements from CONVENTIONS.md:
+- ✅ Use namespaces: `Rendering`, `GameLogic`, `Input`, `Config`
+- ✅ Follow naming conventions strictly
+- ✅ Maintain const correctness
+- ✅ Keep single-file architecture
+- ❌ Never split into multiple files
+- ❌ Never over-engineer with unnecessary patterns
+
+**If you haven't read CONVENTIONS.md, STOP and read it now.**
+
 ## Project Overview
 
 This is a C++ prototype implementation of Panzer General 2, a classic hex-based turn-based strategy game. It uses **raylib** for graphics/input and **raygui** for the GUI. The prototype is based on an open-source JavaScript port and implements core gameplay mechanics with a modern options menu.
@@ -36,19 +52,51 @@ This is a C++ prototype implementation of Panzer General 2, a classic hex-based 
 
 ## Architecture
 
-### Single-File Design
-The entire game is in `openwanzer.cpp` (~820 lines) for simplicity. Structure:
+### Single-File Design with Namespaces
+The entire game is in `openwanzer.cpp` (~2100 lines) organized with C++ namespaces. Structure:
 
 ```cpp
-// Includes & Pragma (lines 1-18)
-// Constants & Enums (lines 20-95)
-// Data Structures (lines 97-235)
-//   - HexCoord, Hex, Unit, VideoSettings, GameState
-// Hex Math & Rendering (lines 237-380)
-// Game Logic (lines 382-520)
-// UI & Options Menu (lines 522-695)
-// Main Loop (lines 697-824)
+// SECTION 1: Includes & Preprocessor
+// SECTION 2: Constants & Globals
+// SECTION 3: Enums & Data Tables
+// SECTION 4: GameLogic namespace - Utility Functions
+// SECTION 5: Data Structures (global scope)
+// SECTION 5A: Config namespace - Style Discovery
+// SECTION 6: Rendering namespace - Core Rendering
+// SECTION 6B: Rendering namespace - UI and Menus
+// SECTION 7: GameLogic namespace - Game Mechanics
+// SECTION 8: Input namespace - Camera Control
+// SECTION 8B: Input namespace - Zoom and Pan
+// SECTION 9: Config namespace - Save/Load Settings
+// SECTION 10: Main Loop (global scope)
 ```
+
+### Namespace Organization
+
+**Rendering::** Visual presentation
+- Hex coordinate conversion and layout
+- Color mapping (terrain, units)
+- Drawing functions (hexagons, map, UI, menus)
+- Selection highlighting
+
+**GameLogic::** Game rules and mechanics
+- Hex math and distance calculations
+- Unit type checks (air, hard target, sea)
+- Zone of Control (ZOC) management
+- Fog of War (spotting system)
+- Movement and combat
+- Entrenchment and turn management
+
+**Input::** User interaction
+- Camera controls and centering
+- Zoom handling (mouse wheel, keyboard)
+- Pan handling (middle mouse, arrow keys)
+
+**Config::** Settings management
+- Style discovery and management
+- Configuration persistence (save/load)
+- Theme loading
+- GUI scaling
 
 ### Key Data Structures
 
@@ -173,11 +221,19 @@ RayGUI has unavoidable warnings from library code:
 
 ## Coding Conventions
 
+**⚠️ ALL CODING STANDARDS ARE DEFINED IN `CONVENTIONS.md` - READ IT! ⚠️**
+
+Summary (see CONVENTIONS.md for complete details):
+- **Namespaces**: `Rendering`, `GameLogic`, `Input`, `Config`
 - **Constants**: `UPPER_SNAKE_CASE` (SCREEN_WIDTH, HEX_SIZE)
 - **Types**: `PascalCase` (GameState, Unit, VideoSettings)
 - **Functions**: `camelCase` (hexToPixel, drawMap, performAttack)
 - **Variables**: `camelCase` (selectedUnit, cameraOffsetX)
 - **Enums**: `enum class` for type safety
+- **Const correctness**: `const Unit*` for read-only pointers
+- **Smart pointers**: `std::unique_ptr` for ownership
+
+**For comprehensive conventions, architecture rules, and examples, see `CONVENTIONS.md`.**
 
 ## Dependencies
 

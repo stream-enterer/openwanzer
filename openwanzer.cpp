@@ -146,6 +146,8 @@ const int MOV_TABLE_DRY[12][18] = {
 // SECTION 4: UTILITY FUNCTIONS (GAME LOGIC)
 //==============================================================================
 
+namespace GameLogic {
+
 // Helper function to map TerrainType to movement table index
 int getTerrainIndex(TerrainType terrain) {
   switch (terrain) {
@@ -206,6 +208,8 @@ int getTerrainEntrenchment(TerrainType terrain) {
   }
   return 0;
 }
+
+} // namespace GameLogic
 
 //==============================================================================
 // SECTION 5: DATA STRUCTURES
@@ -300,6 +304,8 @@ const int GUI_SCALE_COUNT = 3;
 // SECTION 5A: CONFIGURATION - STYLE DISCOVERY
 //==============================================================================
 
+namespace Config {
+
 // Global variables for style themes
 std::vector<std::string> AVAILABLE_STYLES;
 std::string STYLE_LABELS_STRING;
@@ -359,6 +365,8 @@ int getStyleIndex(const std::string& styleName) {
   }
   return 0; // Default to first style if not found
 }
+
+} // namespace Config
 
 // Structures
 struct HexCoord {
@@ -775,6 +783,8 @@ void clearSelectionHighlights(GameState &game) {
 //==============================================================================
 // SECTION 7: GAME LOGIC FUNCTIONS
 //==============================================================================
+
+namespace GameLogic {
 
 // Hex math and distance calculations
 int hexDistance(const HexCoord &a, const HexCoord &b) {
@@ -1303,9 +1313,13 @@ void endTurn(GameState &game) {
   Rendering::clearSelectionHighlights(game);
 }
 
+} // namespace GameLogic
+
 //==============================================================================
 // SECTION 8: INPUT AND CAMERA FUNCTIONS
 //==============================================================================
+
+namespace Input {
 
 // Calculate centered camera offset to center the hex map in the play area
 void calculateCenteredCameraOffset(CameraState& camera, int screenWidth, int screenHeight) {
@@ -1330,11 +1344,18 @@ void calculateCenteredCameraOffset(CameraState& camera, int screenWidth, int scr
   camera.offsetY = playAreaCenterY - mapCenterPixel.y;
 }
 
-// Forward declarations (for Config namespace functions)
-void saveConfig(const VideoSettings& settings);
-void loadConfig(VideoSettings& settings);
-void applyGuiScale(float scale);
-void loadStyleTheme(const std::string& themeName);
+} // namespace Input
+
+// Forward declarations for Config namespace (needed by Rendering::drawOptionsMenu)
+namespace Config {
+  void saveConfig(const VideoSettings& settings);
+  void loadConfig(VideoSettings& settings);
+  void applyGuiScale(float scale);
+  void loadStyleTheme(const std::string& themeName);
+  int getStyleIndex(const std::string& styleName);
+  extern std::vector<std::string> AVAILABLE_STYLES;
+  extern std::string STYLE_LABELS_STRING;
+}
 
 //==============================================================================
 // SECTION 6B: RENDERING FUNCTIONS - UI AND MENUS
@@ -1366,7 +1387,7 @@ void drawUI(GameState &game) {
     // Reset camera to center and 100% zoom
     game.camera.zoom = 1.0f;
     game.camera.zoomDirection = 0;
-    calculateCenteredCameraOffset(game.camera, SCREEN_WIDTH, SCREEN_HEIGHT);
+    Input::calculateCenteredCameraOffset(game.camera, SCREEN_WIDTH, SCREEN_HEIGHT);
   }
 
   // Options button
@@ -1553,13 +1574,13 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
     HEX_SIZE = game.settings.hexSize;
 
     // Apply style theme
-    loadStyleTheme(game.settings.styleTheme);
+    Config::loadStyleTheme(game.settings.styleTheme);
 
     // Apply GUI scale (after style is loaded)
-    applyGuiScale(GUI_SCALE_VALUES[game.settings.guiScaleIndex]);
+    Config::applyGuiScale(GUI_SCALE_VALUES[game.settings.guiScaleIndex]);
 
     // Save config to file
-    saveConfig(game.settings);
+    Config::saveConfig(game.settings);
 
     // Menu stays open after applying settings
   }
@@ -1598,15 +1619,15 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
 
   // Style Theme dropdown (draw first - bottommost)
   // Get current style index
-  int currentStyleIndex = getStyleIndex(game.settings.styleTheme);
+  int currentStyleIndex = Config::getStyleIndex(game.settings.styleTheme);
   if (GuiDropdownBox(
           Rectangle{(float)controlX, (float)styleThemeY - 5, (float)controlWidth, 30},
-          STYLE_LABELS_STRING.c_str(), &currentStyleIndex, game.settings.styleThemeDropdownEdit)) {
+          Config::STYLE_LABELS_STRING.c_str(), &currentStyleIndex, game.settings.styleThemeDropdownEdit)) {
     game.settings.styleThemeDropdownEdit = !game.settings.styleThemeDropdownEdit;
   }
   // Update style theme name if index changed
-  if (currentStyleIndex >= 0 && currentStyleIndex < (int)AVAILABLE_STYLES.size()) {
-    game.settings.styleTheme = AVAILABLE_STYLES[currentStyleIndex];
+  if (currentStyleIndex >= 0 && currentStyleIndex < (int)Config::AVAILABLE_STYLES.size()) {
+    game.settings.styleTheme = Config::AVAILABLE_STYLES[currentStyleIndex];
   }
 
   // GUI Scale dropdown
@@ -1641,6 +1662,12 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
 }
 
 } // namespace Rendering
+
+//==============================================================================
+// SECTION 8B: INPUT FUNCTIONS - ZOOM AND PAN HANDLERS
+//==============================================================================
+
+namespace Input {
 
 // Handle mouse zoom with special behavior
 void handleZoom(GameState &game) {
@@ -1746,9 +1773,13 @@ void handlePan(GameState &game) {
   }
 }
 
+} // namespace Input
+
 //==============================================================================
 // SECTION 9: CONFIGURATION - SAVE/LOAD AND SETTINGS
 //==============================================================================
+
+namespace Config {
 
 // Save config to file
 void saveConfig(const VideoSettings& settings) {
@@ -1861,17 +1892,19 @@ void loadStyleTheme(const std::string& themeName) {
   TraceLog(LOG_INFO, TextFormat("Style loaded: %s", themeName.c_str()));
 }
 
+} // namespace Config
+
 //==============================================================================
 // SECTION 10: MAIN LOOP
 //==============================================================================
 
 int main() {
   // Discover available styles first (before window init)
-  discoverStyles();
+  Config::discoverStyles();
 
   // Create temporary settings to load config before window init
   VideoSettings tempSettings;
-  loadConfig(tempSettings);
+  Config::loadConfig(tempSettings);
 
   // Set config flags before window creation
   unsigned int flags = FLAG_WINDOW_RESIZABLE;
@@ -1903,17 +1936,17 @@ int main() {
   SetTargetFPS(FPS_VALUES[tempSettings.fpsIndex]);
 
   // Load style theme from config
-  loadStyleTheme(tempSettings.styleTheme);
+  Config::loadStyleTheme(tempSettings.styleTheme);
 
   // Apply GUI scale from config
-  applyGuiScale(GUI_SCALE_VALUES[tempSettings.guiScaleIndex]);
+  Config::applyGuiScale(GUI_SCALE_VALUES[tempSettings.guiScaleIndex]);
 
   GameState game;
   // Apply loaded settings to game state
   game.settings = tempSettings;
 
   // Center the camera on the hex map
-  calculateCenteredCameraOffset(game.camera, SCREEN_WIDTH, SCREEN_HEIGHT);
+  Input::calculateCenteredCameraOffset(game.camera, SCREEN_WIDTH, SCREEN_HEIGHT);
 
   // Add some initial units
   game.addUnit(UnitClass::INFANTRY, 0, 2, 2);
@@ -1925,8 +1958,8 @@ int main() {
   game.addUnit(UnitClass::RECON, 1, 8, 11);
 
   // Initialize Zone of Control and Spotting for all units
-  initializeAllZOC(game);
-  initializeAllSpotting(game);
+  GameLogic::initializeAllZOC(game);
+  GameLogic::initializeAllSpotting(game);
 
   bool needsRestart = false;
 
@@ -1934,13 +1967,13 @@ int main() {
     // Input handling (only when menu is closed)
     if (!game.showOptionsMenu) {
       // Handle zoom
-      handleZoom(game);
+      Input::handleZoom(game);
 
       // Handle middle mouse panning
-      handlePan(game);
+      Input::handlePan(game);
 
       if (IsKeyPressed(KEY_SPACE)) {
-        endTurn(game);
+        GameLogic::endTurn(game);
       }
 
       if (IsKeyPressed(KEY_ESCAPE)) {
@@ -1969,20 +2002,20 @@ int main() {
           if (game.selectedUnit) {
             // Try to move or attack
             if (game.map[clickedHex.row][clickedHex.col].isMoveSel) {
-              moveUnit(game, game.selectedUnit, clickedHex);
+              GameLogic::moveUnit(game, game.selectedUnit, clickedHex);
               Rendering::clearSelectionHighlights(game);
-              highlightAttackRange(game, game.selectedUnit);
+              GameLogic::highlightAttackRange(game, game.selectedUnit);
             } else if (game.map[clickedHex.row][clickedHex.col].isAttackSel) {
               if (clickedUnit) {
-                performAttack(game, game.selectedUnit, clickedUnit);
+                GameLogic::performAttack(game, game.selectedUnit, clickedUnit);
                 Rendering::clearSelectionHighlights(game);
                 game.selectedUnit = nullptr;
               }
             } else if (clickedUnit && clickedUnit->side == game.currentPlayer) {
               // Select new unit
               game.selectedUnit = clickedUnit;
-              highlightMovementRange(game, game.selectedUnit);
-              highlightAttackRange(game, game.selectedUnit);
+              GameLogic::highlightMovementRange(game, game.selectedUnit);
+              GameLogic::highlightAttackRange(game, game.selectedUnit);
             } else {
               // Deselect
               game.selectedUnit = nullptr;
@@ -1991,8 +2024,8 @@ int main() {
           } else if (clickedUnit && clickedUnit->side == game.currentPlayer) {
             // Select unit
             game.selectedUnit = clickedUnit;
-            highlightMovementRange(game, game.selectedUnit);
-            highlightAttackRange(game, game.selectedUnit);
+            GameLogic::highlightMovementRange(game, game.selectedUnit);
+            GameLogic::highlightAttackRange(game, game.selectedUnit);
           }
         }
       }
