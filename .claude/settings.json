@@ -1,0 +1,24 @@
+{
+  "sessionStart": {
+    "hook": {
+      "command": "uv sync"
+    }
+  },
+  "projectContext": {
+    "name": "OpenWanzer - Panzer General 2 Prototype",
+    "description": "Turn-based tactical strategy game built with Python Arcade 3.x",
+    "keyFiles": [
+      "main.py",
+      "constants.py",
+      "hex_map.py",
+      "unit.py",
+      "game_state.py",
+      "ai.py",
+      "CLAUDE.md"
+    ]
+  },
+  "tools": {
+    "packageManager": "uv",
+    "testRunner": "pytest"
+  }
+}
