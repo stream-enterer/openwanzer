@@ -62,8 +62,9 @@ class PanzerGame(arcade.Window):
 
         # Message log using Text objects
         self.messages = []
-        self.max_messages = 20  # Limit for visible messages
+        self.max_messages = 100  # Total messages to keep
         self.message_text_objects = []  # List of Text objects for each message line
+        self.message_scroll_offset = 0  # Scroll position (0 = showing newest messages)
 
         # Game over screen Text objects
         self.game_over_text = None
@@ -84,6 +85,16 @@ class PanzerGame(arcade.Window):
         self.selected_unit = None
         self.reachable_hexes = {}
         self.attackable_hexes = []
+
+        # Clear messages for new game
+        self.messages = []
+        self.message_text_objects = []
+        self.message_scroll_offset = 0  # For mouse wheel scrolling
+
+        # Clear game over text objects
+        self.game_over_text = None
+        self.winner_text = None
+        self.restart_text = None
 
         # Center camera on the hex grid
         # Calculate the center of the hex map in world coordinates
@@ -234,23 +245,8 @@ class PanzerGame(arcade.Window):
             align_y=-20
         )
 
-        # Bottom section (25% of HUD) - message box
+        # Store message box dimensions for Text object positioning (bottom 25% of screen)
         message_box_height = int(self.height * 0.25)
-
-        # Create message box with border
-        message_box_container = arcade.gui.UIAnchorLayout(
-            size_hint=(1, 0.25),
-            size_hint_min=(self.hud_panel_width, message_box_height)
-        )
-
-        # Message box background (dark gray with border)
-        message_bg = arcade.gui.UISpace(
-            color=(30, 30, 30, 255),
-            size_hint=(1, 1)
-        )
-        message_box_container.add(message_bg, anchor_x="left", anchor_y="bottom")
-
-        # Store message box dimensions for Text object positioning
         self.message_box_x = self.game_panel_width + 20
         self.message_box_y = 20
         self.message_box_width = self.hud_panel_width - 44
@@ -259,8 +255,7 @@ class PanzerGame(arcade.Window):
         # Create Text objects for message log (will be populated dynamically)
         self.update_message_text_objects()
 
-        # Add sections to vertical layout (message box first to position at bottom)
-        hud_vertical_layout.add(message_box_container)
+        # Add only top section to layout (no empty container)
         hud_vertical_layout.add(top_section_wrapper)
 
         # Add vertical layout to HUD container
@@ -285,13 +280,19 @@ class PanzerGame(arcade.Window):
         """Add a message to the message log"""
         # Add timestamp or turn number
         turn_str = f"[T{self.game_state.turn}]" if self.game_state else "[--]"
-        formatted_message = f"{turn_str} {message}"
 
-        self.messages.append(formatted_message)
+        # Split multi-line messages into separate lines
+        lines = message.split('\n')
+        for line in lines:
+            formatted_message = f"{turn_str} {line}"
+            self.messages.append(formatted_message)
 
         # Keep only the last max_messages
         if len(self.messages) > self.max_messages:
             self.messages = self.messages[-self.max_messages:]
+
+        # Reset scroll to show newest messages
+        self.message_scroll_offset = 0
 
         # Update message Text objects
         self.update_message_text_objects()
@@ -308,26 +309,43 @@ class PanzerGame(arcade.Window):
             self.message_box_y + self.message_box_height - 15,
             arcade.color.WHITE,
             9,
-            bold=True
+            bold=True,
+            width=self.message_box_width
         )
         self.message_text_objects.append(header)
 
-        # Create Text object for each message (newest at bottom)
+        # Calculate how many messages can fit
         line_height = 12
-        start_y = self.message_box_y + self.message_box_height - 35
+        available_height = self.message_box_height - 35  # Minus header
+        max_visible_lines = int(available_height / line_height)
 
-        # Display messages from oldest to newest (bottom to top)
-        for i, msg in enumerate(self.messages):
-            y_pos = start_y - (i * line_height)
-            if y_pos < self.message_box_y:
-                break  # Don't draw messages that would go below message box
+        # Start from bottom, work upward (newest messages at bottom)
+        start_y = self.message_box_y + 5  # Small padding from bottom
+
+        # Get the messages to display (accounting for scroll offset)
+        # scroll_offset = 0 means show newest messages
+        # scroll_offset > 0 means scroll back to show older messages
+        total_messages = len(self.messages)
+        if total_messages == 0:
+            return
+
+        # Calculate which messages to show
+        end_idx = total_messages - self.message_scroll_offset
+        start_idx = max(0, end_idx - max_visible_lines)
+        visible_messages = self.messages[start_idx:end_idx]
+
+        # Create Text objects from bottom to top (reversed so newest is at bottom)
+        for i, msg in enumerate(reversed(visible_messages)):
+            y_pos = start_y + (i * line_height)
 
             text_obj = arcade.Text(
                 msg,
                 self.message_box_x,
                 y_pos,
                 arcade.color.WHITE,
-                9
+                9,
+                width=self.message_box_width,
+                multiline=True
             )
             self.message_text_objects.append(text_obj)
 
@@ -748,7 +766,23 @@ class PanzerGame(arcade.Window):
             self.highlighted_hex = None
         else:
             self.highlighted_hex = self.get_hex_at_position(x, y)
-    
+
+    def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
+        """Handle mouse wheel scrolling"""
+        # Check if mouse is over the message box area
+        if x >= self.game_panel_width:  # In HUD panel
+            # Scroll messages
+            if scroll_y > 0:
+                # Scroll up (show older messages)
+                max_scroll = max(0, len(self.messages) - 15)  # Approx visible lines
+                self.message_scroll_offset = min(self.message_scroll_offset + 3, max_scroll)
+            elif scroll_y < 0:
+                # Scroll down (show newer messages)
+                self.message_scroll_offset = max(0, self.message_scroll_offset - 3)
+
+            # Update message display
+            self.update_message_text_objects()
+
     def on_key_press(self, key, modifiers):
         """Handle keyboard input"""
         if key == arcade.key.SPACE:
