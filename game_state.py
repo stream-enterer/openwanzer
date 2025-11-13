@@ -107,39 +107,41 @@ class GameState:
         return self.players[1 - self.current_player_idx]
     
     def end_turn(self):
-        """End current player's turn"""
+        """End current player's turn. Returns game over message if applicable."""
         self.current_player.end_turn()
-        
+
         # Switch to next player
         self.current_player_idx = (self.current_player_idx + 1) % len(self.players)
         self.current_player = self.players[self.current_player_idx]
-        
+
         # If back to first player, increment turn
         if self.current_player_idx == 0:
             self.turn += 1
-            
+
         # Check for game over conditions
-        self.check_game_over()
+        return self.check_game_over()
     
     def check_game_over(self):
-        """Check if game is over"""
+        """Check if game is over. Returns message if game over, None otherwise."""
         # Check turn limit
         if self.turn > self.max_turns:
             self.game_over = True
             # Winner is player with most objectives
-            axis_objs = sum(1 for h_row in self.hex_map.hexes for h in h_row 
+            axis_objs = sum(1 for h_row in self.hex_map.hexes for h in h_row
                            if h.is_objective and h.owner == Side.AXIS)
-            allies_objs = sum(1 for h_row in self.hex_map.hexes for h in h_row 
+            allies_objs = sum(1 for h_row in self.hex_map.hexes for h in h_row
                              if h.is_objective and h.owner == Side.ALLIES)
             self.winner = Side.AXIS if axis_objs > allies_objs else Side.ALLIES
-            return
-        
+            return f"=== GAME OVER - Turn limit reached! {SIDE_NAMES[self.winner]} wins! ({axis_objs} vs {allies_objs} objectives) ==="
+
         # Check if any player lost all units
         for player in self.players:
             if len(player.get_active_units()) == 0:
                 self.game_over = True
                 self.winner = self.get_other_player().side
-                return
+                return f"=== GAME OVER - {player.get_name()} eliminated! {SIDE_NAMES[self.winner]} wins! ==="
+
+        return None
     
     def get_unit_at(self, hex_tile):
         """Get unit at given hex"""
@@ -183,44 +185,90 @@ class GameState:
         return distance <= max_range
     
     def move_unit(self, unit, target_hex):
-        """Move unit to target hex"""
+        """Move unit to target hex. Returns (success, message)"""
         if not self.can_unit_move_to(unit, target_hex):
-            return False
-        
+            # Determine why movement failed
+            if not unit.can_move():
+                if unit.move_left <= 0:
+                    return (False, f"{unit.get_name()} has no movement points left")
+                elif unit.fuel <= 0:
+                    return (False, f"{unit.get_name()} has no fuel")
+                else:
+                    return (False, f"{unit.get_name()} has already moved")
+            elif target_hex.unit:
+                return (False, f"Cannot move to hex - occupied by {target_hex.unit.get_name()}")
+            elif not target_hex.is_passable():
+                return (False, f"Cannot move to hex - terrain is impassable")
+            else:
+                return (False, f"{unit.get_name()} cannot reach that hex")
+
         # Calculate path and cost
         path = self.hex_map.find_path(unit.hex, target_hex, unit.get_moves_left())
         if not path:
-            return False
-        
+            return (False, f"{unit.get_name()} cannot find path to hex")
+
         # Calculate movement cost
         cost = 0
         for hex_tile in path[1:]:  # Skip starting hex
             cost += hex_tile.get_movement_cost()
-        
+
         # Move unit
         unit.move_to(target_hex, cost)
-        
-        # Capture objectives
-        if target_hex.is_objective:
+
+        # Check for objective capture
+        captured_objective = False
+        if target_hex.is_objective and target_hex.owner != unit.owner:
             target_hex.owner = unit.owner
-        
-        return True
+            captured_objective = True
+
+        # Generate success message
+        message = f"{unit.get_name()} moves to ({target_hex.row},{target_hex.col})"
+        if captured_objective:
+            message += f" - Objective captured!"
+
+        return (True, message)
     
     def attack_unit(self, attacker, target_hex):
-        """Execute attack"""
+        """Execute attack. Returns (success, message)"""
         if not self.can_unit_attack(attacker, target_hex):
-            return False
-        
+            # Determine why attack failed
+            if not attacker.can_attack():
+                if attacker.ammo <= 0:
+                    return (False, f"{attacker.get_name()} has no ammo")
+                elif attacker.has_fired:
+                    return (False, f"{attacker.get_name()} has already fired this turn")
+                else:
+                    return (False, f"{attacker.get_name()} cannot attack")
+            elif not target_hex.unit:
+                return (False, "No target at that hex")
+            elif target_hex.unit.owner == attacker.owner:
+                return (False, "Cannot attack friendly units")
+            else:
+                distance = self.hex_map.distance(attacker.hex, target_hex)
+                max_range = 2 if attacker.get_class() == UnitClass.ARTILLERY else 1
+                return (False, f"Target out of range (distance: {distance}, max: {max_range})")
+
         defender = target_hex.unit
         attacker_losses, defender_losses = attacker.attack(defender)
-        
+
+        # Build combat message
+        messages = []
+        messages.append(f"{attacker.get_name()} attacks {defender.get_name()}!")
+        messages.append(f"  Attacker damage: {attacker_losses}, Defender damage: {defender_losses}")
+
         # Remove destroyed units
         if defender.is_destroyed():
             target_hex.unit = None
             self.get_other_player().remove_unit(defender)
-        
+            messages.append(f"  {defender.get_name()} destroyed!")
+        else:
+            messages.append(f"  {defender.get_name()} strength: {defender.strength}/10")
+
         if attacker.is_destroyed():
             attacker.hex.unit = None
             self.current_player.remove_unit(attacker)
-        
-        return True
+            messages.append(f"  {attacker.get_name()} destroyed in counterattack!")
+        else:
+            messages.append(f"  {attacker.get_name()} strength: {attacker.strength}/10")
+
+        return (True, "\n".join(messages))

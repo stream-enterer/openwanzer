@@ -59,6 +59,11 @@ class PanzerGame(arcade.Window):
         self.selected_unit_label = None
         self.ai_thinking_label = None
         self.hud_box = None
+        self.message_box = None
+
+        # Message log
+        self.messages = []
+        self.max_messages = 100
 
         # AI processing
         self.ai_thinking = False
@@ -96,6 +101,12 @@ class PanzerGame(arcade.Window):
         # Setup GUI
         self.setup_gui()
 
+        # Add initial message
+        if not self.messages:  # Only add if messages is empty (new game)
+            self.add_message("=== Game started ===")
+            self.add_message(f"=== {self.game_state.get_current_player().get_name()}'s turn ===")
+            self.add_message("Deploy your units and capture objectives!")
+
     def setup_gui(self):
         """Setup the GUI layout with horizontal UIBoxLayout for 70/30 split"""
         self.ui_manager.clear()
@@ -126,10 +137,17 @@ class PanzerGame(arcade.Window):
         )
         hud_container.add(hud_background, anchor_x="left", anchor_y="top")
 
-        # Create a vertical box layout for HUD content
-        self.hud_box = arcade.gui.UIBoxLayout(
+        # Create a vertical box layout for HUD content (top 75% and bottom 25%)
+        hud_vertical_layout = arcade.gui.UIBoxLayout(
             vertical=True,
-            space_between=10
+            space_between=0
+        )
+
+        # Top section (75% of HUD) - contains game info
+        top_section = arcade.gui.UIBoxLayout(
+            vertical=True,
+            space_between=10,
+            size_hint=(1, 0.75)
         )
 
         # Create HUD labels
@@ -188,23 +206,76 @@ class PanzerGame(arcade.Window):
             width=self.hud_panel_width - 40
         )
 
-        # Add widgets to HUD box
-        self.hud_box.add(self.turn_label)
-        self.hud_box.add(self.player_label)
-        self.hud_box.add(self.units_label)
-        self.hud_box.add(spacer1)
-        self.hud_box.add(self.selected_unit_label)
-        self.hud_box.add(spacer2)
-        self.hud_box.add(controls_label)
-        self.hud_box.add(self.ai_thinking_label)
+        # Add widgets to top section
+        top_section.add(self.turn_label)
+        top_section.add(self.player_label)
+        top_section.add(self.units_label)
+        top_section.add(spacer1)
+        top_section.add(self.selected_unit_label)
+        top_section.add(spacer2)
+        top_section.add(controls_label)
+        top_section.add(self.ai_thinking_label)
 
-        # Position HUD box in the HUD container
-        hud_container.add(
-            self.hud_box,
+        # Wrap top section in a padding container
+        top_section_wrapper = arcade.gui.UIAnchorLayout(size_hint=(1, 0.75))
+        top_section_wrapper.add(
+            top_section,
             anchor_x="left",
             anchor_y="top",
             align_x=20,
             align_y=-20
+        )
+
+        # Bottom section (25% of HUD) - message box
+        message_box_height = int(self.height * 0.25)
+
+        # Create message box with border
+        message_box_container = arcade.gui.UIAnchorLayout(
+            size_hint=(1, 0.25),
+            size_hint_min=(self.hud_panel_width, message_box_height)
+        )
+
+        # Message box background (dark gray with border)
+        message_bg = arcade.gui.UISpace(
+            color=(30, 30, 30, 255),
+            size_hint=(1, 1)
+        )
+        message_box_container.add(message_bg, anchor_x="left", anchor_y="bottom")
+
+        # Create text area for messages
+        self.message_box = arcade.gui.UITextArea(
+            text="=== Game Messages ===\n",
+            width=self.hud_panel_width - 44,
+            height=message_box_height - 44,
+            font_size=9,
+            text_color=arcade.color.WHITE
+        )
+
+        # Create a bordered wrapper for the message box
+        message_border = arcade.gui.UIBorder(
+            child=self.message_box,
+            border_width=1,
+            border_color=arcade.color.WHITE
+        )
+
+        # Position message box with padding
+        message_box_container.add(
+            message_border,
+            anchor_x="left",
+            anchor_y="bottom",
+            align_x=20,
+            align_y=20
+        )
+
+        # Add sections to vertical layout
+        hud_vertical_layout.add(top_section_wrapper)
+        hud_vertical_layout.add(message_box_container)
+
+        # Add vertical layout to HUD container
+        hud_container.add(
+            hud_vertical_layout,
+            anchor_x="left",
+            anchor_y="top"
         )
 
         # Add both panels to main layout
@@ -217,6 +288,23 @@ class PanzerGame(arcade.Window):
 
         # Initial update of HUD
         self.update_hud()
+
+    def add_message(self, message, color=arcade.color.WHITE):
+        """Add a message to the message log"""
+        # Add timestamp or turn number
+        turn_str = f"[T{self.game_state.turn}]" if self.game_state else "[--]"
+        formatted_message = f"{turn_str} {message}"
+
+        self.messages.append(formatted_message)
+
+        # Keep only the last max_messages
+        if len(self.messages) > self.max_messages:
+            self.messages = self.messages[-self.max_messages:]
+
+        # Update message box text
+        if self.message_box:
+            message_text = "=== Game Messages ===\n" + "\n".join(self.messages)
+            self.message_box.text = message_text
 
     def on_resize(self, width, height):
         """Handle window resize"""
@@ -492,18 +580,34 @@ class PanzerGame(arcade.Window):
         if not self.selected_unit:
             if hex_tile.unit and hex_tile.unit.owner == self.game_state.current_player.side:
                 self.select_unit(hex_tile.unit)
+                self.add_message(f"{hex_tile.unit.get_name()} selected")
+            elif hex_tile.unit:
+                self.add_message(f"Cannot select enemy unit")
         else:
             # Try to move selected unit
             if hex_tile in self.reachable_hexes:
-                self.game_state.move_unit(self.selected_unit, hex_tile)
+                success, message = self.game_state.move_unit(self.selected_unit, hex_tile)
+                self.add_message(message)
                 self.deselect_unit()
+            else:
+                # Clicked on unreachable hex
+                if hex_tile.unit:
+                    self.add_message(f"Cannot move there - hex occupied")
+                else:
+                    self.add_message(f"Hex is not reachable")
         self.update_hud()
 
     def handle_right_click(self, hex_tile):
         """Handle right mouse button click"""
-        if self.selected_unit and hex_tile in self.attackable_hexes:
-            self.game_state.attack_unit(self.selected_unit, hex_tile)
-            self.deselect_unit()
+        if self.selected_unit:
+            if hex_tile in self.attackable_hexes:
+                success, message = self.game_state.attack_unit(self.selected_unit, hex_tile)
+                self.add_message(message)
+                self.deselect_unit()
+            else:
+                self.add_message(f"Target is not attackable")
+        else:
+            self.add_message(f"No unit selected")
         self.update_hud()
     
     def select_unit(self, unit):
@@ -585,18 +689,30 @@ class PanzerGame(arcade.Window):
             # End turn
             if not self.game_state.game_over:
                 self.deselect_unit()
-                self.game_state.end_turn()
+                current_player = self.game_state.get_current_player()
+                self.add_message(f"--- {current_player.get_name()} ends turn ---")
+                game_over_msg = self.game_state.end_turn()
+                if game_over_msg:
+                    self.add_message(game_over_msg)
+                else:
+                    new_player = self.game_state.get_current_player()
+                    self.add_message(f"=== {new_player.get_name()}'s turn begins ===")
                 self.update_hud()
 
         elif key == arcade.key.ESCAPE:
             # Deselect
+            if self.selected_unit:
+                self.add_message(f"{self.selected_unit.get_name()} deselected")
             self.deselect_unit()
             self.update_hud()
 
         elif key == arcade.key.R:
             # Restart game
             if self.game_state.game_over:
+                self.messages = []
                 self.setup()
+                self.add_message("=== New game started ===")
+                self.add_message(f"=== {self.game_state.get_current_player().get_name()}'s turn ===")
 
         # Camera pan controls
         elif key in (arcade.key.UP, arcade.key.W):
@@ -619,6 +735,7 @@ class PanzerGame(arcade.Window):
             if not self.ai_thinking:
                 self.ai_thinking = True
                 self.ai_delay = 0.5  # Delay so we can see what AI is doing
+                self.add_message(f"=== {current_player.get_name()} AI thinking... ===")
                 self.update_hud()
 
             self.ai_delay -= delta_time
@@ -626,14 +743,22 @@ class PanzerGame(arcade.Window):
                 action_type, unit, target = self.ai.get_action()
 
                 if action_type == ActionType.END_TURN:
-                    self.game_state.end_turn()
+                    self.add_message(f"--- {current_player.get_name()} AI ends turn ---")
+                    game_over_msg = self.game_state.end_turn()
                     self.ai_thinking = False
+                    if game_over_msg:
+                        self.add_message(game_over_msg)
+                    else:
+                        new_player = self.game_state.get_current_player()
+                        self.add_message(f"=== {new_player.get_name()}'s turn begins ===")
                     self.update_hud()
                 elif action_type == ActionType.MOVE:
-                    self.game_state.move_unit(unit, target)
+                    success, message = self.game_state.move_unit(unit, target)
+                    self.add_message(f"AI: {message}")
                     self.ai_delay = 0.3  # Small delay between actions
                 elif action_type == ActionType.ATTACK:
-                    self.game_state.attack_unit(unit, target)
+                    success, message = self.game_state.attack_unit(unit, target)
+                    self.add_message(f"AI: {message}")
                     self.ai_delay = 0.3
 
 
