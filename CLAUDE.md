@@ -38,23 +38,23 @@ panzer_proto/
 
 **Key Components**:
 - `PanzerGame(arcade.Window)` - Main game window class
-- Text batching with Pyglet for performance (15+ text objects)
-- 2-panel GUI: game panel (850px) + HUD panel (350px)
+- 2-panel GUI using horizontal UIBoxLayout: game panel (70%) + HUD panel (30%)
+- Camera2D with viewport for scrollable game view constrained to game panel
 - Event handlers: `on_draw()`, `on_update()`, `on_mouse_press()`, `on_key_press()`
 
 **Important Methods**:
 - `setup()` - Initialize game state and GUI
-- `setup_gui()` - Configure 2-panel layout with arcade.gui
-- `create_text_objects()` - Pre-create all Text objects for batch rendering
-- `update_text_objects()` - Update text content without recreation
+- `setup_gui()` - Configure 2-panel layout with arcade.gui.UIBoxLayout (horizontal)
+- `update_hud()` - Update HUD labels with current game state
 - `draw_map()` - Render hex grid and terrain
 - `draw_units()` - Render all units with health bars
 - `select_unit()` / `deselect_unit()` - Handle unit selection
+- `on_draw()` - Sets viewport for game camera, renders game and GUI
 
 **Performance Critical**:
-- Uses `self.text_batch.draw()` for efficient text rendering
-- All text objects pre-created, only content updated
-- Panel boundaries checked to avoid unnecessary draws
+- Uses arcade.gui.UILabel for HUD text (efficient rendering)
+- Viewport constrains game rendering to left 70% of screen
+- Panel boundaries checked for mouse interactions
 
 ### constants.py - Game Configuration
 **Purpose**: All game constants, enums, and static data
@@ -158,25 +158,113 @@ attacker_losses = max(0, (defender_power - attacker_power // 2) // 4)
 
 ## Critical Design Patterns
 
-### 1. Text Rendering Performance Pattern
-**Problem**: `arcade.draw_text()` is extremely slow (5-10ms/frame)
+### 1. GUI Layout Pattern (70/30 Split)
+**Problem**: Creating a responsive 2-panel layout with game panel and HUD
 
-**Solution**: Pre-create Text objects with Batch rendering
+**Solution**: Use horizontal UIBoxLayout with size_hint
 ```python
-# Setup phase
-self.text_batch = Batch()
-self.turn_text = arcade.Text("Turn: 1", x, y, color, 16, batch=self.text_batch)
+def setup_gui(self):
+    # Create horizontal layout for 70/30 split
+    main_layout = arcade.gui.UIBoxLayout(
+        vertical=False,  # Horizontal layout
+        space_between=0
+    )
 
-# Update phase (cheap)
-self.turn_text.text = f"Turn: {turn_number}"
+    # Game panel (left, 70%) - transparent spacer
+    game_panel = arcade.gui.UISpace(
+        color=(0, 0, 0, 0),
+        size_hint=(0.7, 1)  # 70% width, 100% height
+    )
 
-# Render phase (very fast - single draw call)
-self.text_batch.draw()
+    # HUD panel (right, 30%) - with content
+    hud_container = arcade.gui.UIAnchorLayout(
+        size_hint=(0.3, 1)  # 30% width, 100% height
+    )
+    # ... add HUD widgets to hud_container ...
+
+    # Add both to main layout
+    main_layout.add(game_panel)
+    main_layout.add(hud_container)
+    self.ui_manager.add(main_layout)
 ```
 
-**Rule**: NEVER use `arcade.draw_text()` in loops or for frequently updated text
+**Rule**: Use UIBoxLayout for horizontal/vertical splits, UIAnchorLayout for positioning within containers
 
-### 2. Coordinate System Pattern
+### 2. Camera and Viewport Pattern
+**Problem**: Constraining game rendering to only the game panel area
+
+**Solution**: Set camera viewport before using camera
+```python
+def on_draw(self):
+    self.clear()
+
+    # Set viewport to game panel area (left 70%)
+    self.game_camera.viewport = (0, 0, self.game_panel_width, self.height)
+
+    # Position camera for scrolling (world space position)
+    self.game_camera.position = (self.camera_x, self.camera_y)
+    self.game_camera.use()
+
+    # Draw game content (constrained to viewport)
+    self.draw_map()
+    self.draw_units()
+
+    # Reset to default camera for UI (full screen)
+    self.default_camera.use()
+    self.ui_manager.draw()
+```
+
+**Camera Movement** (keyboard controls):
+```python
+# UP key: view moves up -> camera looks lower
+elif key in (arcade.key.UP, arcade.key.W):
+    self.camera_y -= self.camera_speed
+
+# DOWN key: view moves down -> camera looks higher
+elif key in (arcade.key.DOWN, arcade.key.S):
+    self.camera_y += self.camera_speed
+
+# LEFT key: view moves left -> camera looks right
+elif key in (arcade.key.LEFT, arcade.key.A):
+    self.camera_x += self.camera_speed
+
+# RIGHT key: view moves right -> camera looks left
+elif key in (arcade.key.RIGHT, arcade.key.D):
+    self.camera_x -= self.camera_speed
+```
+
+**Rule**: Camera position is where the camera looks in world space (inverse of view movement direction)
+
+### 3. Unit Selection Pattern
+```python
+# Select unit
+self.selected_unit = unit
+self.reachable_hexes = calculate_movement_range()
+self.attackable_hexes = calculate_attack_range()
+self.update_hud()  # Update HUD
+
+# Deselect unit
+self.selected_unit = None
+self.reachable_hexes = {}
+self.attackable_hexes = []
+self.update_hud()  # Clear HUD
+```
+
+### 4. GUI Panel Boundary Pattern
+```python
+# Game panel is left 70% of screen width
+game_panel_width = int(self.width * 0.7)
+
+# Mouse clicks should respect boundaries
+if x >= game_panel_width:
+    return  # Click was in HUD, ignore for game actions
+
+# Viewport automatically constrains drawing to game panel
+self.game_camera.viewport = (0, 0, game_panel_width, self.height)
+# No need to manually check drawing boundaries
+```
+
+### 5. Coordinate System Pattern
 **Arcade 3.x uses LRBT** (Left-Right-Bottom-Top) for rectangles:
 ```python
 # CORRECT
@@ -185,35 +273,6 @@ arcade.draw_lrbt_rectangle_filled(left, right, bottom, top, color)
 
 # WRONG (will throw ValueError)
 arcade.draw_lrbt_rectangle_filled(left, right, top, bottom, color)
-```
-
-### 3. Unit Selection Pattern
-```python
-# Select unit
-self.selected_unit = unit
-self.reachable_hexes = calculate_movement_range()
-self.attackable_hexes = calculate_attack_range()
-self.update_text_objects()  # Update HUD
-
-# Deselect unit
-self.selected_unit = None
-self.reachable_hexes = {}
-self.attackable_hexes = []
-self.update_text_objects()  # Clear HUD
-```
-
-### 4. GUI Panel Boundary Pattern
-```python
-# Game panel is 0 to GAME_PANEL_WIDTH (850)
-# HUD panel is GAME_PANEL_WIDTH to SCREEN_WIDTH (1200)
-
-# Mouse clicks should respect boundaries
-if x > GAME_PANEL_WIDTH:
-    return  # Click was in HUD, ignore for game actions
-
-# Drawing should respect boundaries
-if hex_x > GAME_PANEL_WIDTH:
-    continue  # Don't draw hexes outside game panel
 ```
 
 ## Common Development Tasks
@@ -266,24 +325,31 @@ TERRAIN_DEFENSE[TerrainType.NEW_TERRAIN] = 15
 
 ### Adding New HUD Information
 
-1. **Create Text object in main.py**:
+1. **Create UILabel in setup_gui() in main.py**:
 ```python
-def create_text_objects(self):
-    # ... existing text objects
-    self.new_info_text = arcade.Text(
-        "New Info: 0",
-        hud_x, hud_y - 80,  # Position
-        arcade.color.WHITE,
-        12,
-        batch=self.text_batch  # Important!
+def setup_gui(self):
+    # ... existing setup ...
+
+    # Create new info label
+    new_info_label = arcade.gui.UILabel(
+        text="New Info: 0",
+        font_size=12,
+        text_color=arcade.color.WHITE,
+        width=self.hud_panel_width - 40
     )
+
+    # Add to HUD box
+    self.hud_box.add(new_info_label)
+
+    # Store reference for updates
+    self.new_info_label = new_info_label
 ```
 
-2. **Update in update_text_objects()**:
+2. **Update in update_hud()**:
 ```python
-def update_text_objects(self):
+def update_hud(self):
     # ... existing updates
-    self.new_info_text.text = f"New Info: {self.game_state.new_value}"
+    self.new_info_label.text = f"New Info: {self.game_state.new_value}"
 ```
 
 ### Improving AI Behavior
@@ -316,23 +382,44 @@ def attack_unit(self, attacker, target_hex):
 - ❌ Avoid: `arcade.draw_text()` (extremely slow)
 
 ### GUI System
-- Use `arcade.gui.UIManager()` for layouts
-- `UIBoxLayout` for horizontal/vertical arrangements
-- `UIAnchorLayout` for positioning
-- Always call `ui_manager.enable()` and `ui_manager.draw()`
+- Use `arcade.gui.UIManager()` for all GUI elements
+- `UIBoxLayout` for horizontal/vertical arrangements (use for 70/30 splits)
+- `UIAnchorLayout` for positioning within containers (default size_hint=(1,1))
+- `UIGridLayout` for grid-based layouts with specific column/row counts
+- Always call `ui_manager.enable()` in setup and `ui_manager.draw()` in on_draw
+- Use `size_hint` to control proportional sizing (e.g., (0.7, 1) for 70% width, 100% height)
 
-### Text Rendering
+### GUI Text Rendering
 ```python
-# Create once
-text = arcade.Text("Hello", x, y, color, size, batch=batch)
+# Create UILabel for HUD text (efficient, managed by UIManager)
+label = arcade.gui.UILabel(
+    text="Hello",
+    font_size=14,
+    text_color=arcade.color.WHITE,
+    width=300
+)
+hud_box.add(label)  # Add to layout
 
-# Update many times (cheap)
-text.text = "New content"
-text.color = new_color
-text.x = new_x
+# Update text content (cheap)
+label.text = "New content"
+label.text_color = new_color
 
-# Draw (batch draws all at once)
-batch.draw()
+# UIManager automatically renders all GUI elements
+ui_manager.draw()  # In on_draw()
+```
+
+### Camera and Viewport
+```python
+# Set viewport to constrain rendering area
+camera.viewport = (left, bottom, width, height)  # In pixels
+
+# Position camera in world space
+camera.position = (world_x, world_y)
+camera.use()
+
+# Camera movement: position is inverse of view direction
+# UP -> decrease camera_y (view moves up, camera looks lower)
+# LEFT -> increase camera_x (view moves left, camera looks right)
 ```
 
 ## Performance Considerations
@@ -345,11 +432,12 @@ batch.draw()
 - Unit rendering: ~1ms/frame
 
 ### Performance Rules
-1. **Text**: Always use Text objects with Batch, never draw_text()
-2. **Rendering**: Minimize draw calls, batch when possible
-3. **Updates**: Only update what changed
-4. **Pathfinding**: Cache results when possible
-5. **AI**: Limit AI thinking time per frame
+1. **GUI**: Use arcade.gui.UILabel for HUD text, never arcade.draw_text()
+2. **Camera**: Set viewport to constrain rendering to specific screen areas
+3. **Rendering**: Minimize draw calls, use layouts efficiently
+4. **Updates**: Only update what changed (e.g., only update_hud() when state changes)
+5. **Pathfinding**: Cache results when possible
+6. **AI**: Limit AI thinking time per frame
 
 ### Known Performance Bottlenecks
 - None currently! All optimizations applied.
@@ -372,9 +460,11 @@ batch.draw()
 
 ### Common Issues to Check
 - Ensure bottom < top in all lrbt rectangle calls
-- Verify text objects are added to batch
-- Check that update_text_objects() is called after state changes
-- Verify panel boundaries are respected
+- Verify UILabels are added to HUD layout (hud_box.add())
+- Check that update_hud() is called after state changes
+- Verify panel boundaries are respected in mouse event handlers
+- Ensure camera viewport is set before using game camera
+- Confirm camera movement directions are correct (inverse of view movement)
 
 ## Debugging Tips
 
@@ -472,15 +562,19 @@ git merge feature/new-unit-type
 - `SPACE` - End turn
 - `ESC` - Deselect unit
 - `R` - Restart game (when game over)
+- `Arrow Keys / WASD` - Pan camera (scroll the map)
 
 ### Key Mouse Actions
 - `Left Click` - Select/Move unit
 - `Right Click` - Attack
+- `Middle Click + Drag` - Pan camera
 - `Mouse Move` - Highlight hex
 
 ### Important Constants
-- `SCREEN_WIDTH = 1200`, `SCREEN_HEIGHT = 800`
-- `GAME_PANEL_WIDTH = 850`, `HUD_PANEL_WIDTH = 350`
+- `SCREEN_WIDTH = 1200`, `SCREEN_HEIGHT = 800` (initial window size, resizable)
+- `game_panel_ratio = 0.7` (70% of width for game panel)
+- `hud_panel_ratio = 0.3` (30% of width for HUD panel)
+- Panel widths calculated dynamically: `int(width * ratio)`
 - `HEX_SIZE = 40`
 - `MAP_ROWS = 12`, `MAP_COLS = 16`
 
