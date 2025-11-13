@@ -4,6 +4,8 @@ Python Arcade Implementation
 """
 
 import arcade
+import arcade.gui
+from arcade.camera import Camera2D
 import math
 from constants import *
 from game_state import GameState
@@ -13,27 +15,34 @@ class PanzerGame(arcade.Window):
     """Main game window"""
     
     def __init__(self):
-        super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
-        
+        super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE, resizable=False)
+
         arcade.set_background_color(arcade.color.BLACK)
-        
+
         # Game state
         self.game_state = None
         self.ai = None
-        
+
         # UI state
         self.selected_unit = None
         self.reachable_hexes = {}
         self.attackable_hexes = []
         self.highlighted_hex = None
-        
-        # Camera
-        self.camera_x = 0
-        self.camera_y = 0
-        
+
+        # Camera for game viewport
+        self.game_camera = Camera2D()
+        self.ui_camera = Camera2D()
+
+        # UI Manager
+        self.ui_manager = arcade.gui.UIManager()
+
+        # Game panel width and HUD width
+        self.game_panel_width = 850
+        self.hud_panel_width = 350
+
         # Info panel
         self.info_text = ""
-        
+
         # AI processing
         self.ai_thinking = False
         self.ai_delay = 0
@@ -45,20 +54,68 @@ class PanzerGame(arcade.Window):
         self.selected_unit = None
         self.reachable_hexes = {}
         self.attackable_hexes = []
+
+        # Setup GUI
+        self.setup_gui()
+
+    def setup_gui(self):
+        """Setup the GUI layout with UIGridLayout"""
+        self.ui_manager.clear()
+
+        # Create a grid layout with 2 columns (game panel + HUD panel)
+        # The grid layout will handle the layout of the two panels
+        grid = arcade.gui.UIGridLayout(
+            column_count=2,
+            row_count=1,
+            horizontal_spacing=0,
+            vertical_spacing=0,
+            size_hint=(1, 1)
+        )
+
+        # Create game panel (left side) - just a spacer to reserve space
+        game_panel = arcade.gui.UISpace(
+            width=self.game_panel_width,
+            height=SCREEN_HEIGHT,
+            color=(0, 0, 0, 0)  # Transparent
+        )
+
+        # Create HUD panel (right side)
+        hud_panel = arcade.gui.UISpace(
+            width=self.hud_panel_width,
+            height=SCREEN_HEIGHT,
+            color=(20, 20, 20, 255)  # Dark background
+        )
+
+        # Add panels to grid
+        grid.add(game_panel, column=0, row=0)
+        grid.add(hud_panel, column=1, row=0)
+
+        # Add grid to UI manager
+        self.ui_manager.add(grid)
+        self.ui_manager.enable()
         
     def on_draw(self):
         """Render the game"""
         self.clear()
-        
+
+        # Draw the UI manager (background panels)
+        self.ui_manager.draw()
+
+        # Use game camera for game viewport
+        self.game_camera.use()
+
         # Draw map
         self.draw_map()
-        
+
         # Draw units
         self.draw_units()
-        
+
+        # Use UI camera for UI elements
+        self.ui_camera.use()
+
         # Draw UI
         self.draw_ui()
-        
+
         # Draw game over screen
         if self.game_state.game_over:
             self.draw_game_over()
@@ -68,16 +125,20 @@ class PanzerGame(arcade.Window):
         for row in self.game_state.hex_map.hexes:
             for hex_tile in row:
                 x, y = hex_tile.get_pixel_position()
-                
+
+                # Skip hexes outside game panel
+                if x > self.game_panel_width:
+                    continue
+
                 # Get color based on terrain
                 color = TERRAIN_COLORS[hex_tile.terrain]
-                
+
                 # Draw hex
                 self.draw_hex(x, y, color)
-                
+
                 # Draw hex border
                 self.draw_hex_outline(x, y, COLOR_HEX_BORDER, 2)
-                
+
                 # Highlight if selected, reachable, or attackable
                 if hex_tile == self.highlighted_hex:
                     self.draw_hex_outline(x, y, (255, 255, 255), 3)
@@ -85,7 +146,7 @@ class PanzerGame(arcade.Window):
                     self.draw_hex(x, y, COLOR_MOVEABLE, filled=False)
                 elif hex_tile in self.attackable_hexes:
                     self.draw_hex(x, y, COLOR_ATTACKABLE, filled=False)
-                
+
                 # Draw objective marker
                 if hex_tile.is_objective:
                     marker_color = arcade.color.WHITE
@@ -124,10 +185,14 @@ class PanzerGame(arcade.Window):
             for unit in player.get_active_units():
                 if unit.hex:
                     x, y = unit.hex.get_pixel_position()
-                    
+
+                    # Skip units outside game panel
+                    if x > self.game_panel_width:
+                        continue
+
                     # Unit color based on side
                     color = SIDE_COLORS[unit.owner]
-                    
+
                     # Draw unit as rectangle
                     size = 20
                     # lrbt = left, right, bottom, top (bottom < top)
@@ -138,19 +203,19 @@ class PanzerGame(arcade.Window):
                         x - size/2, x + size/2, y - size/2, y + size/2,
                         arcade.color.BLACK, 2
                     )
-                    
+
                     # Draw unit type indicator
                     unit_text = self.get_unit_symbol(unit)
                     arcade.draw_text(unit_text, x, y, arcade.color.WHITE,
                                    12, anchor_x="center", anchor_y="center",
                                    bold=True)
-                    
+
                     # Draw strength bar
                     bar_width = 20
                     bar_height = 3
                     bar_x = x
                     bar_y = y - size / 2 - 8
-                    
+
                     # Background (red) - lrbt format
                     arcade.draw_lrbt_rectangle_filled(
                         bar_x - bar_width/2, bar_x + bar_width/2,
@@ -164,7 +229,7 @@ class PanzerGame(arcade.Window):
                         bar_y - bar_height/2, bar_y + bar_height/2,
                         arcade.color.GREEN
                     )
-                    
+
                     # Highlight selected unit
                     if unit == self.selected_unit:
                         arcade.draw_lrbt_rectangle_outline(
@@ -189,54 +254,54 @@ class PanzerGame(arcade.Window):
     
     def draw_ui(self):
         """Draw UI elements"""
-        # Draw info panel
-        panel_x = SCREEN_WIDTH - 250
-        panel_y = SCREEN_HEIGHT - 20
-        
+        # HUD panel starts at game_panel_width
+        hud_x = self.game_panel_width + 20
+        hud_y = SCREEN_HEIGHT - 40
+
         # Turn info
         turn_text = f"Turn: {self.game_state.turn}/{self.game_state.max_turns}"
-        arcade.draw_text(turn_text, panel_x, panel_y, arcade.color.WHITE, 14, bold=True)
-        
+        arcade.draw_text(turn_text, hud_x, hud_y, arcade.color.WHITE, 14, bold=True)
+
         # Current player
         player = self.game_state.get_current_player()
         player_text = f"Current: {player.get_name()}"
-        arcade.draw_text(player_text, panel_x, panel_y - 25, 
+        arcade.draw_text(player_text, hud_x, hud_y - 30,
                         player.get_color(), 14, bold=True)
-        
+
         # Unit count
         units_text = f"Units: {len(player.get_active_units())}"
-        arcade.draw_text(units_text, panel_x, panel_y - 50, 
+        arcade.draw_text(units_text, hud_x, hud_y - 60,
                         arcade.color.WHITE, 12)
-        
+
         # Selected unit info
         if self.selected_unit:
-            info_y = SCREEN_HEIGHT - 150
-            arcade.draw_text("Selected Unit:", panel_x, info_y, 
+            info_y = hud_y - 120
+            arcade.draw_text("Selected Unit:", hud_x, info_y,
                            arcade.color.WHITE, 12, bold=True)
-            
+
             lines = self.selected_unit.get_info_string().split('\n')
             for i, line in enumerate(lines):
-                arcade.draw_text(line, panel_x, info_y - 20 - (i * 15),
+                arcade.draw_text(line, hud_x, info_y - 20 - (i * 15),
                                arcade.color.WHITE, 10)
-        
-        # Instructions
-        inst_y = 150
+
+        # Instructions (bottom of HUD)
+        inst_y = 180
         instructions = [
-            "Left Click: Select/Move unit",
+            "Left Click: Select/Move",
             "Right Click: Attack",
             "SPACE: End turn",
             "ESC: Deselect"
         ]
-        
-        arcade.draw_text("Controls:", 10, inst_y + 60,
+
+        arcade.draw_text("Controls:", hud_x, inst_y + 60,
                         arcade.color.WHITE, 12, bold=True)
         for i, inst in enumerate(instructions):
-            arcade.draw_text(inst, 10, inst_y + 40 - (i * 15),
+            arcade.draw_text(inst, hud_x, inst_y + 40 - (i * 15),
                            arcade.color.WHITE, 10)
-        
-        # AI thinking indicator
+
+        # AI thinking indicator (centered on screen)
         if self.ai_thinking:
-            arcade.draw_text("AI Thinking...", SCREEN_WIDTH // 2, 
+            arcade.draw_text("AI Thinking...", SCREEN_WIDTH // 2,
                            SCREEN_HEIGHT - 50,
                            arcade.color.YELLOW, 16, bold=True,
                            anchor_x="center")
@@ -272,17 +337,21 @@ class PanzerGame(arcade.Window):
         """Handle mouse clicks"""
         if self.game_state.game_over:
             return
-        
+
+        # Only allow clicks in game panel (not in HUD)
+        if x >= self.game_panel_width:
+            return
+
         # Only allow human player to click
         if self.game_state.current_player.player_type != PlayerType.HUMAN:
             return
-        
+
         # Find clicked hex
         clicked_hex = self.get_hex_at_position(x, y)
-        
+
         if not clicked_hex:
             return
-        
+
         if button == arcade.MOUSE_BUTTON_LEFT:
             self.handle_left_click(clicked_hex)
         elif button == arcade.MOUSE_BUTTON_RIGHT:
@@ -355,7 +424,11 @@ class PanzerGame(arcade.Window):
     
     def on_mouse_motion(self, x, y, dx, dy):
         """Track mouse for highlighting"""
-        self.highlighted_hex = self.get_hex_at_position(x, y)
+        # Only track mouse in game panel
+        if x >= self.game_panel_width:
+            self.highlighted_hex = None
+        else:
+            self.highlighted_hex = self.get_hex_at_position(x, y)
     
     def on_key_press(self, key, modifiers):
         """Handle keyboard input"""
