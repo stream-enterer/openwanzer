@@ -861,12 +861,6 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
   Color labelColor = GetColor(GuiGetStyle(LABEL, TEXT_COLOR_NORMAL));
   Color valueColor = GetColor(GuiGetStyle(DEFAULT, TEXT_COLOR_DISABLED));
 
-  // Check if any dropdown is open
-  bool anyDropdownOpen = game.settings.resolutionDropdownEdit ||
-                         game.settings.fpsDropdownEdit ||
-                         game.settings.guiScaleDropdownEdit ||
-                         game.settings.styleThemeDropdownEdit;
-
   // Store positions for dropdowns to draw them last
   int resolutionY = y;
   y += 50;
@@ -887,17 +881,13 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
 
   // Fullscreen
   DrawText("Fullscreen:", labelX, fullscreenY, 20, labelColor);
-  if (!anyDropdownOpen || game.settings.resolutionDropdownEdit) {
-    GuiCheckBox(Rectangle{(float)controlX, (float)fullscreenY - 5, 30, 30}, "",
-                &game.settings.fullscreen);
-  }
+  GuiCheckBox(Rectangle{(float)controlX, (float)fullscreenY - 5, 30, 30}, "",
+              &game.settings.fullscreen);
 
   // VSync
   DrawText("VSync:", labelX, vsyncY, 20, labelColor);
-  if (!anyDropdownOpen || game.settings.resolutionDropdownEdit) {
-    GuiCheckBox(Rectangle{(float)controlX, (float)vsyncY - 5, 30, 30}, "",
-                &game.settings.vsync);
-  }
+  GuiCheckBox(Rectangle{(float)controlX, (float)vsyncY - 5, 30, 30}, "",
+              &game.settings.vsync);
 
   // FPS Target label
   DrawText("FPS Target:", labelX, fpsY, 20, labelColor);
@@ -905,9 +895,7 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
       game.settings.fpsIndex == 6
           ? "Unlimited"
           : std::to_string(FPS_VALUES[game.settings.fpsIndex]);
-  if (!anyDropdownOpen || game.settings.fpsDropdownEdit) {
-    DrawText(currentFps.c_str(), controlX + controlWidth + 15, fpsY, 20, valueColor);
-  }
+  DrawText(currentFps.c_str(), controlX + controlWidth + 15, fpsY, 20, valueColor);
 
   // GUI Scale label
   DrawText("GUI Scale:", labelX, guiScaleY, 20, labelColor);
@@ -918,32 +906,26 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
   // MSAA
   DrawText("Anti-Aliasing (4x):", labelX, y, 20, labelColor);
   bool oldMsaa = game.settings.msaa;
-  if (!anyDropdownOpen) {
-    GuiCheckBox(Rectangle{(float)controlX, (float)y - 5, 30, 30}, "",
-                &game.settings.msaa);
-    if (game.settings.msaa != oldMsaa)
-      needsRestart = true;
-  }
+  GuiCheckBox(Rectangle{(float)controlX, (float)y - 5, 30, 30}, "",
+              &game.settings.msaa);
+  if (game.settings.msaa != oldMsaa)
+    needsRestart = true;
   y += 50;
 
   // Hex Size Slider
   DrawText("Hex Size:", labelX, y, 20, labelColor);
-  if (!anyDropdownOpen) {
-    GuiSlider(Rectangle{(float)controlX, (float)y, (float)controlWidth, 20}, "20",
-              "80", &game.settings.hexSize, 20, 80);
-    std::string hexSizeStr = std::to_string((int)game.settings.hexSize);
-    DrawText(hexSizeStr.c_str(), controlX + controlWidth + 15, y, 20, valueColor);
-  }
+  GuiSlider(Rectangle{(float)controlX, (float)y, (float)controlWidth, 20}, "20",
+            "80", &game.settings.hexSize, 20, 80);
+  std::string hexSizeStr = std::to_string((int)game.settings.hexSize);
+  DrawText(hexSizeStr.c_str(), controlX + controlWidth + 15, y, 20, valueColor);
   y += 50;
 
   // Pan Speed Slider
   DrawText("Camera Pan Speed:", labelX, y, 20, labelColor);
-  if (!anyDropdownOpen) {
-    GuiSlider(Rectangle{(float)controlX, (float)y, (float)controlWidth, 20}, "1",
-              "20", &game.settings.panSpeed, 1, 20);
-    std::string panSpeedStr = std::to_string((int)game.settings.panSpeed);
-    DrawText(panSpeedStr.c_str(), controlX + controlWidth + 15, y, 20, valueColor);
-  }
+  GuiSlider(Rectangle{(float)controlX, (float)y, (float)controlWidth, 20}, "1",
+            "20", &game.settings.panSpeed, 1, 20);
+  std::string panSpeedStr = std::to_string((int)game.settings.panSpeed);
+  DrawText(panSpeedStr.c_str(), controlX + controlWidth + 15, y, 20, valueColor);
   y += 60;
 
   // Buttons
