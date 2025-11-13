@@ -15,7 +15,7 @@ class PanzerGame(arcade.Window):
     """Main game window"""
     
     def __init__(self):
-        super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE, resizable=False)
+        super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE, resizable=True)
 
         arcade.set_background_color(arcade.color.BLACK)
 
@@ -36,9 +36,18 @@ class PanzerGame(arcade.Window):
         # UI Manager
         self.ui_manager = arcade.gui.UIManager()
 
-        # Game panel width and HUD width
-        self.game_panel_width = 850
-        self.hud_panel_width = 350
+        # Layout proportions (70% game, 30% HUD)
+        self.game_panel_ratio = 0.7
+        self.hud_panel_ratio = 0.3
+
+        # Calculated panel widths (updated on resize)
+        self.game_panel_width = int(self.width * self.game_panel_ratio)
+        self.hud_panel_width = int(self.width * self.hud_panel_ratio)
+
+        # Map scaling and offset for centering
+        self.map_scale = 1.0
+        self.map_offset_x = 0
+        self.map_offset_y = 0
 
         # Info panel
         self.info_text = ""
@@ -55,8 +64,47 @@ class PanzerGame(arcade.Window):
         self.reachable_hexes = {}
         self.attackable_hexes = []
 
+        # Calculate map scaling and centering
+        self.calculate_map_transform()
+
         # Setup GUI
         self.setup_gui()
+
+    def calculate_map_transform(self):
+        """Calculate map scaling and offset to center it in the game panel"""
+        if not self.game_state:
+            return
+
+        # Calculate map bounds
+        min_x, max_x = float('inf'), float('-inf')
+        min_y, max_y = float('inf'), float('-inf')
+
+        for row in self.game_state.hex_map.hexes:
+            for hex_tile in row:
+                x, y = hex_tile.get_pixel_position()
+                min_x = min(min_x, x - HEX_SIZE)
+                max_x = max(max_x, x + HEX_SIZE)
+                min_y = min(min_y, y - HEX_SIZE)
+                max_y = max(max_y, y + HEX_SIZE)
+
+        map_width = max_x - min_x
+        map_height = max_y - min_y
+
+        # Calculate scale to fit in game panel with padding
+        padding = 20
+        available_width = self.game_panel_width - (2 * padding)
+        available_height = self.height - (2 * padding)
+
+        scale_x = available_width / map_width if map_width > 0 else 1.0
+        scale_y = available_height / map_height if map_height > 0 else 1.0
+        self.map_scale = min(scale_x, scale_y, 1.0)  # Don't scale up, only down
+
+        # Calculate offset to center the map
+        scaled_map_width = map_width * self.map_scale
+        scaled_map_height = map_height * self.map_scale
+
+        self.map_offset_x = (self.game_panel_width - scaled_map_width) / 2 - (min_x * self.map_scale)
+        self.map_offset_y = (self.height - scaled_map_height) / 2 - (min_y * self.map_scale)
 
     def setup_gui(self):
         """Setup the GUI layout with UIGridLayout"""
@@ -75,14 +123,14 @@ class PanzerGame(arcade.Window):
         # Create game panel (left side) - just a spacer to reserve space
         game_panel = arcade.gui.UISpace(
             width=self.game_panel_width,
-            height=SCREEN_HEIGHT,
+            height=self.height,
             color=(0, 0, 0, 0)  # Transparent
         )
 
         # Create HUD panel (right side)
         hud_panel = arcade.gui.UISpace(
             width=self.hud_panel_width,
-            height=SCREEN_HEIGHT,
+            height=self.height,
             color=(20, 20, 20, 255)  # Dark background
         )
 
@@ -93,6 +141,32 @@ class PanzerGame(arcade.Window):
         # Add grid to UI manager
         self.ui_manager.add(grid)
         self.ui_manager.enable()
+
+    def on_resize(self, width, height):
+        """Handle window resize"""
+        super().on_resize(width, height)
+
+        # Update panel widths
+        self.game_panel_width = int(width * self.game_panel_ratio)
+        self.hud_panel_width = int(width * self.hud_panel_ratio)
+
+        # Recalculate map transform
+        if self.game_state:
+            self.calculate_map_transform()
+
+        # Rebuild GUI with new dimensions
+        self.setup_gui()
+
+    def transform_position(self, x, y):
+        """Transform a position using map scale and offset"""
+        return (x * self.map_scale + self.map_offset_x,
+                y * self.map_scale + self.map_offset_y)
+
+    def inverse_transform_position(self, screen_x, screen_y):
+        """Transform screen position back to map coordinates"""
+        map_x = (screen_x - self.map_offset_x) / self.map_scale
+        map_y = (screen_y - self.map_offset_y) / self.map_scale
+        return (map_x, map_y)
         
     def on_draw(self):
         """Render the game"""
@@ -125,9 +199,11 @@ class PanzerGame(arcade.Window):
         for row in self.game_state.hex_map.hexes:
             for hex_tile in row:
                 x, y = hex_tile.get_pixel_position()
+                # Transform position for scaling and centering
+                x, y = self.transform_position(x, y)
 
                 # Skip hexes outside game panel
-                if x > self.game_panel_width:
+                if x > self.game_panel_width or x < 0 or y > self.height or y < 0:
                     continue
 
                 # Get color based on terrain
@@ -152,8 +228,9 @@ class PanzerGame(arcade.Window):
                     marker_color = arcade.color.WHITE
                     if hex_tile.owner is not None:
                         marker_color = SIDE_COLORS[hex_tile.owner]
-                    arcade.draw_circle_filled(x, y, 8, marker_color)
-                    arcade.draw_circle_outline(x, y, 8, arcade.color.BLACK, 2)
+                    marker_size = 8 * self.map_scale
+                    arcade.draw_circle_filled(x, y, marker_size, marker_color)
+                    arcade.draw_circle_outline(x, y, marker_size, arcade.color.BLACK, 2)
     
     def draw_hex(self, x, y, color, filled=True):
         """Draw a hexagon"""
@@ -172,10 +249,11 @@ class PanzerGame(arcade.Window):
     def get_hex_points(self, x, y):
         """Get the corner points of a hex"""
         points = []
+        scaled_hex_size = HEX_SIZE * self.map_scale
         for i in range(6):
             angle = math.pi / 3 * i
-            point_x = x + HEX_SIZE * math.cos(angle)
-            point_y = y + HEX_SIZE * math.sin(angle)
+            point_x = x + scaled_hex_size * math.cos(angle)
+            point_y = y + scaled_hex_size * math.sin(angle)
             points.append((point_x, point_y))
         return points
     
@@ -185,16 +263,18 @@ class PanzerGame(arcade.Window):
             for unit in player.get_active_units():
                 if unit.hex:
                     x, y = unit.hex.get_pixel_position()
+                    # Transform position for scaling and centering
+                    x, y = self.transform_position(x, y)
 
                     # Skip units outside game panel
-                    if x > self.game_panel_width:
+                    if x > self.game_panel_width or x < 0 or y > self.height or y < 0:
                         continue
 
                     # Unit color based on side
                     color = SIDE_COLORS[unit.owner]
 
-                    # Draw unit as rectangle
-                    size = 20
+                    # Draw unit as rectangle (scaled)
+                    size = 20 * self.map_scale
                     # lrbt = left, right, bottom, top (bottom < top)
                     arcade.draw_lrbt_rectangle_filled(
                         x - size/2, x + size/2, y - size/2, y + size/2, color
@@ -206,15 +286,16 @@ class PanzerGame(arcade.Window):
 
                     # Draw unit type indicator
                     unit_text = self.get_unit_symbol(unit)
+                    font_size = max(8, int(12 * self.map_scale))
                     arcade.draw_text(unit_text, x, y, arcade.color.WHITE,
-                                   12, anchor_x="center", anchor_y="center",
+                                   font_size, anchor_x="center", anchor_y="center",
                                    bold=True)
 
-                    # Draw strength bar
-                    bar_width = 20
-                    bar_height = 3
+                    # Draw strength bar (scaled)
+                    bar_width = 20 * self.map_scale
+                    bar_height = 3 * self.map_scale
                     bar_x = x
-                    bar_y = y - size / 2 - 8
+                    bar_y = y - size / 2 - (8 * self.map_scale)
 
                     # Background (red) - lrbt format
                     arcade.draw_lrbt_rectangle_filled(
@@ -232,9 +313,10 @@ class PanzerGame(arcade.Window):
 
                     # Highlight selected unit
                     if unit == self.selected_unit:
+                        highlight_size = size + (4 * self.map_scale)
                         arcade.draw_lrbt_rectangle_outline(
-                            x - (size + 4)/2, x + (size + 4)/2,
-                            y - (size + 4)/2, y + (size + 4)/2,
+                            x - highlight_size/2, x + highlight_size/2,
+                            y - highlight_size/2, y + highlight_size/2,
                             COLOR_SELECTED, 3
                         )
     
@@ -256,7 +338,7 @@ class PanzerGame(arcade.Window):
         """Draw UI elements"""
         # HUD panel starts at game_panel_width
         hud_x = self.game_panel_width + 20
-        hud_y = SCREEN_HEIGHT - 40
+        hud_y = self.height - 40
 
         # Turn info
         turn_text = f"Turn: {self.game_state.turn}/{self.game_state.max_turns}"
@@ -301,8 +383,8 @@ class PanzerGame(arcade.Window):
 
         # AI thinking indicator (centered on screen)
         if self.ai_thinking:
-            arcade.draw_text("AI Thinking...", SCREEN_WIDTH // 2,
-                           SCREEN_HEIGHT - 50,
+            arcade.draw_text("AI Thinking...", self.width // 2,
+                           self.height - 50,
                            arcade.color.YELLOW, 16, bold=True,
                            anchor_x="center")
     
@@ -310,26 +392,26 @@ class PanzerGame(arcade.Window):
         """Draw game over screen"""
         # Semi-transparent overlay - lrbt format (left, right, bottom, top)
         arcade.draw_lrbt_rectangle_filled(
-            0, SCREEN_WIDTH,
-            0, SCREEN_HEIGHT,
+            0, self.width,
+            0, self.height,
             (0, 0, 0, 200)
         )
-        
+
         # Game over text
-        arcade.draw_text("GAME OVER", SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 50,
+        arcade.draw_text("GAME OVER", self.width / 2, self.height / 2 + 50,
                         arcade.color.WHITE, 48, bold=True,
                         anchor_x="center", anchor_y="center")
-        
+
         # Winner
         winner_text = f"{SIDE_NAMES[self.game_state.winner]} Wins!"
         winner_color = SIDE_COLORS[self.game_state.winner]
-        arcade.draw_text(winner_text, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2,
+        arcade.draw_text(winner_text, self.width / 2, self.height / 2,
                         winner_color, 36, bold=True,
                         anchor_x="center", anchor_y="center")
-        
+
         # Restart instruction
-        arcade.draw_text("Press R to Restart", SCREEN_WIDTH / 2, 
-                        SCREEN_HEIGHT / 2 - 50,
+        arcade.draw_text("Press R to Restart", self.width / 2,
+                        self.height / 2 - 50,
                         arcade.color.WHITE, 20,
                         anchor_x="center", anchor_y="center")
     
@@ -413,11 +495,14 @@ class PanzerGame(arcade.Window):
     
     def get_hex_at_position(self, x, y):
         """Find hex at screen position"""
+        # Transform screen coordinates to map coordinates
+        map_x, map_y = self.inverse_transform_position(x, y)
+
         # Check each hex
         for row in self.game_state.hex_map.hexes:
             for hex_tile in row:
                 hex_x, hex_y = hex_tile.get_pixel_position()
-                distance = math.sqrt((x - hex_x)**2 + (y - hex_y)**2)
+                distance = math.sqrt((map_x - hex_x)**2 + (map_y - hex_y)**2)
                 if distance < HEX_SIZE:
                     return hex_tile
         return None
