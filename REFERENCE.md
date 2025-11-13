@@ -1,14 +1,17 @@
 # OpenPanzer Gameplay Systems - Implementation Progress
 
 **Based on:** ref/REFERENCE.md analysis
-**Current Status:** ✅ Phase 1 & 2 COMPLETE - Core tactical gameplay fully implemented
+**Current Status:** ✅ Phase 1, 2, & 3 COMPLETE - Core gameplay + namespace refactoring
 **Goal:** Implement essential gameplay systems, defer UI/campaign/polish
 
 **Last Updated:** 2025-11-13
-**Branch:** claude/implement-reference-plan-011CV5zAsxSswUyyzVZUuqB7
-**Commits:**
+**Current Branch:** claude/refactor-namespaces-const-011CV641RSUFgfBauZp8ynSz
+**Previous Branch:** claude/implement-reference-plan-011CV5zAsxSswUyyzVZUuqB7
+
+**Recent Commits:**
 - Phase 1 (cbb1d4c): Terrain Movement Costs, Zone of Control, Fog of War
 - Phase 2 (6efd779): Full Combat Formula, Entrenchment Gain
+- Phase 3 (a54ef61-6cb4762): Namespace refactoring, const correctness, CONVENTIONS.md
 
 ---
 
