@@ -67,6 +67,123 @@ enum class UnitClass {
 
 enum class Side { AXIS = 0, ALLIED = 1 };
 
+// Movement methods (12 types)
+enum class MovMethod {
+  TRACKED = 0,
+  HALF_TRACKED = 1,
+  WHEELED = 2,
+  LEG = 3,
+  TOWED = 4,
+  AIR = 5,
+  DEEP_NAVAL = 6,
+  COSTAL = 7,
+  ALL_TERRAIN_TRACKED = 8,
+  AMPHIBIOUS = 9,
+  NAVAL = 10,
+  ALL_TERRAIN_LEG = 11
+};
+
+// Terrain type indices for movement tables
+enum TerrainIndex {
+  TI_CLEAR = 0,
+  TI_CITY = 1,
+  TI_AIRFIELD = 2,
+  TI_FOREST = 3,
+  TI_BOCAGE = 4,
+  TI_HILL = 5,
+  TI_MOUNTAIN = 6,
+  TI_SAND = 7,
+  TI_SWAMP = 8,
+  TI_OCEAN = 9,
+  TI_RIVER = 10,
+  TI_FORTIFICATION = 11,
+  TI_PORT = 12,
+  TI_STREAM = 13,
+  TI_ESCARPMENT = 14,
+  TI_IMPASSABLE_RIVER = 15,
+  TI_ROUGH = 16,
+  TI_ROAD = 17
+};
+
+// Movement cost table [movMethod][terrain]
+// 254 = Stop move (can enter but stops there), 255 = Don't enter (impassable)
+const int MOV_TABLE_DRY[12][18] = {
+    // Clear, City, Airfield, Forest, Bocage, Hill, Mountain, Sand, Swamp, Ocean, River, Fort, Port, Stream, Escarp, ImpassRiver, Rough, Road
+    {1, 1, 1, 2, 4, 2, 254, 1, 4, 255, 254, 1, 1, 2, 255, 255, 2, 1}, // Tracked
+    {1, 1, 1, 2, 254, 2, 254, 1, 4, 255, 254, 1, 1, 2, 255, 255, 2, 1}, // Half Tracked
+    {2, 1, 1, 4, 254, 3, 254, 3, 254, 255, 254, 2, 1, 4, 255, 255, 2, 1}, // Wheeled
+    {1, 1, 1, 2, 2, 2, 254, 2, 2, 255, 254, 1, 1, 1, 255, 255, 2, 1}, // Leg
+    {1, 1, 1, 1, 1, 1, 254, 1, 255, 255, 254, 1, 1, 254, 255, 255, 1, 1}, // Towed
+    {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}, // Air
+    {255, 255, 255, 255, 255, 255, 255, 255, 255, 1, 255, 255, 1, 255, 255, 255, 255, 255}, // Deep Naval
+    {255, 255, 255, 255, 255, 255, 255, 255, 255, 2, 1, 255, 1, 255, 255, 255, 255, 255}, // Costal
+    {1, 1, 1, 2, 3, 3, 254, 2, 254, 255, 254, 1, 1, 1, 255, 255, 3, 1}, // All Terrain Tracked
+    {1, 1, 1, 2, 4, 2, 254, 1, 3, 254, 3, 1, 1, 2, 255, 255, 2, 1}, // Amphibious
+    {255, 255, 255, 255, 255, 255, 255, 255, 255, 1, 255, 255, 1, 255, 255, 255, 255, 255}, // Naval
+    {1, 1, 1, 1, 2, 1, 1, 2, 2, 255, 254, 1, 1, 1, 255, 255, 1, 1} // All Terrain Leg (Mountain)
+};
+
+// Helper function to map TerrainType to movement table index
+int getTerrainIndex(TerrainType terrain) {
+  switch (terrain) {
+  case TerrainType::PLAINS:
+    return TI_CLEAR;
+  case TerrainType::CITY:
+    return TI_CITY;
+  case TerrainType::FOREST:
+    return TI_FOREST;
+  case TerrainType::HILL:
+    return TI_HILL;
+  case TerrainType::MOUNTAIN:
+    return TI_MOUNTAIN;
+  case TerrainType::DESERT:
+    return TI_SAND;
+  case TerrainType::SWAMP:
+    return TI_SWAMP;
+  case TerrainType::WATER:
+    return TI_OCEAN;
+  case TerrainType::ROAD:
+    return TI_ROAD;
+  case TerrainType::ROUGH:
+    return TI_ROUGH;
+  default:
+    return TI_CLEAR;
+  }
+}
+
+// Terrain entrenchment levels (max entrenchment from terrain)
+const int TERRAIN_ENTRENCHMENT[10] = {
+    0,  // PLAINS
+    3,  // CITY
+    2,  // FOREST
+    2,  // MOUNTAIN
+    1,  // HILL
+    0,  // DESERT
+    0,  // SWAMP
+    3,  // (unused - would be FORTIFICATION)
+    0,  // WATER
+    2   // ROUGH
+};
+
+// Unit entrenchment rates (how fast they entrench)
+const int UNIT_ENTRENCH_RATE[6] = {
+    3,  // INFANTRY (fast)
+    1,  // TANK (slow)
+    2,  // ARTILLERY (medium)
+    2,  // RECON (medium)
+    2,  // ANTI_TANK (medium)
+    1   // AIR_DEFENSE (slow)
+};
+
+// Get terrain entrenchment level
+int getTerrainEntrenchment(TerrainType terrain) {
+  int idx = static_cast<int>(terrain);
+  if (idx >= 0 && idx < 10) {
+    return TERRAIN_ENTRENCHMENT[idx];
+  }
+  return 0;
+}
+
 // Forward declaration for calculateCenteredCameraOffset
 struct CameraState;
 void calculateCenteredCameraOffset(CameraState& camera, int screenWidth, int screenHeight);
@@ -229,6 +346,7 @@ struct GameHex {
   bool isVictoryHex;
   bool isDeployment;
   bool isSpotted[2]; // spotted by each side
+  int zoc[2];        // zone of control counter per side
   bool isMoveSel;    // highlighted for movement
   bool isAttackSel;  // highlighted for attack
 
@@ -237,7 +355,19 @@ struct GameHex {
         isDeployment(false), isMoveSel(false), isAttackSel(false) {
     isSpotted[0] = false;
     isSpotted[1] = false;
+    zoc[0] = 0;
+    zoc[1] = 0;
   }
+
+  void setZOC(int side, bool on) {
+    if (on) {
+      zoc[side]++;
+    } else if (zoc[side] > 0) {
+      zoc[side]--;
+    }
+  }
+
+  bool isZOC(int side) const { return zoc[side] > 0; }
 };
 
 struct Unit {
@@ -258,11 +388,17 @@ struct Unit {
   int initiative;
 
   // Movement & logistics
+  MovMethod movMethod;
   int movementPoints;
   int movesLeft;
   int fuel;
+  int maxFuel;
   int ammo;
+  int maxAmmo;
   int spotRange;
+  int rangeDefMod;  // Range defense modifier
+  int hits;         // Accumulated hits (reduces defense)
+  int entrenchTicks; // Ticks toward next entrenchment level
 
   bool hasMoved;
   bool hasFired;
@@ -271,8 +407,10 @@ struct Unit {
   Unit()
       : strength(10), maxStrength(10), experience(0), entrenchment(0),
         hardAttack(8), softAttack(10), groundDefense(6), closeDefense(5),
-        initiative(5), movementPoints(6), movesLeft(6), fuel(50), ammo(20),
-        spotRange(2), hasMoved(false), hasFired(false), isCore(false) {}
+        initiative(5), movMethod(MovMethod::TRACKED), movementPoints(6),
+        movesLeft(6), fuel(50), maxFuel(50), ammo(20), maxAmmo(20),
+        spotRange(2), rangeDefMod(0), hits(0), entrenchTicks(0),
+        hasMoved(false), hasFired(false), isCore(false) {}
 };
 
 // Game State
@@ -346,25 +484,31 @@ struct GameState {
     unit->side = side;
     unit->position = {row, col};
 
-    // Set unit name based on class
+    // Set unit name and movement method based on class
     switch (uClass) {
     case UnitClass::INFANTRY:
       unit->name = "Infantry";
+      unit->movMethod = MovMethod::LEG;
       break;
     case UnitClass::TANK:
       unit->name = "Tank";
+      unit->movMethod = MovMethod::TRACKED;
       break;
     case UnitClass::ARTILLERY:
       unit->name = "Artillery";
+      unit->movMethod = MovMethod::HALF_TRACKED;
       break;
     case UnitClass::RECON:
       unit->name = "Recon";
+      unit->movMethod = MovMethod::WHEELED;
       break;
     case UnitClass::ANTI_TANK:
       unit->name = "Anti-Tank";
+      unit->movMethod = MovMethod::HALF_TRACKED;
       break;
     case UnitClass::AIR_DEFENSE:
       unit->name = "Air Defense";
+      unit->movMethod = MovMethod::HALF_TRACKED;
       break;
     }
 
@@ -479,6 +623,10 @@ void drawMap(GameState &game) {
   for (int row = 0; row < MAP_ROWS; row++) {
     for (int col = 0; col < MAP_COLS; col++) {
       GameHex &hex = game.map[row][col];
+
+      // Skip if not spotted by current player (FOG OF WAR)
+      if (!hex.isSpotted[game.currentPlayer]) continue;
+
       OffsetCoord offset = gameCoordToOffset(hex.coord);
       ::Hex cubeHex = offset_to_cube(offset);
 
@@ -523,8 +671,13 @@ void drawMap(GameState &game) {
     }
   }
 
-  // Draw units
+  // Draw units (only those on spotted hexes)
   for (auto &unit : game.units) {
+    GameHex &unitHex = game.map[unit->position.row][unit->position.col];
+
+    // Only show units on spotted hexes (FOG OF WAR)
+    if (!unitHex.isSpotted[game.currentPlayer]) continue;
+
     OffsetCoord offset = gameCoordToOffset(unit->position);
     ::Hex cubeHex = offset_to_cube(offset);
     Point center = hex_to_pixel(layout, cubeHex);
@@ -591,24 +744,211 @@ int hexDistance(const HexCoord &a, const HexCoord &b) {
   return hex_distance(cubeA, cubeB);
 }
 
+// Get adjacent hex coordinates
+std::vector<HexCoord> getAdjacent(int row, int col) {
+  std::vector<HexCoord> result;
+  OffsetCoord center(col, row);
+  ::Hex cubeHex = offset_to_cube(center);
+
+  for (int i = 0; i < 6; i++) {
+    ::Hex neighbor = hex_neighbor(cubeHex, i);
+    OffsetCoord neighborOffset = cube_to_offset(neighbor);
+
+    if (neighborOffset.row >= 0 && neighborOffset.row < MAP_ROWS &&
+        neighborOffset.col >= 0 && neighborOffset.col < MAP_COLS) {
+      result.push_back({neighborOffset.row, neighborOffset.col});
+    }
+  }
+
+  return result;
+}
+
+// Check if unit is air unit (ignores ZOC)
+bool isAir(Unit *unit) {
+  return unit && unit->movMethod == MovMethod::AIR;
+}
+
+// Check if unit is a hard target (armored)
+bool isHardTarget(Unit *unit) {
+  if (!unit) return false;
+  return (unit->unitClass == UnitClass::TANK ||
+          unit->unitClass == UnitClass::ANTI_TANK ||
+          unit->unitClass == UnitClass::AIR_DEFENSE);
+}
+
+// Check if unit is sea unit
+bool isSea(Unit *unit) {
+  if (!unit) return false;
+  return (unit->movMethod == MovMethod::DEEP_NAVAL ||
+          unit->movMethod == MovMethod::COSTAL ||
+          unit->movMethod == MovMethod::NAVAL);
+}
+
+// Set or clear ZOC for a unit
+void setUnitZOC(GameState &game, Unit *unit, bool on) {
+  if (!unit || isAir(unit)) return;
+
+  std::vector<HexCoord> adjacent = getAdjacent(unit->position.row, unit->position.col);
+
+  for (const auto& adj : adjacent) {
+    game.map[adj.row][adj.col].setZOC(unit->side, on);
+  }
+}
+
+// Initialize ZOC for all units on the map
+void initializeAllZOC(GameState &game) {
+  // Clear all ZOC first
+  for (int row = 0; row < MAP_ROWS; row++) {
+    for (int col = 0; col < MAP_COLS; col++) {
+      game.map[row][col].zoc[0] = 0;
+      game.map[row][col].zoc[1] = 0;
+    }
+  }
+
+  // Set ZOC for all units
+  for (auto &unit : game.units) {
+    setUnitZOC(game, unit.get(), true);
+  }
+}
+
+// Get all cells within a certain range (using hex distance)
+std::vector<HexCoord> getCellsInRange(int row, int col, int range) {
+  std::vector<HexCoord> result;
+
+  for (int r = 0; r < MAP_ROWS; r++) {
+    for (int c = 0; c < MAP_COLS; c++) {
+      HexCoord target = {r, c};
+      HexCoord center = {row, col};
+      int dist = hexDistance(center, target);
+
+      if (dist <= range) {
+        result.push_back(target);
+      }
+    }
+  }
+
+  return result;
+}
+
+// Set or clear spotting range for a unit
+void setUnitSpotRange(GameState &game, Unit *unit, bool on) {
+  if (!unit) return;
+
+  HexCoord pos = unit->position;
+  int range = unit->spotRange;
+  std::vector<HexCoord> cells = getCellsInRange(pos.row, pos.col, range);
+
+  for (const auto& cell : cells) {
+    GameHex& hex = game.map[cell.row][cell.col];
+    if (on) {
+      hex.isSpotted[unit->side] = true;
+    } else {
+      hex.isSpotted[unit->side] = false;
+    }
+  }
+}
+
+// Initialize spotting for all units on the map
+void initializeAllSpotting(GameState &game) {
+  // Clear all spotting first
+  for (int row = 0; row < MAP_ROWS; row++) {
+    for (int col = 0; col < MAP_COLS; col++) {
+      game.map[row][col].isSpotted[0] = false;
+      game.map[row][col].isSpotted[1] = false;
+    }
+  }
+
+  // Set spotting for all units
+  for (auto &unit : game.units) {
+    setUnitSpotRange(game, unit.get(), true);
+  }
+}
+
 void highlightMovementRange(GameState &game, Unit *unit) {
   clearSelectionHighlights(game);
   if (!unit)
     return;
 
-  int range = unit->movesLeft;
-  for (int row = 0; row < MAP_ROWS; row++) {
-    for (int col = 0; col < MAP_COLS; col++) {
-      HexCoord target = {row, col};
-      int dist = hexDistance(unit->position, target);
+  int maxRange = unit->movesLeft;
+  int movMethodIdx = static_cast<int>(unit->movMethod);
+  int enemySide = 1 - unit->side;
+  bool ignoreZOC = isAir(unit);
 
-      if (dist > 0 && dist <= range) {
-        // Check if hex is valid for movement
-        Unit *occupant = game.getUnitAt(target);
-        if (!occupant || occupant->side == unit->side) {
-          game.map[row][col].isMoveSel = true;
+  // Track cells we can reach with their remaining movement
+  std::vector<std::pair<HexCoord, int>> frontier;
+  std::vector<std::pair<HexCoord, int>> visited;
+
+  // Start with unit's position
+  frontier.push_back({unit->position, maxRange});
+  visited.push_back({unit->position, maxRange});
+
+  while (!frontier.empty()) {
+    auto current = frontier.back();
+    frontier.pop_back();
+
+    HexCoord pos = current.first;
+    int remainingMoves = current.second;
+
+    // Check all adjacent hexes
+    std::vector<HexCoord> adjacent = getAdjacent(pos.row, pos.col);
+
+    for (const auto& adj : adjacent) {
+      // Get terrain cost
+      GameHex& hex = game.map[adj.row][adj.col];
+      int terrainIdx = getTerrainIndex(hex.terrain);
+      int cost = MOV_TABLE_DRY[movMethodIdx][terrainIdx];
+
+      // Skip impassable terrain
+      if (cost >= 255) continue;
+
+      // Check if we can enter this hex
+      int newRemaining = remainingMoves - cost;
+
+      // For cost 254, we can enter but it stops us (remaining becomes 0)
+      if (cost == 254) newRemaining = 0;
+
+      // ZOC: Enemy zone of control stops movement
+      // Units can enter enemy ZOC but must stop there (unless air)
+      if (!ignoreZOC && hex.isZOC(enemySide) && cost < 254) {
+        newRemaining = 0;  // Can enter but must stop
+      }
+
+      // Skip if we can't afford to enter
+      if (newRemaining < 0) continue;
+
+      // Check if another unit occupies this hex
+      Unit *occupant = game.getUnitAt(adj);
+      if (occupant && occupant->side != unit->side) continue;
+
+      // Check if we've already visited with more movement
+      bool shouldUpdate = true;
+      bool alreadyVisited = false;
+      for (auto& v : visited) {
+        if (v.first == adj) {
+          alreadyVisited = true;
+          if (v.second >= newRemaining) {
+            shouldUpdate = false;
+          } else {
+            v.second = newRemaining;
+          }
+          break;
         }
       }
+
+      if (!alreadyVisited) {
+        visited.push_back({adj, newRemaining});
+      }
+
+      if (shouldUpdate && newRemaining > 0) {
+        frontier.push_back({adj, newRemaining});
+      }
+    }
+  }
+
+  // Highlight all reachable cells (except starting position)
+  for (const auto& v : visited) {
+    if (!(v.first == unit->position)) {
+      game.map[v.first.row][v.first.col].isMoveSel = true;
     }
   }
 }
@@ -640,46 +980,204 @@ void moveUnit(GameState &game, Unit *unit, const HexCoord &target) {
   if (!unit)
     return;
 
-  int distance = hexDistance(unit->position, target);
-  if (distance <= unit->movesLeft) {
+  // Calculate actual movement cost based on terrain
+  int movMethodIdx = static_cast<int>(unit->movMethod);
+  GameHex& targetHex = game.map[target.row][target.col];
+  int terrainIdx = getTerrainIndex(targetHex.terrain);
+  int cost = MOV_TABLE_DRY[movMethodIdx][terrainIdx];
+
+  // Don't move if impassable
+  if (cost >= 255) return;
+
+  // For difficult terrain (cost 254), we can enter but it uses all remaining moves
+  if (cost == 254) cost = unit->movesLeft;
+
+  // Only move if we have enough movement points
+  if (cost <= unit->movesLeft) {
+    // Clear ZOC and spotting from old position
+    setUnitZOC(game, unit, false);
+    setUnitSpotRange(game, unit, false);
+
+    // Store old position for fuel calculation
+    HexCoord oldPos = unit->position;
+
+    // Move unit
     unit->position = target;
-    unit->movesLeft -= distance;
+    unit->movesLeft -= cost;
     unit->hasMoved = true;
 
-    // Reduce fuel
+    // Set ZOC and spotting at new position
+    setUnitZOC(game, unit, true);
+    setUnitSpotRange(game, unit, true);
+
+    // Reduce fuel by hex distance (not terrain cost)
+    int distance = hexDistance(oldPos, target);
     unit->fuel = std::max(0, unit->fuel - distance);
   }
+}
+
+// Calculate kills using PG2 formula
+int calculateKills(int atkVal, int defVal, Unit *attacker, Unit *defender) {
+  int kF = atkVal - defVal;
+
+  // PG2 formula: compress high values
+  if (kF > 4) {
+    kF = 4 + (2 * kF - 8) / 5;
+  }
+  kF += 6;
+
+  // Artillery/Bomber penalty (less effective at killing)
+  if (attacker->unitClass == UnitClass::ARTILLERY) {
+    kF -= 3;
+  }
+
+  // Clamp kill factor between 1 and 19
+  kF = std::max(1, std::min(19, kF));
+
+  // Calculate kills based on attacker strength
+  // Formula: (5 * kF * strength + 50) / 100 = (kF * strength) / 20 + 0.5
+  int kills = (5 * kF * attacker->strength + 50) / 100;
+
+  return kills;
 }
 
 void performAttack(GameState &game, Unit *attacker, Unit *defender) {
   if (!attacker || !defender || attacker->hasFired)
     return;
 
-  // Simple combat calculation
-  int attackValue = attacker->hardAttack + attacker->experience * 2;
-  int defenseValue = defender->groundDefense + defender->entrenchment * 2 +
-                     defender->experience;
+  // Get distance and hex information
+  int distance = hexDistance(attacker->position, defender->position);
+  GameHex &atkHex = game.map[attacker->position.row][attacker->position.col];
+  GameHex &defHex = game.map[defender->position.row][defender->position.col];
 
-  // Calculate damage
-  int attackRoll = GetRandomValue(1, 10);
-  int defenseRoll = GetRandomValue(1, 10);
+  // Determine attack/defense values based on target type
+  int aav, adv, dav, ddv;
 
-  int attackerDamage =
-      std::max(0, (attackValue + attackRoll) - (defenseValue + defenseRoll));
-  int defenderDamage = std::max(0, (defenseValue + defenseRoll / 2) -
-                                       (attackValue + attackRoll / 2));
+  // Attacker attack value (use hard attack for armored targets)
+  if (isHardTarget(defender)) {
+    aav = attacker->hardAttack;
+  } else {
+    aav = attacker->softAttack;
+  }
+
+  // Attacker defense value
+  adv = attacker->groundDefense;
+
+  // Defender attack value (for return fire)
+  if (isHardTarget(attacker)) {
+    dav = defender->hardAttack;
+  } else {
+    dav = defender->softAttack;
+  }
+
+  // Defender defense value
+  ddv = defender->groundDefense;
+
+  // 1. Apply experience modifiers (+1 per experience bar)
+  int aExpBars = attacker->experience / 100;
+  int dExpBars = defender->experience / 100;
+  aav += aExpBars;
+  adv += aExpBars;
+  dav += dExpBars;
+  ddv += dExpBars;
+
+  // 2. Apply entrenchment (adds to defense only)
+  adv += attacker->entrenchment;
+  ddv += defender->entrenchment;
+
+  // 3. Apply terrain modifiers
+  // Cities give +4 defense
+  if (defHex.terrain == TerrainType::CITY) {
+    ddv += 4;
+  }
+  if (atkHex.terrain == TerrainType::CITY) {
+    adv += 4;
+  }
+
+  // Water without road: -4 defense, attacker gets +4 attack
+  if (defHex.terrain == TerrainType::WATER) {
+    ddv -= 4;
+    aav += 4;
+  }
+  if (atkHex.terrain == TerrainType::WATER) {
+    adv -= 4;
+    dav += 4;
+  }
+
+  // 4. Apply initiative bonus (who shoots first gets advantage)
+  int initDiff = attacker->initiative - defender->initiative;
+  if (initDiff >= 0) {
+    // Attacker has initiative
+    adv += 4;  // Attacker defense bonus
+    aav += std::min(4, initDiff);  // Attack bonus (max +4)
+  } else {
+    // Defender has initiative
+    ddv += 4;  // Defender defense bonus
+    dav += std::min(4, -initDiff);  // Defender attack bonus (max +4)
+  }
+
+  // 5. Apply range defense modifier (for ranged combat)
+  if (distance > 1) {
+    adv += attacker->rangeDefMod;
+    ddv += defender->rangeDefMod;
+  }
+
+  // 6. Apply accumulated hits (reduces defense)
+  adv -= attacker->hits;
+  ddv -= defender->hits;
+
+  // Calculate kills
+  int kills = calculateKills(aav, ddv, attacker, defender);
+
+  // Defender can fire back if:
+  // - At range 1 (close combat), OR
+  // - Both are sea units (naval combat)
+  bool defCanFire = (distance <= 1 || (isSea(attacker) && isSea(defender)));
+  int losses = 0;
+
+  if (defCanFire && defender->ammo > 0) {
+    losses = calculateKills(dav, adv, defender, attacker);
+  }
 
   // Apply damage
-  defender->strength = std::max(0, defender->strength - attackerDamage / 3);
-  attacker->strength = std::max(0, attacker->strength - defenderDamage / 4);
+  defender->strength = std::max(0, defender->strength - kills);
+  attacker->strength = std::max(0, attacker->strength - losses);
 
-  // Increase experience
-  if (attackerDamage > 0)
-    attacker->experience = std::min(5, attacker->experience + 1);
+  // Experience gain
+  // Attacker gains based on defender's attack value and kills
+  int bonusAD = std::max(1, dav + 6 - adv);
+  int atkExpGain = (bonusAD * (defender->maxStrength / 10) + bonusAD) * kills;
+  attacker->experience = std::min(500, attacker->experience + atkExpGain);
 
-  // Mark as fired
+  // Defender gains 2 * losses
+  if (defCanFire) {
+    int defExpGain = 2 * losses;
+    defender->experience = std::min(500, defender->experience + defExpGain);
+  }
+
+  // Mark as fired and consume ammo
   attacker->hasFired = true;
   attacker->ammo = std::max(0, attacker->ammo - 1);
+
+  // Increment hits (reduces future defense)
+  attacker->hits++;
+  defender->hits++;
+
+  // Reduce entrenchment on hit
+  if (kills > 0 && defender->entrenchment > 0) {
+    defender->entrenchment--;
+  }
+  if (losses > 0 && attacker->entrenchment > 0) {
+    attacker->entrenchment--;
+  }
+
+  // Clear ZOC and spotting for units about to be destroyed
+  for (auto &unit : game.units) {
+    if (unit->strength <= 0) {
+      setUnitZOC(game, unit.get(), false);
+      setUnitSpotRange(game, unit.get(), false);
+    }
+  }
 
   // Remove destroyed units
   game.units.erase(std::remove_if(game.units.begin(), game.units.end(),
@@ -689,25 +1187,70 @@ void performAttack(GameState &game, Unit *attacker, Unit *defender) {
                    game.units.end());
 }
 
+// Entrench a unit (called at end of turn if unit didn't move)
+void entrenchUnit(GameState &game, Unit *unit) {
+  if (!unit) return;
+
+  GameHex &hex = game.map[unit->position.row][unit->position.col];
+  int terrainEntrench = getTerrainEntrenchment(hex.terrain);
+  int uc = static_cast<int>(unit->unitClass);
+
+  if (unit->entrenchment >= terrainEntrench) {
+    // Slow gain above terrain level (ticks system)
+    int level = unit->entrenchment - terrainEntrench;
+    int nextThreshold = 9 * level + 4;
+    int expBars = unit->experience / 100;
+
+    // Add ticks based on experience, terrain, and unit type
+    unit->entrenchTicks += expBars + (terrainEntrench + 1) * UNIT_ENTRENCH_RATE[uc];
+
+    // Check if we've gained a level
+    while (unit->entrenchTicks >= nextThreshold &&
+           unit->entrenchment < terrainEntrench + 5) {
+      unit->entrenchTicks -= nextThreshold;
+      unit->entrenchment++;
+      level++;
+      nextThreshold = 9 * level + 4;
+    }
+  } else {
+    // Instant gain to terrain level
+    unit->entrenchment = terrainEntrench;
+    unit->entrenchTicks = 0;
+  }
+
+  // Max entrenchment is 5
+  unit->entrenchment = std::min(5, unit->entrenchment);
+}
+
 void endTurn(GameState &game) {
-  // Reset unit actions
+  // Process units ending their turn
   for (auto &unit : game.units) {
     if (unit->side == game.currentPlayer) {
-      unit->hasMoved = false;
-      unit->hasFired = false;
-      unit->movesLeft = unit->movementPoints;
-
-      // Increase entrenchment if unit didn't move
+      // Gain entrenchment if didn't move
       if (!unit->hasMoved) {
-        unit->entrenchment = std::min(5, unit->entrenchment + 1);
+        entrenchUnit(game, unit.get());
       } else {
+        // Lost entrenchment by moving
         unit->entrenchment = 0;
+        unit->entrenchTicks = 0;
       }
+
+      // Reset hits at end of turn
+      unit->hits = 0;
     }
   }
 
   // Switch player
   game.currentPlayer = 1 - game.currentPlayer;
+
+  // Reset actions for units about to start their turn
+  for (auto &unit : game.units) {
+    if (unit->side == game.currentPlayer) {
+      unit->hasMoved = false;
+      unit->hasFired = false;
+      unit->movesLeft = unit->movementPoints;
+    }
+  }
 
   // If both players have moved, advance turn
   if (game.currentPlayer == 0) {
@@ -1319,6 +1862,10 @@ int main() {
   game.addUnit(UnitClass::INFANTRY, 1, 8, 10);
   game.addUnit(UnitClass::TANK, 1, 9, 10);
   game.addUnit(UnitClass::RECON, 1, 8, 11);
+
+  // Initialize Zone of Control and Spotting for all units
+  initializeAllZOC(game);
+  initializeAllSpotting(game);
 
   bool needsRestart = false;
 
