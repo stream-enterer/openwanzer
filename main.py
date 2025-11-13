@@ -5,7 +5,8 @@ Python Arcade Implementation
 
 import arcade
 import arcade.gui
-from arcade.camera import Camera2D, Viewport
+from arcade.camera import Camera2D
+from arcade.types import LBWH
 import math
 from constants import *
 from game_state import GameState
@@ -245,7 +246,8 @@ class PanzerGame(arcade.Window):
         self.clear()
 
         # Set viewport to game panel area only (left 70%)
-        self.game_camera.viewport = Viewport(0, 0, self.game_panel_width, self.height)
+        # LBWH = left, bottom, width, height
+        self.game_camera.viewport = LBWH(0, 0, self.game_panel_width, self.height)
 
         # Position camera for scrollable viewport
         self.game_camera.position = (self.camera_x, self.camera_y)
