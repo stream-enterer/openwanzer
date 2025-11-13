@@ -6,7 +6,7 @@ Python Arcade Implementation
 import arcade
 import arcade.gui
 from arcade.camera import Camera2D
-from arcade.types import LBWH
+from arcade.types import LBWH, Rect
 import math
 from constants import *
 from game_state import GameState
@@ -268,8 +268,8 @@ class PanzerGame(arcade.Window):
 
         # Update projection to match viewport for 1:1 pixel ratio
         # This prevents squashing/stretching when window is resized
-        # Projection defines the orthographic bounds: left, right, bottom, top
-        self.game_camera.projection = (0, self.game_panel_width, 0, self.height)
+        # Rect defines the area: x, y, width, height (same as viewport)
+        self.game_camera.projection = Rect(0, 0, self.game_panel_width, self.height)
 
         # Position camera for scrollable viewport
         self.game_camera.position = (self.camera_x, self.camera_y)
