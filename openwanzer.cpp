@@ -67,6 +67,10 @@ enum class UnitClass {
 
 enum class Side { AXIS = 0, ALLIED = 1 };
 
+// Forward declaration for calculateCenteredCameraOffset
+struct CameraState;
+void calculateCenteredCameraOffset(CameraState& camera, int screenWidth, int screenHeight);
+
 // Camera state structure
 struct CameraState {
   float offsetX;
@@ -78,8 +82,12 @@ struct CameraState {
   Vector2 panStartOffset;
 
   CameraState()
-      : offsetX(100.0f), offsetY(100.0f), zoom(1.0f), zoomDirection(0),
-        isPanning(false), panStartMouse{0, 0}, panStartOffset{0, 0} {}
+      : offsetX(0.0f), offsetY(0.0f), zoom(1.0f), zoomDirection(0),
+        isPanning(false), panStartMouse{0, 0}, panStartOffset{0, 0} {
+    // Initialize to centered position (will be properly calculated after layout is set)
+    offsetX = 100.0f;
+    offsetY = 100.0f;
+  }
 };
 
 // Settings Structure
@@ -100,7 +108,7 @@ struct VideoSettings {
 
   VideoSettings()
       : resolutionIndex(6), fullscreen(true), vsync(false), fpsIndex(6),
-        hexSize(40.0f), panSpeed(5.0f), msaa(false), guiScaleIndex(2),
+        hexSize(40.0f), panSpeed(5.0f), msaa(false), guiScaleIndex(0),
         styleTheme("dark"), resolutionDropdownEdit(false), fpsDropdownEdit(false),
         guiScaleDropdownEdit(false), styleThemeDropdownEdit(false) {}
 };
@@ -711,6 +719,29 @@ void endTurn(GameState &game) {
   clearSelectionHighlights(game);
 }
 
+// Calculate centered camera offset to center the hex map in the play area
+void calculateCenteredCameraOffset(CameraState& camera, int screenWidth, int screenHeight) {
+  // Play area: excludes top bar (40px) and right panel (250px) and bottom bar (30px)
+  float playAreaWidth = screenWidth - 250;
+  float playAreaHeight = screenHeight - 70;  // 40px top + 30px bottom
+  float playAreaCenterX = playAreaWidth / 2.0f;
+  float playAreaCenterY = 40.0f + playAreaHeight / 2.0f;
+
+  // Calculate the center of the hex map in world coordinates
+  // The map center is approximately at hex (MAP_ROWS/2, MAP_COLS/2)
+  HexCoord mapCenter = {MAP_ROWS / 2, MAP_COLS / 2};
+  OffsetCoord offset = gameCoordToOffset(mapCenter);
+  ::Hex cubeHex = offset_to_cube(offset);
+
+  // Create a temporary layout to calculate pixel position
+  Layout tempLayout = createHexLayout(HEX_SIZE, 0, 0, camera.zoom);
+  Point mapCenterPixel = hex_to_pixel(tempLayout, cubeHex);
+
+  // Calculate offset so that map center appears at play area center
+  camera.offsetX = playAreaCenterX - mapCenterPixel.x;
+  camera.offsetY = playAreaCenterY - mapCenterPixel.y;
+}
+
 // Forward declarations
 void saveConfig(const VideoSettings& settings);
 void loadConfig(VideoSettings& settings);
@@ -739,10 +770,9 @@ void drawUI(GameState &game) {
   if (GuiButton(Rectangle{game.layout.statusBar.width - 240, 5, 120, 30},
                 "RESET MAP")) {
     // Reset camera to center and 100% zoom
-    game.camera.offsetX = 100.0f;
-    game.camera.offsetY = 100.0f;
     game.camera.zoom = 1.0f;
     game.camera.zoomDirection = 0;
+    calculateCenteredCameraOffset(game.camera, SCREEN_WIDTH, SCREEN_HEIGHT);
   }
 
   // Options button
@@ -810,17 +840,26 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
   // Draw background overlay
   DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, Color{0, 0, 0, 180});
 
+  // Get colors from current style
+  Color backgroundColor = GetColor(GuiGetStyle(DEFAULT, BACKGROUND_COLOR));
+  Color borderColor = GetColor(GuiGetStyle(DEFAULT, BORDER_COLOR_FOCUSED));
+  Color titleColor = GetColor(GuiGetStyle(DEFAULT, LINE_COLOR));
+
   // Draw menu panel
-  DrawRectangle(menuX, menuY, menuWidth, menuHeight, Color{40, 40, 40, 255});
-  DrawRectangleLines(menuX, menuY, menuWidth, menuHeight, GOLD);
+  DrawRectangle(menuX, menuY, menuWidth, menuHeight, backgroundColor);
+  DrawRectangleLines(menuX, menuY, menuWidth, menuHeight, borderColor);
 
   // Title
-  DrawText("VIDEO OPTIONS", menuX + 20, menuY + 15, 30, GOLD);
+  DrawText("VIDEO OPTIONS", menuX + 20, menuY + 15, 30, titleColor);
 
   int y = menuY + 70;
   int labelX = menuX + 30;
   int controlX = menuX + 250;
   int controlWidth = 300;
+
+  // Get label and text colors from style
+  Color labelColor = GetColor(GuiGetStyle(LABEL, TEXT_COLOR_NORMAL));
+  Color valueColor = GetColor(GuiGetStyle(DEFAULT, TEXT_COLOR_DISABLED));
 
   // Check if any dropdown is open
   bool anyDropdownOpen = game.settings.resolutionDropdownEdit ||
@@ -844,40 +883,40 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
 
   // Draw labels and non-dropdown controls first
   // Resolution label
-  DrawText("Resolution:", labelX, resolutionY, 20, WHITE);
+  DrawText("Resolution:", labelX, resolutionY, 20, labelColor);
 
   // Fullscreen
-  DrawText("Fullscreen:", labelX, fullscreenY, 20, WHITE);
+  DrawText("Fullscreen:", labelX, fullscreenY, 20, labelColor);
   if (!anyDropdownOpen || game.settings.resolutionDropdownEdit) {
     GuiCheckBox(Rectangle{(float)controlX, (float)fullscreenY - 5, 30, 30}, "",
                 &game.settings.fullscreen);
   }
 
   // VSync
-  DrawText("VSync:", labelX, vsyncY, 20, WHITE);
+  DrawText("VSync:", labelX, vsyncY, 20, labelColor);
   if (!anyDropdownOpen || game.settings.resolutionDropdownEdit) {
     GuiCheckBox(Rectangle{(float)controlX, (float)vsyncY - 5, 30, 30}, "",
                 &game.settings.vsync);
   }
 
   // FPS Target label
-  DrawText("FPS Target:", labelX, fpsY, 20, WHITE);
+  DrawText("FPS Target:", labelX, fpsY, 20, labelColor);
   std::string currentFps =
       game.settings.fpsIndex == 6
           ? "Unlimited"
           : std::to_string(FPS_VALUES[game.settings.fpsIndex]);
   if (!anyDropdownOpen || game.settings.fpsDropdownEdit) {
-    DrawText(currentFps.c_str(), controlX + controlWidth + 15, fpsY, 20, GRAY);
+    DrawText(currentFps.c_str(), controlX + controlWidth + 15, fpsY, 20, valueColor);
   }
 
   // GUI Scale label
-  DrawText("GUI Scale:", labelX, guiScaleY, 20, WHITE);
+  DrawText("GUI Scale:", labelX, guiScaleY, 20, labelColor);
 
   // Style Theme label
-  DrawText("Style Theme:", labelX, styleThemeY, 20, WHITE);
+  DrawText("Style Theme:", labelX, styleThemeY, 20, labelColor);
 
   // MSAA
-  DrawText("Anti-Aliasing (4x):", labelX, y, 20, WHITE);
+  DrawText("Anti-Aliasing (4x):", labelX, y, 20, labelColor);
   bool oldMsaa = game.settings.msaa;
   if (!anyDropdownOpen) {
     GuiCheckBox(Rectangle{(float)controlX, (float)y - 5, 30, 30}, "",
@@ -888,22 +927,22 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
   y += 50;
 
   // Hex Size Slider
-  DrawText("Hex Size:", labelX, y, 20, WHITE);
+  DrawText("Hex Size:", labelX, y, 20, labelColor);
   if (!anyDropdownOpen) {
     GuiSlider(Rectangle{(float)controlX, (float)y, (float)controlWidth, 20}, "20",
               "80", &game.settings.hexSize, 20, 80);
     std::string hexSizeStr = std::to_string((int)game.settings.hexSize);
-    DrawText(hexSizeStr.c_str(), controlX + controlWidth + 15, y, 20, GRAY);
+    DrawText(hexSizeStr.c_str(), controlX + controlWidth + 15, y, 20, valueColor);
   }
   y += 50;
 
   // Pan Speed Slider
-  DrawText("Camera Pan Speed:", labelX, y, 20, WHITE);
+  DrawText("Camera Pan Speed:", labelX, y, 20, labelColor);
   if (!anyDropdownOpen) {
     GuiSlider(Rectangle{(float)controlX, (float)y, (float)controlWidth, 20}, "1",
               "20", &game.settings.panSpeed, 1, 20);
     std::string panSpeedStr = std::to_string((int)game.settings.panSpeed);
-    DrawText(panSpeedStr.c_str(), controlX + controlWidth + 15, y, 20, GRAY);
+    DrawText(panSpeedStr.c_str(), controlX + controlWidth + 15, y, 20, valueColor);
   }
   y += 60;
 
@@ -946,7 +985,7 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
     // Save config to file
     saveConfig(game.settings);
 
-    game.showOptionsMenu = false;
+    // Menu stays open after applying settings
   }
 
   if (GuiButton(Rectangle{(float)menuX + 220, (float)buttonY, 150, 40},
@@ -968,12 +1007,12 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
     game.settings.hexSize = 40.0f;
     game.settings.panSpeed = 5.0f;
     game.settings.msaa = false;
-    game.settings.guiScaleIndex = 2; // 2.00
+    game.settings.guiScaleIndex = 0; // 1.0
     game.settings.styleTheme = "dark";
   }
 
   // Draw dropdowns last so they appear on top
-  // Draw in reverse Z-order: FPS, GUI Scale, Style Theme, Resolution (so Resolution appears on top)
+  // Draw from bottom to top (Style Theme, GUI Scale, FPS, Resolution) so top dropdowns overlap bottom ones
   std::string resLabels;
   for (int i = 0; i < RESOLUTION_COUNT; i++) {
     if (i > 0)
@@ -981,21 +1020,7 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
     resLabels += RESOLUTIONS[i].label;
   }
 
-  // FPS Target dropdown (draw first)
-  if (GuiDropdownBox(
-          Rectangle{(float)controlX, (float)fpsY - 5, (float)controlWidth, 30},
-          FPS_LABELS, &game.settings.fpsIndex, game.settings.fpsDropdownEdit)) {
-    game.settings.fpsDropdownEdit = !game.settings.fpsDropdownEdit;
-  }
-
-  // GUI Scale dropdown
-  if (GuiDropdownBox(
-          Rectangle{(float)controlX, (float)guiScaleY - 5, (float)controlWidth, 30},
-          GUI_SCALE_LABELS, &game.settings.guiScaleIndex, game.settings.guiScaleDropdownEdit)) {
-    game.settings.guiScaleDropdownEdit = !game.settings.guiScaleDropdownEdit;
-  }
-
-  // Style Theme dropdown
+  // Style Theme dropdown (draw first - bottommost)
   // Get current style index
   int currentStyleIndex = getStyleIndex(game.settings.styleTheme);
   if (GuiDropdownBox(
@@ -1008,7 +1033,21 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
     game.settings.styleTheme = AVAILABLE_STYLES[currentStyleIndex];
   }
 
-  // Resolution dropdown (draw last so it's on top)
+  // GUI Scale dropdown
+  if (GuiDropdownBox(
+          Rectangle{(float)controlX, (float)guiScaleY - 5, (float)controlWidth, 30},
+          GUI_SCALE_LABELS, &game.settings.guiScaleIndex, game.settings.guiScaleDropdownEdit)) {
+    game.settings.guiScaleDropdownEdit = !game.settings.guiScaleDropdownEdit;
+  }
+
+  // FPS Target dropdown
+  if (GuiDropdownBox(
+          Rectangle{(float)controlX, (float)fpsY - 5, (float)controlWidth, 30},
+          FPS_LABELS, &game.settings.fpsIndex, game.settings.fpsDropdownEdit)) {
+    game.settings.fpsDropdownEdit = !game.settings.fpsDropdownEdit;
+  }
+
+  // Resolution dropdown (draw last - topmost, overlaps all others)
   if (GuiDropdownBox(
           Rectangle{(float)controlX, (float)resolutionY - 5, (float)controlWidth, 30},
           resLabels.c_str(), &game.settings.resolutionIndex,
@@ -1019,8 +1058,9 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
 
   // Restart warning
   if (needsRestart) {
+    Color warningColor = GetColor(GuiGetStyle(DEFAULT, LINE_COLOR));
     DrawText("Note: MSAA requires restart to take effect", menuX + 30,
-             menuY + menuHeight - 25, 14, YELLOW);
+             menuY + menuHeight - 25, 14, warningColor);
   }
 }
 
@@ -1215,18 +1255,11 @@ void loadConfig(VideoSettings& settings) {
   TraceLog(LOG_INFO, "Config loaded from config.txt");
 }
 
-// Apply GUI scale to raygui
+// Apply GUI scale to raygui (currently disabled - functionality removed)
 void applyGuiScale(float scale) {
-  // Set text size for all controls
-  GuiSetStyle(DEFAULT, TEXT_SIZE, (int)(10 * scale));
-
-  // Set spacing and padding
-  GuiSetStyle(DEFAULT, TEXT_SPACING, (int)(1 * scale));
-
-  // Set border width
-  GuiSetStyle(DEFAULT, BORDER_WIDTH, (int)(1 * scale));
-
-  TraceLog(LOG_INFO, TextFormat("GUI scale applied: %.2f", scale));
+  // GUI scaling functionality has been removed as requested
+  // The menu option remains for potential future use
+  TraceLog(LOG_INFO, TextFormat("GUI scale setting: %.2f (scaling disabled)", scale));
 }
 
 // Load style theme
@@ -1292,6 +1325,9 @@ int main() {
   GameState game;
   // Apply loaded settings to game state
   game.settings = tempSettings;
+
+  // Center the camera on the hex map
+  calculateCenteredCameraOffset(game.camera, SCREEN_WIDTH, SCREEN_HEIGHT);
 
   // Add some initial units
   game.addUnit(UnitClass::INFANTRY, 0, 2, 2);
