@@ -10,31 +10,31 @@ AllowShortIfStatementsOnASingleLine: Never
 AllowShortLoopsOnASingleLine: false
 AlwaysBreakTemplateDeclarations: Yes
 BraceWrapping:
-    AfterCaseLabel: false
-    AfterClass: false
-    AfterControlStatement: Never
-    AfterEnum: false
-    AfterFunction: false
-    AfterNamespace: false
-    AfterStruct: false
-    BeforeCatch: false
-    BeforeElse: false
+    AfterCaseLabel: true
+    AfterClass: true
+    AfterControlStatement: Always
+    AfterEnum: true
+    AfterFunction: true
+    AfterNamespace: true
+    AfterStruct: true
+    BeforeCatch: true
+    BeforeElse: true
     SplitEmptyFunction: true
     SplitEmptyRecord: true
     SplitEmptyNamespace: true
 BreakBeforeBinaryOperators: NonAssignment
-BreakBeforeBraces: Attach
+BreakBeforeBraces: Custom
 BreakBeforeTernaryOperators: true
 BreakConstructorInitializers: BeforeColon
 BreakInheritanceList: BeforeColon
 ColumnLimit: 0
 CompactNamespaces: true
 ConstructorInitializerAllOnOneLineOrOnePerLine: true
-Cpp11BracedListStyle: false
+Cpp11BracedListStyle: true
 IncludeBlocks: Preserve
 IndentCaseLabels: true
 IndentPPDirectives: BeforeHash
-NamespaceIndentation: All
+NamespaceIndentation: None
 PointerAlignment: Left
 SpaceBeforeAssignmentOperators: true
 SpaceBeforeCpp11BracedList: true
