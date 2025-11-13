@@ -619,13 +619,10 @@ void drawMap(GameState &game) {
   Layout layout = createHexLayout(HEX_SIZE, game.camera.offsetX,
                                   game.camera.offsetY, game.camera.zoom);
 
-  // Draw hexes
+  // Draw hexes (all hexes always visible)
   for (int row = 0; row < MAP_ROWS; row++) {
     for (int col = 0; col < MAP_COLS; col++) {
       GameHex &hex = game.map[row][col];
-
-      // Skip if not spotted by current player (FOG OF WAR)
-      if (!hex.isSpotted[game.currentPlayer]) continue;
 
       OffsetCoord offset = gameCoordToOffset(hex.coord);
       ::Hex cubeHex = offset_to_cube(offset);
@@ -671,12 +668,13 @@ void drawMap(GameState &game) {
     }
   }
 
-  // Draw units (only those on spotted hexes)
+  // Draw units (friendly units always visible, enemy units only if spotted)
   for (auto &unit : game.units) {
     GameHex &unitHex = game.map[unit->position.row][unit->position.col];
 
-    // Only show units on spotted hexes (FOG OF WAR)
-    if (!unitHex.isSpotted[game.currentPlayer]) continue;
+    // Hide enemy units that aren't spotted (FOG OF WAR)
+    if (unit->side != game.currentPlayer && !unitHex.isSpotted[game.currentPlayer])
+      continue;
 
     OffsetCoord offset = gameCoordToOffset(unit->position);
     ::Hex cubeHex = offset_to_cube(offset);
