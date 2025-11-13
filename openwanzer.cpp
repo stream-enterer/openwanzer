@@ -469,15 +469,29 @@ struct CombatLog {
   float maxScrollOffset;   // Maximum scroll offset
   Rectangle bounds;        // Display area
   bool isHovering;        // Is mouse hovering over log?
+  bool isDragging;        // Is being dragged?
+  Vector2 dragOffset;     // Offset from top-left corner to mouse when drag started
+  Rectangle initialBounds; // Initial position for reset
 
-  CombatLog() : scrollOffset(0.0f), maxScrollOffset(0.0f), isHovering(false) {
+  CombatLog() : scrollOffset(0.0f), maxScrollOffset(0.0f), isHovering(false),
+                isDragging(false), dragOffset{0, 0} {
     // Upper right corner, below status bar (40px), 350px wide, 400px tall
     bounds = {SCREEN_WIDTH - 360.0f, 50.0f, 350.0f, 400.0f};
+    initialBounds = bounds;
   }
 
   void recalculateBounds(int screenWidth, int screenHeight) {
-    // Position in upper right, below status bar
-    bounds = {screenWidth - 360.0f, 50.0f, 350.0f, 400.0f};
+    // Position in upper right, below status bar (preserving offset from initial if dragged)
+    float defaultX = screenWidth - 360.0f;
+    float offsetX = bounds.x - initialBounds.x;
+    float offsetY = bounds.y - initialBounds.y;
+
+    initialBounds = {defaultX, 50.0f, 350.0f, 400.0f};
+    bounds = {defaultX + offsetX, 50.0f + offsetY, 350.0f, 400.0f};
+  }
+
+  void resetPosition() {
+    bounds = initialBounds;
   }
 };
 
@@ -1451,12 +1465,18 @@ void drawCombatLog(GameState &game) {
 
   Rectangle bounds = game.combatLog.bounds;
 
+  // Get colors from raygui theme
+  Color backgroundColor = GetColor(GuiGetStyle(DEFAULT, BACKGROUND_COLOR));
+  Color borderColor = GetColor(GuiGetStyle(DEFAULT, BORDER_COLOR_FOCUSED));
+  Color titleColor = GetColor(GuiGetStyle(DEFAULT, LINE_COLOR));
+  Color textColor = GetColor(GuiGetStyle(LABEL, TEXT_COLOR_NORMAL));
+
   // Draw background
-  DrawRectangleRec(bounds, Color{40, 40, 40, 240});
-  DrawRectangleLinesEx(bounds, 2, COLOR_GRID);
+  DrawRectangleRec(bounds, backgroundColor);
+  DrawRectangleLinesEx(bounds, 2, borderColor);
 
   // Draw title
-  DrawText("Combat Log", (int)(bounds.x + padding), (int)(bounds.y + 5), 16, WHITE);
+  DrawText("Combat Log", (int)(bounds.x + padding), (int)(bounds.y + 5), 16, titleColor);
 
   // Calculate text area (below title, with padding, leaving space for scrollbar)
   Rectangle textArea = {
@@ -1495,7 +1515,7 @@ void drawCombatLog(GameState &game) {
       if (textWidth > maxWidth && !currentLine.empty()) {
         // Current line is full, save it
         displayLines.push_back(currentLine);
-        lineColors.push_back(WHITE);
+        lineColors.push_back(textColor);
         currentLine = word;
       } else {
         currentLine = testLine;
@@ -1505,7 +1525,7 @@ void drawCombatLog(GameState &game) {
     // Add remaining text
     if (!currentLine.empty()) {
       displayLines.push_back(currentLine);
-      lineColors.push_back(WHITE);
+      lineColors.push_back(textColor);
     }
   }
 
@@ -1543,6 +1563,11 @@ void drawCombatLog(GameState &game) {
       bounds.height - titleHeight - padding
     };
 
+    // Get scrollbar colors from raygui theme
+    Color scrollBarBg = GetColor(GuiGetStyle(SCROLLBAR, BORDER_COLOR_NORMAL));
+    Color scrollBarFg = GetColor(GuiGetStyle(SCROLLBAR, BASE_COLOR_NORMAL));
+    Color scrollBarBorder = GetColor(GuiGetStyle(SCROLLBAR, BORDER_COLOR_FOCUSED));
+
     // Calculate scroll bar handle size and position
     float handleRatio = visibleHeight / totalContentHeight;
     float handleHeight = std::max(20.0f, scrollBarBounds.height * handleRatio);
@@ -1550,7 +1575,7 @@ void drawCombatLog(GameState &game) {
     float handleY = scrollBarBounds.y + scrollRatio * (scrollBarBounds.height - handleHeight);
 
     // Draw scrollbar track
-    DrawRectangleRec(scrollBarBounds, Color{60, 60, 60, 255});
+    DrawRectangleRec(scrollBarBounds, scrollBarBg);
 
     // Draw scrollbar handle
     Rectangle handleBounds = {
@@ -1559,8 +1584,8 @@ void drawCombatLog(GameState &game) {
       scrollBarWidth,
       handleHeight
     };
-    DrawRectangleRec(handleBounds, Color{120, 120, 120, 255});
-    DrawRectangleLinesEx(handleBounds, 1, Color{140, 140, 140, 255});
+    DrawRectangleRec(handleBounds, scrollBarFg);
+    DrawRectangleLinesEx(handleBounds, 1, scrollBarBorder);
   }
 }
 
@@ -1582,13 +1607,16 @@ void drawUI(GameState &game) {
   snprintf(zoomText, sizeof(zoomText), "Zoom: %.0f%%", game.camera.zoom * 100);
   DrawText(zoomText, 400, 10, 20, WHITE);
 
-  // Reset Map button
+  // Reset UI button
   if (GuiButton(Rectangle{game.layout.statusBar.width - 240, 5, 120, 30},
-                "RESET MAP")) {
+                "RESET UI")) {
     // Reset camera to center and 100% zoom
     game.camera.zoom = 1.0f;
     game.camera.zoomDirection = 0;
     Input::calculateCenteredCameraOffset(game.camera, SCREEN_WIDTH, SCREEN_HEIGHT);
+
+    // Reset combat log position
+    game.combatLog.resetPosition();
   }
 
   // Options button
@@ -1998,6 +2026,31 @@ void handlePan(GameState &game) {
   }
 }
 
+// Handle combat log dragging
+void handleCombatLogDrag(GameState &game) {
+  Vector2 mousePos = GetMousePosition();
+
+  // Start dragging on left click in combat log
+  if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+    if (CheckCollisionPointRec(mousePos, game.combatLog.bounds)) {
+      game.combatLog.isDragging = true;
+      game.combatLog.dragOffset.x = mousePos.x - game.combatLog.bounds.x;
+      game.combatLog.dragOffset.y = mousePos.y - game.combatLog.bounds.y;
+    }
+  }
+
+  // Stop dragging on release
+  if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) {
+    game.combatLog.isDragging = false;
+  }
+
+  // Update position while dragging
+  if (game.combatLog.isDragging) {
+    game.combatLog.bounds.x = mousePos.x - game.combatLog.dragOffset.x;
+    game.combatLog.bounds.y = mousePos.y - game.combatLog.dragOffset.y;
+  }
+}
+
 } // namespace Input
 
 //==============================================================================
@@ -2195,6 +2248,9 @@ int main() {
   while (!WindowShouldClose()) {
     // Input handling (only when menu is closed)
     if (!game.showOptionsMenu) {
+      // Handle combat log dragging (must be first for left click priority)
+      Input::handleCombatLogDrag(game);
+
       // Handle combat log scrolling (must be before zoom)
       Input::handleCombatLogScroll(game);
 
@@ -2212,8 +2268,8 @@ int main() {
         game.showOptionsMenu = true;
       }
 
-      // Mouse input for unit selection
-      if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+      // Mouse input for unit selection (only if not dragging combat log)
+      if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && !game.combatLog.isDragging) {
         Vector2 mousePos = GetMousePosition();
 
         // Convert mouse position to hex coordinate
