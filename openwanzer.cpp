@@ -1,3 +1,14 @@
+//==============================================================================
+// PANZER GENERAL 2 PROTOTYPE - SINGLE FILE ARCHITECTURE
+//==============================================================================
+// A hex-based turn-based strategy game using raylib and raygui
+// Organized with namespaces for maintainability while keeping single-file structure
+//==============================================================================
+
+//==============================================================================
+// SECTION 1: INCLUDES AND PREPROCESSOR
+//==============================================================================
+
 #include "raylib.h"
 #include "raymath.h"
 
@@ -23,14 +34,18 @@
 #include <dirent.h>
 #include <sys/stat.h>
 
-// Constants
+//==============================================================================
+// SECTION 2: CONSTANTS AND GLOBALS
+//==============================================================================
+
+// Default configuration values
 const int DEFAULT_SCREEN_WIDTH = 1920;
 const int DEFAULT_SCREEN_HEIGHT = 1080;
 const float DEFAULT_HEX_SIZE = 40.0f;
 const int DEFAULT_MAP_ROWS = 12;
 const int DEFAULT_MAP_COLS = 16;
 
-// Current settings (can be modified)
+// Current settings (can be modified at runtime)
 int SCREEN_WIDTH = DEFAULT_SCREEN_WIDTH;
 int SCREEN_HEIGHT = DEFAULT_SCREEN_HEIGHT;
 float HEX_SIZE = DEFAULT_HEX_SIZE;
@@ -41,6 +56,10 @@ int MAP_COLS = DEFAULT_MAP_COLS;
 const Color COLOR_BACKGROUND = BLACK;
 const Color COLOR_GRID = Color{245, 245, 220, 255}; // Pale beige
 const Color COLOR_FPS = Color{192, 192, 192, 255};   // Light grey
+
+//==============================================================================
+// SECTION 3: ENUMS AND DATA TABLES
+//==============================================================================
 
 // Enums
 enum class TerrainType {
@@ -123,6 +142,10 @@ const int MOV_TABLE_DRY[12][18] = {
     {1, 1, 1, 1, 2, 1, 1, 2, 2, 255, 254, 1, 1, 1, 255, 255, 1, 1} // All Terrain Leg (Mountain)
 };
 
+//==============================================================================
+// SECTION 4: UTILITY FUNCTIONS (GAME LOGIC)
+//==============================================================================
+
 // Helper function to map TerrainType to movement table index
 int getTerrainIndex(TerrainType terrain) {
   switch (terrain) {
@@ -183,6 +206,10 @@ int getTerrainEntrenchment(TerrainType terrain) {
   }
   return 0;
 }
+
+//==============================================================================
+// SECTION 5: DATA STRUCTURES
+//==============================================================================
 
 // Forward declaration for calculateCenteredCameraOffset
 struct CameraState;
@@ -268,6 +295,10 @@ const char *FPS_LABELS = "30;60;75;120;144;240;Unlimited";
 const float GUI_SCALE_VALUES[] = {1.0f, 1.5f, 2.0f};
 const char *GUI_SCALE_LABELS = "1.00;1.50;2.00";
 const int GUI_SCALE_COUNT = 3;
+
+//==============================================================================
+// SECTION 5A: CONFIGURATION - STYLE DISCOVERY
+//==============================================================================
 
 // Global variables for style themes
 std::vector<std::string> AVAILABLE_STYLES;
@@ -516,7 +547,13 @@ struct GameState {
   }
 };
 
-// Create hex layout for rendering
+//==============================================================================
+// SECTION 6: RENDERING FUNCTIONS
+//==============================================================================
+
+namespace Rendering {
+
+// Hex layout and coordinate conversion functions
 Layout createHexLayout(float hexSize, float offsetX, float offsetY, float zoom) {
   Point size(hexSize * zoom, hexSize * zoom);
   Point origin(offsetX, offsetY);
@@ -733,10 +770,16 @@ void clearSelectionHighlights(GameState &game) {
   }
 }
 
-// Calculate distance between two hexes using the hex library
+} // namespace Rendering
+
+//==============================================================================
+// SECTION 7: GAME LOGIC FUNCTIONS
+//==============================================================================
+
+// Hex math and distance calculations
 int hexDistance(const HexCoord &a, const HexCoord &b) {
-  OffsetCoord offsetA = gameCoordToOffset(a);
-  OffsetCoord offsetB = gameCoordToOffset(b);
+  OffsetCoord offsetA = Rendering::gameCoordToOffset(a);
+  OffsetCoord offsetB = Rendering::gameCoordToOffset(b);
   ::Hex cubeA = offset_to_cube(offsetA);
   ::Hex cubeB = offset_to_cube(offsetB);
   return hex_distance(cubeA, cubeB);
@@ -762,12 +805,12 @@ std::vector<HexCoord> getAdjacent(int row, int col) {
 }
 
 // Check if unit is air unit (ignores ZOC)
-bool isAir(Unit *unit) {
+bool isAir(const Unit *unit) {
   return unit && unit->movMethod == MovMethod::AIR;
 }
 
 // Check if unit is a hard target (armored)
-bool isHardTarget(Unit *unit) {
+bool isHardTarget(const Unit *unit) {
   if (!unit) return false;
   return (unit->unitClass == UnitClass::TANK ||
           unit->unitClass == UnitClass::ANTI_TANK ||
@@ -775,7 +818,7 @@ bool isHardTarget(Unit *unit) {
 }
 
 // Check if unit is sea unit
-bool isSea(Unit *unit) {
+bool isSea(const Unit *unit) {
   if (!unit) return false;
   return (unit->movMethod == MovMethod::DEEP_NAVAL ||
           unit->movMethod == MovMethod::COSTAL ||
@@ -863,7 +906,7 @@ void initializeAllSpotting(GameState &game) {
 }
 
 void highlightMovementRange(GameState &game, Unit *unit) {
-  clearSelectionHighlights(game);
+  Rendering::clearSelectionHighlights(game);
   if (!unit)
     return;
 
@@ -1015,7 +1058,7 @@ void moveUnit(GameState &game, Unit *unit, const HexCoord &target) {
 }
 
 // Calculate kills using PG2 formula
-int calculateKills(int atkVal, int defVal, Unit *attacker, Unit *defender) {
+int calculateKills(int atkVal, int defVal, const Unit *attacker, const Unit *defender) {
   int kF = atkVal - defVal;
 
   // PG2 formula: compress high values
@@ -1257,8 +1300,12 @@ void endTurn(GameState &game) {
 
   // Clear selection
   game.selectedUnit = nullptr;
-  clearSelectionHighlights(game);
+  Rendering::clearSelectionHighlights(game);
 }
+
+//==============================================================================
+// SECTION 8: INPUT AND CAMERA FUNCTIONS
+//==============================================================================
 
 // Calculate centered camera offset to center the hex map in the play area
 void calculateCenteredCameraOffset(CameraState& camera, int screenWidth, int screenHeight) {
@@ -1271,11 +1318,11 @@ void calculateCenteredCameraOffset(CameraState& camera, int screenWidth, int scr
   // Calculate the center of the hex map in world coordinates
   // The map center is approximately at hex (MAP_ROWS/2, MAP_COLS/2)
   HexCoord mapCenter = {MAP_ROWS / 2, MAP_COLS / 2};
-  OffsetCoord offset = gameCoordToOffset(mapCenter);
+  OffsetCoord offset = Rendering::gameCoordToOffset(mapCenter);
   ::Hex cubeHex = offset_to_cube(offset);
 
   // Create a temporary layout to calculate pixel position
-  Layout tempLayout = createHexLayout(HEX_SIZE, 0, 0, camera.zoom);
+  Layout tempLayout = Rendering::createHexLayout(HEX_SIZE, 0, 0, camera.zoom);
   Point mapCenterPixel = hex_to_pixel(tempLayout, cubeHex);
 
   // Calculate offset so that map center appears at play area center
@@ -1283,11 +1330,17 @@ void calculateCenteredCameraOffset(CameraState& camera, int screenWidth, int scr
   camera.offsetY = playAreaCenterY - mapCenterPixel.y;
 }
 
-// Forward declarations
+// Forward declarations (for Config namespace functions)
 void saveConfig(const VideoSettings& settings);
 void loadConfig(VideoSettings& settings);
 void applyGuiScale(float scale);
 void loadStyleTheme(const std::string& themeName);
+
+//==============================================================================
+// SECTION 6B: RENDERING FUNCTIONS - UI AND MENUS
+//==============================================================================
+
+namespace Rendering {
 
 void drawUI(GameState &game) {
   // Turn info panel (status bar)
@@ -1587,6 +1640,8 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
   }
 }
 
+} // namespace Rendering
+
 // Handle mouse zoom with special behavior
 void handleZoom(GameState &game) {
   float wheelMove = GetMouseWheelMove();
@@ -1690,6 +1745,10 @@ void handlePan(GameState &game) {
     game.camera.offsetY = game.camera.panStartOffset.y + delta.y;
   }
 }
+
+//==============================================================================
+// SECTION 9: CONFIGURATION - SAVE/LOAD AND SETTINGS
+//==============================================================================
 
 // Save config to file
 void saveConfig(const VideoSettings& settings) {
@@ -1802,6 +1861,10 @@ void loadStyleTheme(const std::string& themeName) {
   TraceLog(LOG_INFO, TextFormat("Style loaded: %s", themeName.c_str()));
 }
 
+//==============================================================================
+// SECTION 10: MAIN LOOP
+//==============================================================================
+
 int main() {
   // Discover available styles first (before window init)
   discoverStyles();
@@ -1889,13 +1952,13 @@ int main() {
         Vector2 mousePos = GetMousePosition();
 
         // Convert mouse position to hex coordinate
-        Layout layout = createHexLayout(HEX_SIZE, game.camera.offsetX,
+        Layout layout = Rendering::createHexLayout(HEX_SIZE, game.camera.offsetX,
                                        game.camera.offsetY, game.camera.zoom);
         Point mousePoint(mousePos.x, mousePos.y);
         FractionalHex fracHex = pixel_to_hex(layout, mousePoint);
         ::Hex cubeHex = hex_round(fracHex);
         OffsetCoord offset = cube_to_offset(cubeHex);
-        HexCoord clickedHex = offsetToGameCoord(offset);
+        HexCoord clickedHex = Rendering::offsetToGameCoord(offset);
 
         // Check if clicked on a hex that's within map bounds
         if (clickedHex.row >= 0 && clickedHex.row < MAP_ROWS &&
@@ -1907,12 +1970,12 @@ int main() {
             // Try to move or attack
             if (game.map[clickedHex.row][clickedHex.col].isMoveSel) {
               moveUnit(game, game.selectedUnit, clickedHex);
-              clearSelectionHighlights(game);
+              Rendering::clearSelectionHighlights(game);
               highlightAttackRange(game, game.selectedUnit);
             } else if (game.map[clickedHex.row][clickedHex.col].isAttackSel) {
               if (clickedUnit) {
                 performAttack(game, game.selectedUnit, clickedUnit);
-                clearSelectionHighlights(game);
+                Rendering::clearSelectionHighlights(game);
                 game.selectedUnit = nullptr;
               }
             } else if (clickedUnit && clickedUnit->side == game.currentPlayer) {
@@ -1923,7 +1986,7 @@ int main() {
             } else {
               // Deselect
               game.selectedUnit = nullptr;
-              clearSelectionHighlights(game);
+              Rendering::clearSelectionHighlights(game);
             }
           } else if (clickedUnit && clickedUnit->side == game.currentPlayer) {
             // Select unit
@@ -2034,12 +2097,12 @@ int main() {
     BeginDrawing();
     ClearBackground(COLOR_BACKGROUND);
 
-    drawMap(game);
-    drawUI(game);
+    Rendering::drawMap(game);
+    Rendering::drawUI(game);
 
     // Draw options menu on top
     if (game.showOptionsMenu) {
-      drawOptionsMenu(game, needsRestart);
+      Rendering::drawOptionsMenu(game, needsRestart);
     }
 
     // Draw FPS in bottom right corner
