@@ -156,17 +156,17 @@ class PanzerGame(arcade.Window):
         )
         hud_container.add(hud_background, anchor_x="left", anchor_y="top")
 
-        # Create a vertical box layout for HUD content (top 75% and bottom 25%)
+        # Create a vertical box layout for HUD content
         hud_vertical_layout = arcade.gui.UIBoxLayout(
             vertical=True,
             space_between=0
         )
 
-        # Top section (75% of HUD) - contains game info
+        # Top section (full HUD height) - contains game info
         top_section = arcade.gui.UIBoxLayout(
             vertical=True,
             space_between=10,
-            size_hint=(1, 0.75)
+            size_hint=(1, 1)
         )
 
         # Create HUD labels
@@ -235,8 +235,8 @@ class PanzerGame(arcade.Window):
         top_section.add(controls_label)
         top_section.add(self.ai_thinking_label)
 
-        # Wrap top section in a padding container
-        top_section_wrapper = arcade.gui.UIAnchorLayout(size_hint=(1, 0.75))
+        # Wrap top section in a padding container (full height now, no split)
+        top_section_wrapper = arcade.gui.UIAnchorLayout(size_hint=(1, 1))
         top_section_wrapper.add(
             top_section,
             anchor_x="left",
@@ -277,7 +277,7 @@ class PanzerGame(arcade.Window):
         self.update_hud()
 
     def add_message(self, message, color=arcade.color.WHITE):
-        """Add a message to the message log"""
+        """Add a message to the message log with deduplication"""
         # Add timestamp or turn number
         turn_str = f"[T{self.game_state.turn}]" if self.game_state else "[--]"
 
@@ -285,7 +285,31 @@ class PanzerGame(arcade.Window):
         lines = message.split('\n')
         for line in lines:
             formatted_message = f"{turn_str} {line}"
-            self.messages.append(formatted_message)
+
+            # Check if this message is a repeat of the last message
+            if self.messages and self.messages[-1].startswith(f"{turn_str} {line}"):
+                # Extract the base message without the count
+                last_msg = self.messages[-1]
+
+                # Check if it already has a count (e.g., " (x2)")
+                if " (x" in last_msg and last_msg.endswith(")"):
+                    # Extract current count
+                    count_start = last_msg.rfind(" (x") + 3
+                    count_end = last_msg.rfind(")")
+                    try:
+                        current_count = int(last_msg[count_start:count_end])
+                        # Remove the last message and add updated one
+                        base_msg = last_msg[:last_msg.rfind(" (x")]
+                        self.messages[-1] = f"{base_msg} (x{current_count + 1})"
+                    except (ValueError, IndexError):
+                        # If parsing fails, just append as normal
+                        self.messages.append(formatted_message)
+                else:
+                    # First repeat, add (x2)
+                    self.messages[-1] = f"{formatted_message} (x2)"
+            else:
+                # New message, add normally
+                self.messages.append(formatted_message)
 
         # Keep only the last max_messages
         if len(self.messages) > self.max_messages:
