@@ -299,11 +299,14 @@ class PanzerGame(arcade.Window):
             message_text = "=== Game Messages ===\n" + "\n".join(self.messages)
             self.message_box.text = message_text
 
-            # Autoscroll to bottom
-            # UITextArea uses a pyglet ScrollableTextLayout, which has view_y property
-            # Setting view_y to 0 scrolls to the bottom of the text
+            # Autoscroll to bottom to show latest messages
+            # UITextArea uses a pyglet ScrollableTextLayout
+            # view_y controls scroll position - higher values scroll down to show bottom content
             if hasattr(self.message_box, 'layout'):
-                self.message_box.layout.view_y = 0
+                layout = self.message_box.layout
+                # Scroll to bottom: view_y = content_height - viewport_height
+                max_scroll = max(0, layout.content_height - layout.height)
+                layout.view_y = max_scroll
 
     def on_resize(self, width, height):
         """Handle window resize"""
