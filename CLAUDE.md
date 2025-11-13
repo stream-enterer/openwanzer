@@ -177,7 +177,7 @@ The workflow for any Arcade-related feature should be:
 2. **Use Arcade's built-in solutions** - Prefer Arcade's widgets and APIs over custom code
    - Example: Use `UITextArea`, `UILabel`, `UIBoxLayout` instead of custom text rendering
    - Example: Use `Camera2D` instead of manual viewport math
-   - Example: Use `UIBorder` instead of drawing custom borders
+   - Example: Use `UISpace` as backgrounds with padding to create border effects
 
 3. **Only create custom code if:**
    - No Arcade widget/API exists for the requirement
@@ -206,7 +206,7 @@ The workflow for any Arcade-related feature should be:
 grep -r "UITextArea\|scroll" doc/arcade/programming_guide/gui/
 
 # 2. Found UITextArea widget - use it instead of custom implementation
-# 3. Check if UIBorder exists for borders
+# 3. Use UISpace with padding to create border effects if needed
 # 4. Implement using Arcade's widgets
 # 5. Test and commit
 ```
