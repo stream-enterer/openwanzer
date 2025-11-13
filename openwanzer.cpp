@@ -551,6 +551,8 @@ struct GameState {
 // SECTION 6: RENDERING FUNCTIONS
 //==============================================================================
 
+namespace Rendering {
+
 // Hex layout and coordinate conversion functions
 Layout createHexLayout(float hexSize, float offsetX, float offsetY, float zoom) {
   Point size(hexSize * zoom, hexSize * zoom);
@@ -768,14 +770,16 @@ void clearSelectionHighlights(GameState &game) {
   }
 }
 
+} // namespace Rendering
+
 //==============================================================================
 // SECTION 7: GAME LOGIC FUNCTIONS
 //==============================================================================
 
 // Hex math and distance calculations
 int hexDistance(const HexCoord &a, const HexCoord &b) {
-  OffsetCoord offsetA = gameCoordToOffset(a);
-  OffsetCoord offsetB = gameCoordToOffset(b);
+  OffsetCoord offsetA = Rendering::gameCoordToOffset(a);
+  OffsetCoord offsetB = Rendering::gameCoordToOffset(b);
   ::Hex cubeA = offset_to_cube(offsetA);
   ::Hex cubeB = offset_to_cube(offsetB);
   return hex_distance(cubeA, cubeB);
@@ -902,7 +906,7 @@ void initializeAllSpotting(GameState &game) {
 }
 
 void highlightMovementRange(GameState &game, Unit *unit) {
-  clearSelectionHighlights(game);
+  Rendering::clearSelectionHighlights(game);
   if (!unit)
     return;
 
@@ -1296,7 +1300,7 @@ void endTurn(GameState &game) {
 
   // Clear selection
   game.selectedUnit = nullptr;
-  clearSelectionHighlights(game);
+  Rendering::clearSelectionHighlights(game);
 }
 
 //==============================================================================
@@ -1314,11 +1318,11 @@ void calculateCenteredCameraOffset(CameraState& camera, int screenWidth, int scr
   // Calculate the center of the hex map in world coordinates
   // The map center is approximately at hex (MAP_ROWS/2, MAP_COLS/2)
   HexCoord mapCenter = {MAP_ROWS / 2, MAP_COLS / 2};
-  OffsetCoord offset = gameCoordToOffset(mapCenter);
+  OffsetCoord offset = Rendering::gameCoordToOffset(mapCenter);
   ::Hex cubeHex = offset_to_cube(offset);
 
   // Create a temporary layout to calculate pixel position
-  Layout tempLayout = createHexLayout(HEX_SIZE, 0, 0, camera.zoom);
+  Layout tempLayout = Rendering::createHexLayout(HEX_SIZE, 0, 0, camera.zoom);
   Point mapCenterPixel = hex_to_pixel(tempLayout, cubeHex);
 
   // Calculate offset so that map center appears at play area center
@@ -1326,11 +1330,17 @@ void calculateCenteredCameraOffset(CameraState& camera, int screenWidth, int scr
   camera.offsetY = playAreaCenterY - mapCenterPixel.y;
 }
 
-// Forward declarations
+// Forward declarations (for Config namespace functions)
 void saveConfig(const VideoSettings& settings);
 void loadConfig(VideoSettings& settings);
 void applyGuiScale(float scale);
 void loadStyleTheme(const std::string& themeName);
+
+//==============================================================================
+// SECTION 6B: RENDERING FUNCTIONS - UI AND MENUS
+//==============================================================================
+
+namespace Rendering {
 
 void drawUI(GameState &game) {
   // Turn info panel (status bar)
@@ -1629,6 +1639,8 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
              menuY + menuHeight - 25, 14, warningColor);
   }
 }
+
+} // namespace Rendering
 
 // Handle mouse zoom with special behavior
 void handleZoom(GameState &game) {
@@ -1940,13 +1952,13 @@ int main() {
         Vector2 mousePos = GetMousePosition();
 
         // Convert mouse position to hex coordinate
-        Layout layout = createHexLayout(HEX_SIZE, game.camera.offsetX,
+        Layout layout = Rendering::createHexLayout(HEX_SIZE, game.camera.offsetX,
                                        game.camera.offsetY, game.camera.zoom);
         Point mousePoint(mousePos.x, mousePos.y);
         FractionalHex fracHex = pixel_to_hex(layout, mousePoint);
         ::Hex cubeHex = hex_round(fracHex);
         OffsetCoord offset = cube_to_offset(cubeHex);
-        HexCoord clickedHex = offsetToGameCoord(offset);
+        HexCoord clickedHex = Rendering::offsetToGameCoord(offset);
 
         // Check if clicked on a hex that's within map bounds
         if (clickedHex.row >= 0 && clickedHex.row < MAP_ROWS &&
@@ -1958,12 +1970,12 @@ int main() {
             // Try to move or attack
             if (game.map[clickedHex.row][clickedHex.col].isMoveSel) {
               moveUnit(game, game.selectedUnit, clickedHex);
-              clearSelectionHighlights(game);
+              Rendering::clearSelectionHighlights(game);
               highlightAttackRange(game, game.selectedUnit);
             } else if (game.map[clickedHex.row][clickedHex.col].isAttackSel) {
               if (clickedUnit) {
                 performAttack(game, game.selectedUnit, clickedUnit);
-                clearSelectionHighlights(game);
+                Rendering::clearSelectionHighlights(game);
                 game.selectedUnit = nullptr;
               }
             } else if (clickedUnit && clickedUnit->side == game.currentPlayer) {
@@ -1974,7 +1986,7 @@ int main() {
             } else {
               // Deselect
               game.selectedUnit = nullptr;
-              clearSelectionHighlights(game);
+              Rendering::clearSelectionHighlights(game);
             }
           } else if (clickedUnit && clickedUnit->side == game.currentPlayer) {
             // Select unit
@@ -2085,12 +2097,12 @@ int main() {
     BeginDrawing();
     ClearBackground(COLOR_BACKGROUND);
 
-    drawMap(game);
-    drawUI(game);
+    Rendering::drawMap(game);
+    Rendering::drawUI(game);
 
     // Draw options menu on top
     if (game.showOptionsMenu) {
-      drawOptionsMenu(game, needsRestart);
+      Rendering::drawOptionsMenu(game, needsRestart);
     }
 
     // Draw FPS in bottom right corner
