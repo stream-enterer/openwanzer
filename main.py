@@ -260,9 +260,9 @@ class PanzerGame(arcade.Window):
             align_y=20
         )
 
-        # Add sections to vertical layout
-        hud_vertical_layout.add(top_section_wrapper)
+        # Add sections to vertical layout (message box first to position at bottom)
         hud_vertical_layout.add(message_box_container)
+        hud_vertical_layout.add(top_section_wrapper)
 
         # Add vertical layout to HUD container
         hud_container.add(
@@ -298,6 +298,12 @@ class PanzerGame(arcade.Window):
         if self.message_box:
             message_text = "=== Game Messages ===\n" + "\n".join(self.messages)
             self.message_box.text = message_text
+
+            # Autoscroll to bottom
+            # UITextArea uses a pyglet ScrollableTextLayout, which has view_y property
+            # Setting view_y to 0 scrolls to the bottom of the text
+            if hasattr(self.message_box, 'layout'):
+                self.message_box.layout.view_y = 0
 
     def on_resize(self, width, height):
         """Handle window resize"""
