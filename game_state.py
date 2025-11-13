@@ -155,9 +155,9 @@ class GameState:
         
         if not target_hex.is_passable():
             return False
-        
-        # Check if hex is occupied by friendly unit
-        if target_hex.unit and target_hex.unit.owner == unit.owner:
+
+        # Check if hex is occupied by any unit (can't move onto other units)
+        if target_hex.unit:
             return False
         
         # Check if within movement range

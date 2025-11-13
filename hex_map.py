@@ -157,9 +157,9 @@ class HexMap:
             for neighbor in self.get_neighbors(current_hex):
                 move_cost = neighbor.get_movement_cost()
                 new_cost = cost + move_cost
-                
-                # Check if we can reach this hex
-                if new_cost <= movement_points and neighbor.is_passable():
+
+                # Check if we can reach this hex (must be passable and not occupied by a unit)
+                if new_cost <= movement_points and neighbor.is_passable() and not neighbor.unit:
                     # If not visited or found a cheaper path
                     if neighbor not in visited or new_cost < visited[neighbor]:
                         visited[neighbor] = new_cost
@@ -192,8 +192,9 @@ class HexMap:
             for neighbor in self.get_neighbors(current):
                 move_cost = neighbor.get_movement_cost()
                 new_cost = cost + move_cost
-                
-                if new_cost <= movement_points and neighbor.is_passable():
+
+                # Path through passable hexes without units
+                if new_cost <= movement_points and neighbor.is_passable() and not neighbor.unit:
                     if neighbor not in visited or new_cost < visited[neighbor]:
                         visited[neighbor] = new_cost
                         priority = new_cost + heuristic(neighbor, end_hex)
