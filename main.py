@@ -249,7 +249,7 @@ class PanzerGame(arcade.Window):
         self.draw_units()
 
         # Reset to default camera for UI rendering
-        self.window.default_camera.use()
+        self.default_camera.use()
 
         # Draw UI manager (HUD panels and widgets)
         self.ui_manager.draw()
