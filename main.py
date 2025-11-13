@@ -309,10 +309,11 @@ class PanzerGame(arcade.Window):
 
         if self.message_box and hasattr(self.message_box, 'layout'):
             layout = self.message_box.layout
-            # Force scroll to bottom by setting view_y to maximum possible value
-            # Pyglet will clamp it to the valid range
-            # In text layouts, higher view_y shows content further down in the document
-            layout.view_y = 999999  # Very large number, will be clamped to max valid value
+            # In pyglet ScrollableTextLayout, to scroll to bottom:
+            # view_y = -content_height
+            # This scrolls the content up so the bottom is visible
+            # Source: https://stackoverflow.com/questions/12555681/
+            layout.view_y = -layout.content_height
 
     def on_resize(self, width, height):
         """Handle window resize"""
