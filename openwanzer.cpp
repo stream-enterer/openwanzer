@@ -28,6 +28,7 @@
 #include <cmath>
 #include <fstream>
 #include <memory>
+#include <set>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -881,23 +882,28 @@ void drawMap(GameState &game) {
     float unitWidth = 40 * game.camera.zoom;
     float unitHeight = 30 * game.camera.zoom;
 
-    // Draw unit square
-    Color unitColor = getUnitColor(unit->side);
-    DrawRectangle((int)(center.x - unitWidth / 2),
-                  (int)(center.y - unitHeight / 2),
-                  (int)unitWidth, (int)unitHeight, unitColor);
-    DrawRectangleLines((int)(center.x - unitWidth / 2),
-                       (int)(center.y - unitHeight / 2),
-                       (int)unitWidth, (int)unitHeight, BLACK);
+    // Calculate rotation angle based on facing direction (0-5 maps to 0-300 degrees)
+    // For pointy-top hexes: 0=E(0°), 1=NE(60°), 2=NW(120°), 3=W(180°), 4=SW(240°), 5=SE(300°)
+    float rotation = (unit->facing >= 0 && unit->facing <= 5) ? unit->facing * 60.0f : 0.0f;
 
-    // Draw unit symbol
+    // Draw unit rectangle with rotation
+    Color unitColor = getUnitColor(unit->side);
+    Rectangle unitRect = {(float)center.x, (float)center.y, unitWidth, unitHeight};
+    Vector2 origin = {unitWidth / 2, unitHeight / 2};
+    DrawRectanglePro(unitRect, origin, rotation, unitColor);
+
+    // Draw unit symbol (rotated with unit)
     std::string symbol = getUnitSymbol(unit->unitClass);
     int fontSize = (int)(10 * game.camera.zoom);
     if (fontSize >= 8) {  // Only draw text if it's readable
       int textWidth = MeasureText(symbol.c_str(), fontSize);
+
+      // Note: Text is drawn unrotated at center for readability
+      // TODO: When using sprite textures, use DrawTexturePro with rotation parameter
+      // Example: DrawTexturePro(texture, sourceRec, destRec, origin, rotation, WHITE);
       DrawText(symbol.c_str(),
                (int)(center.x - textWidth / 2),
-               (int)(center.y - unitHeight / 2 + 2),
+               (int)(center.y - fontSize / 2 - 5),
                fontSize, WHITE);
 
       // Draw strength
@@ -910,14 +916,19 @@ void drawMap(GameState &game) {
                fontSize, YELLOW);
     }
 
-    // Draw selection highlight
+    // Draw selection highlight (rotated)
     if (unit.get() == game.selectedUnit) {
-      DrawRectangleLines((int)(center.x - unitWidth / 2 - 2),
-                         (int)(center.y - unitHeight / 2 - 2),
-                         (int)(unitWidth + 4), (int)(unitHeight + 4), YELLOW);
-      DrawRectangleLines((int)(center.x - unitWidth / 2 - 3),
-                         (int)(center.y - unitHeight / 2 - 3),
-                         (int)(unitWidth + 6), (int)(unitHeight + 6), YELLOW);
+      Rectangle highlightRect1 = {(float)center.x, (float)center.y, unitWidth + 4, unitHeight + 4};
+      Vector2 highlightOrigin1 = {(unitWidth + 4) / 2, (unitHeight + 4) / 2};
+      DrawRectangleLinesEx(Rectangle{highlightRect1.x - highlightOrigin1.x,
+                                      highlightRect1.y - highlightOrigin1.y,
+                                      highlightRect1.width, highlightRect1.height}, 2.0f, YELLOW);
+
+      Rectangle highlightRect2 = {(float)center.x, (float)center.y, unitWidth + 6, unitHeight + 6};
+      Vector2 highlightOrigin2 = {(unitWidth + 6) / 2, (unitHeight + 6) / 2};
+      DrawRectangleLinesEx(Rectangle{highlightRect2.x - highlightOrigin2.x,
+                                      highlightRect2.y - highlightOrigin2.y,
+                                      highlightRect2.width, highlightRect2.height}, 2.0f, YELLOW);
     }
   }
 
@@ -925,6 +936,9 @@ void drawMap(GameState &game) {
   if (game.selectedUnit && !game.selectedUnit->hasMoved) {
     Layout layout = createHexLayout(HEX_SIZE, game.camera.offsetX,
                                     game.camera.offsetY, game.camera.zoom);
+
+    // Collect all border edges first
+    std::vector<std::pair<Point, Point>> borderEdges;
 
     // Find edge hexes (hexes with at least one neighbor that's not moveable)
     for (int row = 0; row < MAP_ROWS; row++) {
@@ -951,16 +965,31 @@ void drawMap(GameState &game) {
           }
 
           if (drawEdge) {
-            // Draw the edge between this hex and its neighbor
+            // Collect the edge for drawing
             std::vector<Point> corners = polygon_corners(layout, cubeHex);
             Point p1 = corners[dir];
             Point p2 = corners[(dir + 1) % 6];
-            DrawLineEx(Vector2{(float)p1.x, (float)p1.y},
-                      Vector2{(float)p2.x, (float)p2.y},
-                      3.0f * game.camera.zoom, YELLOW);
+            borderEdges.push_back({p1, p2});
           }
         }
       }
+    }
+
+    // Draw all border edges with thicker lines for better visibility
+    for (const auto &edge : borderEdges) {
+      DrawLineEx(Vector2{(float)edge.first.x, (float)edge.first.y},
+                Vector2{(float)edge.second.x, (float)edge.second.y},
+                4.0f * game.camera.zoom, YELLOW);
+    }
+
+    // Draw circles at vertices to ensure contiguous appearance
+    std::set<std::pair<int, int>> vertices;
+    for (const auto &edge : borderEdges) {
+      vertices.insert({(int)edge.first.x, (int)edge.first.y});
+      vertices.insert({(int)edge.second.x, (int)edge.second.y});
+    }
+    for (const auto &vertex : vertices) {
+      DrawCircle(vertex.first, vertex.second, 2.5f * game.camera.zoom, YELLOW);
     }
   }
 
@@ -992,15 +1021,15 @@ void drawMap(GameState &game) {
           ::Hex pathCube = offset_to_cube(pathOffset);
           std::vector<Point> corners = polygon_corners(layout, pathCube);
 
-          // Draw semi-transparent yellow fill
-          drawHexagon(corners, Color{255, 255, 0, 80}, true);
+          // Draw semi-transparent yellow fill (increased opacity for better visibility)
+          drawHexagon(corners, Color{255, 255, 0, 150}, true);
         }
 
-        // Draw target hex with slightly more opacity
+        // Draw target hex with more opacity
         OffsetCoord targetOffset = gameCoordToOffset(hoveredHex);
         ::Hex targetCube = offset_to_cube(targetOffset);
         std::vector<Point> corners = polygon_corners(layout, targetCube);
-        drawHexagon(corners, Color{255, 255, 0, 120}, true);
+        drawHexagon(corners, Color{255, 255, 0, 200}, true);
       }
     }
   }
@@ -1035,41 +1064,56 @@ void drawMap(GameState &game) {
       Point edgeP2 = hexCorners[(dir + 1) % 6];
       Point edgeMid = Point((edgeP1.x + edgeP2.x) / 2.0, (edgeP1.y + edgeP2.y) / 2.0);
 
-      // Draw a wide angle indicator (like ">") pointing toward the edge
-      // Calculate perpendicular vectors for the angle arms
+      // Draw angle indicator as a triangle centered on hex, pointing toward edge
+      // Calculate direction from center to edge midpoint
       float dx = edgeMid.x - center.x;
       float dy = edgeMid.y - center.y;
       float len = sqrt(dx * dx + dy * dy);
       dx /= len;
       dy /= len;
 
-      // Perpendicular vector
+      // Perpendicular vector for triangle base
       float perpX = -dy;
       float perpY = dx;
 
-      float arrowSize = HEX_SIZE * game.camera.zoom * 0.4f;
-      float arrowWidth = HEX_SIZE * game.camera.zoom * 0.3f;
+      float arrowLength = HEX_SIZE * game.camera.zoom * 0.6f;
+      float arrowBaseWidth = HEX_SIZE * game.camera.zoom * 0.25f;
+      float arrowBaseDistance = HEX_SIZE * game.camera.zoom * 0.15f;
 
-      Point tipPos = Point(center.x + dx * arrowSize * 0.9f,
-                           center.y + dy * arrowSize * 0.9f);
-      Point arm1 = Point(tipPos.x - dx * arrowSize * 0.3f + perpX * arrowWidth,
-                        tipPos.y - dy * arrowSize * 0.3f + perpY * arrowWidth);
-      Point arm2 = Point(tipPos.x - dx * arrowSize * 0.3f - perpX * arrowWidth,
-                        tipPos.y - dy * arrowSize * 0.3f - perpY * arrowWidth);
+      // Triangle vertices: tip at edge, base centered on hex
+      Point tipPos = Point(center.x + dx * arrowLength,
+                           center.y + dy * arrowLength);
+      Point base1 = Point(center.x - dx * arrowBaseDistance + perpX * arrowBaseWidth,
+                         center.y - dy * arrowBaseDistance + perpY * arrowBaseWidth);
+      Point base2 = Point(center.x - dx * arrowBaseDistance - perpX * arrowBaseWidth,
+                         center.y - dy * arrowBaseDistance - perpY * arrowBaseWidth);
 
-      // Draw the angle indicator
-      DrawLineEx(Vector2{(float)arm1.x, (float)arm1.y},
-                Vector2{(float)tipPos.x, (float)tipPos.y},
-                4.0f * game.camera.zoom, YELLOW);
-      DrawLineEx(Vector2{(float)arm2.x, (float)arm2.y},
-                Vector2{(float)tipPos.x, (float)tipPos.y},
-                4.0f * game.camera.zoom, YELLOW);
+      // Draw the triangle indicator
+      DrawTriangle(Vector2{(float)tipPos.x, (float)tipPos.y},
+                  Vector2{(float)base1.x, (float)base1.y},
+                  Vector2{(float)base2.x, (float)base2.y},
+                  Color{255, 255, 0, 180});
+      // Draw outline for clarity
+      DrawLineEx(Vector2{(float)tipPos.x, (float)tipPos.y},
+                Vector2{(float)base1.x, (float)base1.y},
+                2.0f * game.camera.zoom, YELLOW);
+      DrawLineEx(Vector2{(float)tipPos.x, (float)tipPos.y},
+                Vector2{(float)base2.x, (float)base2.y},
+                2.0f * game.camera.zoom, YELLOW);
+      DrawLineEx(Vector2{(float)base1.x, (float)base1.y},
+                Vector2{(float)base2.x, (float)base2.y},
+                2.0f * game.camera.zoom, YELLOW);
     }
   }
 
   // Draw unit facing indicators (small line from center to faced edge)
   for (auto &unit : game.units) {
     if (unit->facing < 0 || unit->facing > 5) continue;
+
+    // FOG OF WAR: Hide facing indicators for enemy units that aren't spotted
+    GameHex &unitHex = game.map[unit->position.row][unit->position.col];
+    if (unit->side != game.currentPlayer && !unitHex.isSpotted[game.currentPlayer])
+      continue;
 
     OffsetCoord offset = gameCoordToOffset(unit->position);
     ::Hex cubeHex = offset_to_cube(offset);
