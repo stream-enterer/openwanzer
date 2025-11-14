@@ -259,7 +259,7 @@ void highlightAttackRange(GameState &game, Unit *unit) {
   }
 }
 
-void moveUnit(GameState &game, Unit *unit, const HexCoord &target) {
+void moveUnit(GameState &game, Unit *unit, const HexCoord &target, bool updateSpotting) {
   if (!unit)
     return;
 
@@ -282,7 +282,9 @@ void moveUnit(GameState &game, Unit *unit, const HexCoord &target) {
   if (cost <= unit->movesLeft) {
     // Clear ZOC and spotting from old position
     setUnitZOC(game, unit, false);
-    setUnitSpotRange(game, unit, false);
+    if (updateSpotting) {
+      setUnitSpotRange(game, unit, false);
+    }
 
     // Store old position for fuel calculation
     HexCoord oldPos = unit->position;
@@ -294,7 +296,9 @@ void moveUnit(GameState &game, Unit *unit, const HexCoord &target) {
 
     // Set ZOC and spotting at new position
     setUnitZOC(game, unit, true);
-    setUnitSpotRange(game, unit, true);
+    if (updateSpotting) {
+      setUnitSpotRange(game, unit, true);
+    }
 
     // Reduce fuel by hex distance (not terrain cost)
     int distance = hexDistance(oldPos, target);

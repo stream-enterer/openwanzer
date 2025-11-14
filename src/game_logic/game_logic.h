@@ -61,7 +61,7 @@ void highlightMovementRange(GameState& game, Unit* unit);
 
 void highlightAttackRange(GameState& game, Unit* unit);
 
-void moveUnit(GameState& game, Unit* unit, const HexCoord& target);
+void moveUnit(GameState& game, Unit* unit, const HexCoord& target, bool updateSpotting = true);
 
 // ============================================================================
 // COMBAT (combat.cpp)
@@ -81,6 +81,7 @@ void initializeAllZOC(GameState& game);
 
 // Fog of War / Spotting
 void setUnitSpotRange(GameState& game, Unit* unit, bool on);
+void setSpotRangeAtPosition(GameState& game, int side, int spotRange, const HexCoord& pos, bool on);
 void initializeAllSpotting(GameState& game);
 
 // Entrenchment

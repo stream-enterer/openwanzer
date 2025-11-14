@@ -56,6 +56,15 @@ void setUnitSpotRange(GameState &game, Unit *unit, bool on) {
   }
 }
 
+void setSpotRangeAtPosition(GameState &game, int side, int spotRange, const HexCoord &pos, bool on) {
+  std::vector<HexCoord> cells = getCellsInRange(pos.row, pos.col, spotRange);
+
+  for (const auto& cell : cells) {
+    GameHex& hex = game.map[cell.row][cell.col];
+    hex.setSpotted(side, on);
+  }
+}
+
 void initializeAllSpotting(GameState &game) {
   // Clear all spotting first
   for (int row = 0; row < MAP_ROWS; row++) {
