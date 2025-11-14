@@ -90,6 +90,12 @@ void entrenchUnit(GameState& game, Unit* unit);
 // Turn management
 void endTurn(GameState& game);
 
+// ============================================================================
+// ATTACK VISUALIZATION (attack_lines.cpp)
+// ============================================================================
+
+void updateAttackLines(GameState& game);
+
 } // namespace GameLogic
 
 #endif // OPENWANZER_GAME_LOGIC_H

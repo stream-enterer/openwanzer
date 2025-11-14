@@ -151,6 +151,10 @@ int main() {
 
         game.movementSel.selectedFacing = GameLogic::calculateFacingFromPoint(
             game.selectedUnit->position, mousePoint, layout);
+
+        // Update attack lines based on preview facing
+        GameLogic::updateAttackLines(game);
+        game.showAttackLines = true;
       }
 
       // Left-click handling
@@ -184,6 +188,10 @@ int main() {
             if (!game.selectedUnit->hasFired) {
               GameLogic::highlightAttackRange(game, game.selectedUnit);
             }
+
+            // Keep attack lines visible after confirming facing
+            GameLogic::updateAttackLines(game);
+            game.showAttackLines = true;
           }
           // Phase 1: movement or attack
           else if (game.selectedUnit && !game.movementSel.isFacingSelection) {

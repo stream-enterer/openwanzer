@@ -36,6 +36,14 @@ void drawUnitInfoBox(GameState& game);
 void drawUI(GameState& game);
 void drawOptionsMenu(GameState& game, bool& needsRestart);
 
+// ============================================================================
+// COMBAT VISUALS (combat_visuals.cpp)
+// ============================================================================
+
+void drawTargetArcRing(GameState& game, Unit* unit);
+void drawAttackerFiringCone(GameState& game);
+void drawAttackLines(GameState& game);
+
 } // namespace Rendering
 
 #endif // OPENWANZER_RENDERING_H

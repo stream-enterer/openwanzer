@@ -8,6 +8,7 @@
 #include "hex_coord.h"
 #include "game_hex.h"
 #include "unit.h"
+#include "../game_logic/combat_arcs.h"
 
 // Forward declaration for calculateCenteredCameraOffset
 struct CameraState;
@@ -144,6 +145,16 @@ struct MovementSelection {
   void reset();
 };
 
+// Attack line structure for visualizing firing lines
+struct AttackLine {
+  HexCoord from;
+  HexCoord to;
+  CombatArcs::AttackArc arc;
+
+  AttackLine(HexCoord f, HexCoord t, CombatArcs::AttackArc a)
+      : from(f), to(t), arc(a) {}
+};
+
 // Game State
 struct GameState {
   std::vector<std::vector<GameHex>> map;
@@ -159,6 +170,8 @@ struct GameState {
   CombatLog combatLog;
   UnitInfoBox unitInfoBox;
   MovementSelection movementSel;  // Two-phase selection state
+  std::vector<AttackLine> attackLines;  // Active attack lines to display
+  bool showAttackLines;  // Whether to show attack lines
 
   GameState();
 

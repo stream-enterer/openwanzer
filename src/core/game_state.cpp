@@ -90,7 +90,7 @@ void MovementSelection::reset() {
 // GameState implementation
 GameState::GameState()
     : selectedUnit(nullptr), currentTurn(1), currentPlayer(0), maxTurns(20),
-      showOptionsMenu(false) {
+      showOptionsMenu(false), showAttackLines(false) {
   initializeMap();
 }
 
