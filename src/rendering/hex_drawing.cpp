@@ -346,95 +346,16 @@ void drawMap(GameState &game) {
 		}
 	}
 
-	// Draw facing indicator in Phase 2 (after moving, selecting facing)
-	if (game.selectedUnit && game.movementSel.isFacingSelection) {
-		Layout layout = createHexLayout(HEX_SIZE, game.camera.offsetX,
-		                                game.camera.offsetY, game.camera.zoom);
+	// Draw combat visualization: attack lines (colored by arc)
+	drawAttackLines(game);
 
-		// Get unit's current position (where it just moved to)
-		OffsetCoord unitOffset = gameCoordToOffset(game.selectedUnit->position);
-		::Hex unitCube = offset_to_cube(unitOffset);
-		Point center = hex_to_pixel(layout, unitCube);
-
-		// Get mouse position for smooth tracking
-		Vector2 mousePos = GetMousePosition();
-		Point mousePoint(mousePos.x, mousePos.y);
-
-		// Draw a wide angle indicator (like ">") pointing toward mouse cursor
-		// Calculate direction vector from center to mouse (smooth, not snapped)
-		float dx = mousePoint.x - center.x;
-		float dy = mousePoint.y - center.y;
-		float len = sqrt(dx * dx + dy * dy);
-		if (len > 0.1f) { // Avoid division by zero
-			dx /= len;
-			dy /= len;
-		}
-
-		// Perpendicular vector
-		float perpX = -dy;
-		float perpY = dx;
-
-		// Make indicator longer and further from center
-		float arrowSize = HEX_SIZE * game.camera.zoom * 0.65f;
-		float arrowWidth = HEX_SIZE * game.camera.zoom * 0.35f;
-
-		// Calculate tip position (pointing toward mouse, further from center)
-		Point tipPos = Point(center.x + dx * arrowSize,
-		                     center.y + dy * arrowSize);
-		// Calculate arm endpoints (forming ">"-shape)
-		Point arm1 = Point(tipPos.x - dx * arrowSize * 0.35f + perpX * arrowWidth,
-		                   tipPos.y - dy * arrowSize * 0.35f + perpY * arrowWidth);
-		Point arm2 = Point(tipPos.x - dx * arrowSize * 0.35f - perpX * arrowWidth,
-		                   tipPos.y - dy * arrowSize * 0.35f - perpY * arrowWidth);
-
-		// Draw the angle indicator
-		DrawLineEx(Vector2 {(float)arm1.x, (float)arm1.y},
-		           Vector2 {(float)tipPos.x, (float)tipPos.y},
-		           4.0f * game.camera.zoom, YELLOW);
-		DrawLineEx(Vector2 {(float)arm2.x, (float)arm2.y},
-		           Vector2 {(float)tipPos.x, (float)tipPos.y},
-		           4.0f * game.camera.zoom, YELLOW);
-	}
-
-	// Draw facing angle indicator for selected unit (when not in facing selection mode)
+	// Draw target arc ring for selected unit (when not in facing selection mode)
 	if (game.selectedUnit && !game.movementSel.isFacingSelection) {
-		Layout layout = createHexLayout(HEX_SIZE, game.camera.offsetX,
-		                                game.camera.offsetY, game.camera.zoom);
-
-		OffsetCoord unitOffset = gameCoordToOffset(game.selectedUnit->position);
-		::Hex unitCube = offset_to_cube(unitOffset);
-		Point center = hex_to_pixel(layout, unitCube);
-
-		// Calculate direction vector from unit's facing angle
-		float facingRad = game.selectedUnit->facing * M_PI / 180.0f;
-		float dx = cos(facingRad);
-		float dy = sin(facingRad);
-
-		// Perpendicular vector
-		float perpX = -dy;
-		float perpY = dx;
-
-		// Same size as movement indicator
-		float arrowSize = HEX_SIZE * game.camera.zoom * 0.65f;
-		float arrowWidth = HEX_SIZE * game.camera.zoom * 0.35f;
-
-		// Calculate tip position
-		Point tipPos = Point(center.x + dx * arrowSize,
-		                     center.y + dy * arrowSize);
-		// Calculate arm endpoints (forming ">"-shape)
-		Point arm1 = Point(tipPos.x - dx * arrowSize * 0.35f + perpX * arrowWidth,
-		                   tipPos.y - dy * arrowSize * 0.35f + perpY * arrowWidth);
-		Point arm2 = Point(tipPos.x - dx * arrowSize * 0.35f - perpX * arrowWidth,
-		                   tipPos.y - dy * arrowSize * 0.35f - perpY * arrowWidth);
-
-		// Draw the angle indicator
-		DrawLineEx(Vector2 {(float)arm1.x, (float)arm1.y},
-		           Vector2 {(float)tipPos.x, (float)tipPos.y},
-		           4.0f * game.camera.zoom, YELLOW);
-		DrawLineEx(Vector2 {(float)arm2.x, (float)arm2.y},
-		           Vector2 {(float)tipPos.x, (float)tipPos.y},
-		           4.0f * game.camera.zoom, YELLOW);
+		drawTargetArcRing(game, game.selectedUnit);
 	}
+
+	// Draw attacker firing cone during facing selection
+	drawAttackerFiringCone(game);
 }
 
 void clearSelectionHighlights(GameState &game) {

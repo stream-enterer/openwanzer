@@ -170,6 +170,10 @@ void endTurn(GameState &game) {
   game.selectedUnit = nullptr;
   game.movementSel.reset();
   Rendering::clearSelectionHighlights(game);
+
+  // Clear attack lines when ending turn
+  game.attackLines.clear();
+  game.showAttackLines = false;
 }
 
 } // namespace GameLogic
