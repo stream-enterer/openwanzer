@@ -83,8 +83,8 @@ std::vector<HexCoord> findPath(GameState &game, Unit *unit, const HexCoord &star
       // For cost 254, it stops movement
       if (cost == 254) newMovementUsed = 999;  // Very high cost
 
-      // ZOC: Enemy zone of control stops movement
-      if (!ignoreZOC && hex.isZOC(enemySide) && cost < 254) {
+      // ZOC: Enemy zone of control stops movement (only if hex is spotted)
+      if (!ignoreZOC && hex.isSpotted(unit->side) && hex.isZOC(enemySide) && cost < 254) {
         newMovementUsed = current.movementUsed + cost + 100;  // High penalty but not impassable
       }
 
@@ -159,9 +159,9 @@ void highlightMovementRange(GameState &game, Unit *unit) {
       // For cost 254, we can enter but it stops us (remaining becomes 0)
       if (cost == 254) newRemaining = 0;
 
-      // ZOC: Enemy zone of control stops movement
+      // ZOC: Enemy zone of control stops movement (only if hex is spotted)
       // Units can enter enemy ZOC but must stop there (unless air)
-      if (!ignoreZOC && hex.isZOC(enemySide) && cost < 254) {
+      if (!ignoreZOC && hex.isSpotted(unit->side) && hex.isZOC(enemySide) && cost < 254) {
         newRemaining = 0;  // Can enter but must stop
       }
 
