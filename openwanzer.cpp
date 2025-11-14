@@ -237,33 +237,41 @@ int getMovementCost(MovMethod movMethod, TerrainType terrain) {
 }
 
 // Convert facing angle (0-360 degrees) to hybrid intercardinal/geometric notation
+// Internal representation uses mathematical convention (E=0°, S=90°, W=180°, N=270°)
+// Display uses military compass convention (N=0°, E=90°, S=180°, W=270°)
 std::string getFacingName(float facing) {
   // Normalize angle to 0-360
   while (facing < 0) facing += 360.0f;
   while (facing >= 360.0f) facing -= 360.0f;
 
+  // Convert from mathematical convention to compass convention
+  // Math: E=0°, rotates clockwise → Compass: N=0°, rotates clockwise
+  float compass = 90.0f - facing;
+  while (compass < 0) compass += 360.0f;
+  while (compass >= 360.0f) compass -= 360.0f;
+
   // Determine compass direction based on 16-point compass rose
   const char* direction;
-  if (facing >= 348.75f || facing < 11.25f) direction = "N";
-  else if (facing >= 11.25f && facing < 33.75f) direction = "NNE";
-  else if (facing >= 33.75f && facing < 56.25f) direction = "NE";
-  else if (facing >= 56.25f && facing < 78.75f) direction = "ENE";
-  else if (facing >= 78.75f && facing < 101.25f) direction = "E";
-  else if (facing >= 101.25f && facing < 123.75f) direction = "ESE";
-  else if (facing >= 123.75f && facing < 146.25f) direction = "SE";
-  else if (facing >= 146.25f && facing < 168.75f) direction = "SSE";
-  else if (facing >= 168.75f && facing < 191.25f) direction = "S";
-  else if (facing >= 191.25f && facing < 213.75f) direction = "SSW";
-  else if (facing >= 213.75f && facing < 236.25f) direction = "SW";
-  else if (facing >= 236.25f && facing < 258.75f) direction = "WSW";
-  else if (facing >= 258.75f && facing < 281.25f) direction = "W";
-  else if (facing >= 281.25f && facing < 303.75f) direction = "WNW";
-  else if (facing >= 303.75f && facing < 326.25f) direction = "NW";
+  if (compass >= 348.75f || compass < 11.25f) direction = "N";
+  else if (compass >= 11.25f && compass < 33.75f) direction = "NNE";
+  else if (compass >= 33.75f && compass < 56.25f) direction = "NE";
+  else if (compass >= 56.25f && compass < 78.75f) direction = "ENE";
+  else if (compass >= 78.75f && compass < 101.25f) direction = "E";
+  else if (compass >= 101.25f && compass < 123.75f) direction = "ESE";
+  else if (compass >= 123.75f && compass < 146.25f) direction = "SE";
+  else if (compass >= 146.25f && compass < 168.75f) direction = "SSE";
+  else if (compass >= 168.75f && compass < 191.25f) direction = "S";
+  else if (compass >= 191.25f && compass < 213.75f) direction = "SSW";
+  else if (compass >= 213.75f && compass < 236.25f) direction = "SW";
+  else if (compass >= 236.25f && compass < 258.75f) direction = "WSW";
+  else if (compass >= 258.75f && compass < 281.25f) direction = "W";
+  else if (compass >= 281.25f && compass < 303.75f) direction = "WNW";
+  else if (compass >= 303.75f && compass < 326.25f) direction = "NW";
   else direction = "NNW";
 
-  // Format as "NNE (018°)"
+  // Format as "E (090°)" - display compass bearing
   char buffer[20];
-  snprintf(buffer, sizeof(buffer), "%s (%03d°)", direction, (int)facing);
+  snprintf(buffer, sizeof(buffer), "%s (%03d°)", direction, (int)compass);
   return std::string(buffer);
 }
 
@@ -442,7 +450,7 @@ struct GameHex {
   int owner; // -1 = neutral, 0 = axis, 1 = allied
   bool isVictoryHex;
   bool isDeployment;
-  bool isSpotted[2]; // spotted by each side
+  int spotted[2];    // spotting counter per side (team-based FOW)
   int zoc[2];        // zone of control counter per side
   bool isMoveSel;    // highlighted for movement
   bool isAttackSel;  // highlighted for attack
@@ -450,10 +458,18 @@ struct GameHex {
   GameHex()
       : terrain(TerrainType::PLAINS), owner(-1), isVictoryHex(false),
         isDeployment(false), isMoveSel(false), isAttackSel(false) {
-    isSpotted[0] = false;
-    isSpotted[1] = false;
+    spotted[0] = 0;
+    spotted[1] = 0;
     zoc[0] = 0;
     zoc[1] = 0;
+  }
+
+  void setSpotted(int side, bool on) {
+    if (on) {
+      spotted[side]++;
+    } else if (spotted[side] > 0) {
+      spotted[side]--;
+    }
   }
 
   void setZOC(int side, bool on) {
@@ -464,6 +480,7 @@ struct GameHex {
     }
   }
 
+  bool isSpotted(int side) const { return spotted[side] > 0; }
   bool isZOC(int side) const { return zoc[side] > 0; }
 };
 
@@ -894,7 +911,7 @@ void drawMap(GameState &game) {
     GameHex &unitHex = game.map[unit->position.row][unit->position.col];
 
     // Hide enemy units that aren't spotted (FOG OF WAR)
-    if (unit->side != game.currentPlayer && !unitHex.isSpotted[game.currentPlayer])
+    if (unit->side != game.currentPlayer && !unitHex.isSpotted(game.currentPlayer))
       continue;
 
     OffsetCoord offset = gameCoordToOffset(unit->position);
@@ -1295,11 +1312,7 @@ void setUnitSpotRange(GameState &game, Unit *unit, bool on) {
 
   for (const auto& cell : cells) {
     GameHex& hex = game.map[cell.row][cell.col];
-    if (on) {
-      hex.isSpotted[unit->side] = true;
-    } else {
-      hex.isSpotted[unit->side] = false;
-    }
+    hex.setSpotted(unit->side, on);
   }
 }
 
@@ -1308,8 +1321,8 @@ void initializeAllSpotting(GameState &game) {
   // Clear all spotting first
   for (int row = 0; row < MAP_ROWS; row++) {
     for (int col = 0; col < MAP_COLS; col++) {
-      game.map[row][col].isSpotted[0] = false;
-      game.map[row][col].isSpotted[1] = false;
+      game.map[row][col].spotted[0] = 0;
+      game.map[row][col].spotted[1] = 0;
     }
   }
 
@@ -1393,8 +1406,8 @@ std::vector<HexCoord> findPath(GameState &game, Unit *unit, const HexCoord &star
       // For cost 254, it stops movement
       if (cost == 254) newMovementUsed = 999;  // Very high cost
 
-      // ZOC: Enemy zone of control stops movement
-      if (!ignoreZOC && hex.isZOC(enemySide) && cost < 254) {
+      // ZOC: Enemy zone of control stops movement (only if hex is spotted)
+      if (!ignoreZOC && hex.isSpotted(unit->side) && hex.isZOC(enemySide) && cost < 254) {
         newMovementUsed = current.movementUsed + cost + 100;  // High penalty but not impassable
       }
 
@@ -1469,9 +1482,9 @@ void highlightMovementRange(GameState &game, Unit *unit) {
       // For cost 254, we can enter but it stops us (remaining becomes 0)
       if (cost == 254) newRemaining = 0;
 
-      // ZOC: Enemy zone of control stops movement
+      // ZOC: Enemy zone of control stops movement (only if hex is spotted)
       // Units can enter enemy ZOC but must stop there (unless air)
-      if (!ignoreZOC && hex.isZOC(enemySide) && cost < 254) {
+      if (!ignoreZOC && hex.isSpotted(unit->side) && hex.isZOC(enemySide) && cost < 254) {
         newRemaining = 0;  // Can enter but must stop
       }
 

@@ -107,33 +107,41 @@ int getMovementCost(MovMethod movMethod, TerrainType terrain) {
 // ============================================================================
 
 // Convert facing angle (0-360 degrees) to hybrid intercardinal/geometric notation
+// Internal representation uses mathematical convention (E=0°, S=90°, W=180°, N=270°)
+// Display uses military compass convention (N=0°, E=90°, S=180°, W=270°)
 std::string getFacingName(float facing) {
   // Normalize angle to 0-360
   while (facing < 0) facing += 360.0f;
   while (facing >= 360.0f) facing -= 360.0f;
 
+  // Convert from mathematical convention to compass convention
+  // Math: E=0°, rotates clockwise → Compass: N=0°, rotates clockwise
+  float compass = 90.0f - facing;
+  while (compass < 0) compass += 360.0f;
+  while (compass >= 360.0f) compass -= 360.0f;
+
   // Determine compass direction based on 16-point compass rose
   const char* direction;
-  if (facing >= 348.75f || facing < 11.25f) direction = "N";
-  else if (facing >= 11.25f && facing < 33.75f) direction = "NNE";
-  else if (facing >= 33.75f && facing < 56.25f) direction = "NE";
-  else if (facing >= 56.25f && facing < 78.75f) direction = "ENE";
-  else if (facing >= 78.75f && facing < 101.25f) direction = "E";
-  else if (facing >= 101.25f && facing < 123.75f) direction = "ESE";
-  else if (facing >= 123.75f && facing < 146.25f) direction = "SE";
-  else if (facing >= 146.25f && facing < 168.75f) direction = "SSE";
-  else if (facing >= 168.75f && facing < 191.25f) direction = "S";
-  else if (facing >= 191.25f && facing < 213.75f) direction = "SSW";
-  else if (facing >= 213.75f && facing < 236.25f) direction = "SW";
-  else if (facing >= 236.25f && facing < 258.75f) direction = "WSW";
-  else if (facing >= 258.75f && facing < 281.25f) direction = "W";
-  else if (facing >= 281.25f && facing < 303.75f) direction = "WNW";
-  else if (facing >= 303.75f && facing < 326.25f) direction = "NW";
+  if (compass >= 348.75f || compass < 11.25f) direction = "N";
+  else if (compass >= 11.25f && compass < 33.75f) direction = "NNE";
+  else if (compass >= 33.75f && compass < 56.25f) direction = "NE";
+  else if (compass >= 56.25f && compass < 78.75f) direction = "ENE";
+  else if (compass >= 78.75f && compass < 101.25f) direction = "E";
+  else if (compass >= 101.25f && compass < 123.75f) direction = "ESE";
+  else if (compass >= 123.75f && compass < 146.25f) direction = "SE";
+  else if (compass >= 146.25f && compass < 168.75f) direction = "SSE";
+  else if (compass >= 168.75f && compass < 191.25f) direction = "S";
+  else if (compass >= 191.25f && compass < 213.75f) direction = "SSW";
+  else if (compass >= 213.75f && compass < 236.25f) direction = "SW";
+  else if (compass >= 236.25f && compass < 258.75f) direction = "WSW";
+  else if (compass >= 258.75f && compass < 281.25f) direction = "W";
+  else if (compass >= 281.25f && compass < 303.75f) direction = "WNW";
+  else if (compass >= 303.75f && compass < 326.25f) direction = "NW";
   else direction = "NNW";
 
-  // Format as "NNE (018°)"
+  // Format as "E (090°)" - display compass bearing
   char buffer[20];
-  snprintf(buffer, sizeof(buffer), "%s (%03d°)", direction, (int)facing);
+  snprintf(buffer, sizeof(buffer), "%s (%03d°)", direction, (int)compass);
   return std::string(buffer);
 }
 

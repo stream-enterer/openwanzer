@@ -52,11 +52,7 @@ void setUnitSpotRange(GameState &game, Unit *unit, bool on) {
 
   for (const auto& cell : cells) {
     GameHex& hex = game.map[cell.row][cell.col];
-    if (on) {
-      hex.isSpotted[unit->side] = true;
-    } else {
-      hex.isSpotted[unit->side] = false;
-    }
+    hex.setSpotted(unit->side, on);
   }
 }
 
@@ -64,8 +60,8 @@ void initializeAllSpotting(GameState &game) {
   // Clear all spotting first
   for (int row = 0; row < MAP_ROWS; row++) {
     for (int col = 0; col < MAP_COLS; col++) {
-      game.map[row][col].isSpotted[0] = false;
-      game.map[row][col].isSpotted[1] = false;
+      game.map[row][col].spotted[0] = 0;
+      game.map[row][col].spotted[1] = 0;
     }
   }
 

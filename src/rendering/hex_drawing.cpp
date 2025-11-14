@@ -182,7 +182,7 @@ void drawMap(GameState &game) {
     GameHex &unitHex = game.map[unit->position.row][unit->position.col];
 
     // Hide enemy units that aren't spotted (FOG OF WAR)
-    if (unit->side != game.currentPlayer && !unitHex.isSpotted[game.currentPlayer])
+    if (unit->side != game.currentPlayer && !unitHex.isSpotted(game.currentPlayer))
       continue;
 
     OffsetCoord offset = gameCoordToOffset(unit->position);
