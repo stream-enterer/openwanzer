@@ -186,6 +186,10 @@ bool isSea(const Unit* unit) {
          unit->movMethod == MovMethod::NAVAL;
 }
 
+bool isRecon(const Unit* unit) {
+  return unit->unitClass == UnitClass::RECON;
+}
+
 // ============================================================================
 // HEX DISTANCE CALCULATION
 // ============================================================================

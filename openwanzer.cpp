@@ -1256,6 +1256,11 @@ bool isSea(const Unit *unit) {
           unit->movMethod == MovMethod::NAVAL);
 }
 
+// Check if unit is a reconnaissance unit (exempt from ZOC)
+bool isRecon(const Unit *unit) {
+  return unit && unit->unitClass == UnitClass::RECON;
+}
+
 // Set or clear ZOC for a unit
 void setUnitZOC(GameState &game, Unit *unit, bool on) {
   if (!unit || isAir(unit)) return;
@@ -1340,7 +1345,11 @@ std::vector<HexCoord> findPath(GameState &game, Unit *unit, const HexCoord &star
 
   int movMethodIdx = static_cast<int>(unit->movMethod);
   int enemySide = 1 - unit->side;
-  bool ignoreZOC = isAir(unit);
+  bool ignoreZOC = isAir(unit) || isRecon(unit);  // Air and recon units ignore ZOC
+
+  // Check if unit starts in enemy ZOC (Panzer General rule: if starting in ZOC, can move one hex)
+  GameHex& startHex = game.map[start.row][start.col];
+  bool startingInZOC = !ignoreZOC && startHex.isSpotted(unit->side) && startHex.isZOC(enemySide);
 
   // BFS with parent tracking
   struct PathNode {
@@ -1406,9 +1415,22 @@ std::vector<HexCoord> findPath(GameState &game, Unit *unit, const HexCoord &star
       // For cost 254, it stops movement
       if (cost == 254) newMovementUsed = 999;  // Very high cost
 
-      // ZOC: Enemy zone of control stops movement (only if hex is spotted)
+      // ZOC: Panzer General rules
+      // - If starting in ZOC: can only move to adjacent hexes (one hex movement)
+      // - If not starting in ZOC: entering ZOC adds high penalty
+      // - Air and recon units ignore ZOC
       if (!ignoreZOC && hex.isSpotted(unit->side) && hex.isZOC(enemySide) && cost < 254) {
-        newMovementUsed = current.movementUsed + cost + 100;  // High penalty but not impassable
+        if (startingInZOC) {
+          // Starting in ZOC: only allow movement to adjacent hexes (distance 1 from start)
+          int distFromStart = hexDistance(start, adj);
+          if (distFromStart > 1) {
+            continue;  // Can't move more than 1 hex when starting in ZOC
+          }
+          newMovementUsed = current.movementUsed + cost + 100;  // High penalty
+        } else {
+          // Not starting in ZOC: entering ZOC adds penalty
+          newMovementUsed = current.movementUsed + cost + 100;
+        }
       }
 
       // Check if we can afford this movement
@@ -1447,7 +1469,11 @@ void highlightMovementRange(GameState &game, Unit *unit) {
   int maxRange = unit->movesLeft;
   int movMethodIdx = static_cast<int>(unit->movMethod);
   int enemySide = 1 - unit->side;
-  bool ignoreZOC = isAir(unit);
+  bool ignoreZOC = isAir(unit) || isRecon(unit);  // Air and recon units ignore ZOC
+
+  // Check if unit starts in enemy ZOC (Panzer General rule: if starting in ZOC, can move one hex)
+  GameHex& startHex = game.map[unit->position.row][unit->position.col];
+  bool startingInZOC = !ignoreZOC && startHex.isSpotted(unit->side) && startHex.isZOC(enemySide);
 
   // Track cells we can reach with their remaining movement
   std::vector<std::pair<HexCoord, int>> frontier;
@@ -1482,10 +1508,22 @@ void highlightMovementRange(GameState &game, Unit *unit) {
       // For cost 254, we can enter but it stops us (remaining becomes 0)
       if (cost == 254) newRemaining = 0;
 
-      // ZOC: Enemy zone of control stops movement (only if hex is spotted)
-      // Units can enter enemy ZOC but must stop there (unless air)
+      // ZOC: Panzer General rules
+      // - If starting in ZOC: can only move to adjacent hexes (one hex movement)
+      // - If not starting in ZOC: entering ZOC stops movement
+      // - Air and recon units ignore ZOC
       if (!ignoreZOC && hex.isSpotted(unit->side) && hex.isZOC(enemySide) && cost < 254) {
-        newRemaining = 0;  // Can enter but must stop
+        if (startingInZOC) {
+          // Starting in ZOC: only allow movement to adjacent hexes (distance 1 from start)
+          int distFromStart = hexDistance(unit->position, adj);
+          if (distFromStart > 1) {
+            continue;  // Can't move more than 1 hex when starting in ZOC
+          }
+          newRemaining = 0;  // Can move one hex but must stop there
+        } else {
+          // Not starting in ZOC: entering ZOC stops movement
+          newRemaining = 0;
+        }
       }
 
       // Skip if we can't afford to enter
