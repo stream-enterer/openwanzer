@@ -965,9 +965,13 @@ void drawMap(GameState &game) {
 
           if (drawEdge) {
             // Draw the edge between this hex and its neighbor
+            // CRITICAL: Direction numbering doesn't match edge numbering!
+            // For pointy-top hexes, direction → edge mapping is: dir → (5 - dir)
+            // Direction 0 (E) uses edge 5, Direction 1 (SE) uses edge 4, etc.
             std::vector<Point> corners = polygon_corners(layout, cubeHex);
-            Point p1 = corners[dir];
-            Point p2 = corners[(dir + 1) % 6];
+            int edgeIndex = (5 - dir + 6) % 6;  // Correct edge for this direction
+            Point p1 = corners[edgeIndex];
+            Point p2 = corners[(edgeIndex + 1) % 6];
             DrawLineEx(Vector2{(float)p1.x, (float)p1.y},
                       Vector2{(float)p2.x, (float)p2.y},
                       3.0f * game.camera.zoom, YELLOW);
@@ -1005,15 +1009,15 @@ void drawMap(GameState &game) {
           ::Hex pathCube = offset_to_cube(pathOffset);
           std::vector<Point> corners = polygon_corners(layout, pathCube);
 
-          // Draw semi-transparent yellow fill (increased opacity for better visibility)
-          drawHexagon(corners, Color{255, 255, 0, 150}, true);
+          // Draw semi-transparent yellow fill
+          drawHexagon(corners, Color{255, 255, 0, 80}, true);
         }
 
-        // Draw target hex with more opacity
+        // Draw target hex with slightly more opacity
         OffsetCoord targetOffset = gameCoordToOffset(hoveredHex);
         ::Hex targetCube = offset_to_cube(targetOffset);
         std::vector<Point> corners = polygon_corners(layout, targetCube);
-        drawHexagon(corners, Color{255, 255, 0, 200}, true);
+        drawHexagon(corners, Color{255, 255, 0, 120}, true);
       }
     }
   }
@@ -1039,54 +1043,45 @@ void drawMap(GameState &game) {
 
     // Draw facing indicator if facing is being previewed
     if (game.movementSel.lockedFacing >= 0) {
+      // Get mouse position for smooth tracking
+      Vector2 mousePos = GetMousePosition();
+      Point mousePoint(mousePos.x, mousePos.y);
+
       Point center = hex_to_pixel(layout, destCube);
 
-      // Calculate the midpoint of the hex edge being faced
-      std::vector<Point> hexCorners = polygon_corners(layout, destCube);
-      int dir = game.movementSel.lockedFacing;
-      Point edgeP1 = hexCorners[dir];
-      Point edgeP2 = hexCorners[(dir + 1) % 6];
-      Point edgeMid = Point((edgeP1.x + edgeP2.x) / 2.0, (edgeP1.y + edgeP2.y) / 2.0);
-
-      // Draw angle indicator as a triangle centered on hex, pointing toward edge
-      // Calculate direction from center to edge midpoint
-      float dx = edgeMid.x - center.x;
-      float dy = edgeMid.y - center.y;
+      // Draw a wide angle indicator (like ">") pointing toward mouse cursor
+      // Calculate direction vector from center to mouse (smooth, not snapped)
+      float dx = mousePoint.x - center.x;
+      float dy = mousePoint.y - center.y;
       float len = sqrt(dx * dx + dy * dy);
-      dx /= len;
-      dy /= len;
+      if (len > 0.1f) {  // Avoid division by zero
+        dx /= len;
+        dy /= len;
+      }
 
-      // Perpendicular vector for triangle base
+      // Perpendicular vector
       float perpX = -dy;
       float perpY = dx;
 
-      float arrowLength = HEX_SIZE * game.camera.zoom * 0.6f;
-      float arrowBaseWidth = HEX_SIZE * game.camera.zoom * 0.25f;
-      float arrowBaseDistance = HEX_SIZE * game.camera.zoom * 0.15f;
+      float arrowSize = HEX_SIZE * game.camera.zoom * 0.4f;
+      float arrowWidth = HEX_SIZE * game.camera.zoom * 0.3f;
 
-      // Triangle vertices: tip at edge, base centered on hex
-      Point tipPos = Point(center.x + dx * arrowLength,
-                           center.y + dy * arrowLength);
-      Point base1 = Point(center.x - dx * arrowBaseDistance + perpX * arrowBaseWidth,
-                         center.y - dy * arrowBaseDistance + perpY * arrowBaseWidth);
-      Point base2 = Point(center.x - dx * arrowBaseDistance - perpX * arrowBaseWidth,
-                         center.y - dy * arrowBaseDistance - perpY * arrowBaseWidth);
+      // Calculate tip position (pointing toward mouse)
+      Point tipPos = Point(center.x + dx * arrowSize * 0.9f,
+                           center.y + dy * arrowSize * 0.9f);
+      // Calculate arm endpoints (forming ">"-shape centered on hex)
+      Point arm1 = Point(tipPos.x - dx * arrowSize * 0.3f + perpX * arrowWidth,
+                        tipPos.y - dy * arrowSize * 0.3f + perpY * arrowWidth);
+      Point arm2 = Point(tipPos.x - dx * arrowSize * 0.3f - perpX * arrowWidth,
+                        tipPos.y - dy * arrowSize * 0.3f - perpY * arrowWidth);
 
-      // Draw the triangle indicator
-      DrawTriangle(Vector2{(float)tipPos.x, (float)tipPos.y},
-                  Vector2{(float)base1.x, (float)base1.y},
-                  Vector2{(float)base2.x, (float)base2.y},
-                  Color{255, 255, 0, 180});
-      // Draw outline for clarity
-      DrawLineEx(Vector2{(float)tipPos.x, (float)tipPos.y},
-                Vector2{(float)base1.x, (float)base1.y},
-                2.0f * game.camera.zoom, YELLOW);
-      DrawLineEx(Vector2{(float)tipPos.x, (float)tipPos.y},
-                Vector2{(float)base2.x, (float)base2.y},
-                2.0f * game.camera.zoom, YELLOW);
-      DrawLineEx(Vector2{(float)base1.x, (float)base1.y},
-                Vector2{(float)base2.x, (float)base2.y},
-                2.0f * game.camera.zoom, YELLOW);
+      // Draw the angle indicator
+      DrawLineEx(Vector2{(float)arm1.x, (float)arm1.y},
+                Vector2{(float)tipPos.x, (float)tipPos.y},
+                4.0f * game.camera.zoom, YELLOW);
+      DrawLineEx(Vector2{(float)arm2.x, (float)arm2.y},
+                Vector2{(float)tipPos.x, (float)tipPos.y},
+                4.0f * game.camera.zoom, YELLOW);
     }
   }
 
