@@ -28,7 +28,6 @@
 #include <cmath>
 #include <fstream>
 #include <memory>
-#include <set>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -937,9 +936,6 @@ void drawMap(GameState &game) {
     Layout layout = createHexLayout(HEX_SIZE, game.camera.offsetX,
                                     game.camera.offsetY, game.camera.zoom);
 
-    // Collect all border edges first
-    std::vector<std::pair<Point, Point>> borderEdges;
-
     // Find edge hexes (hexes with at least one neighbor that's not moveable)
     for (int row = 0; row < MAP_ROWS; row++) {
       for (int col = 0; col < MAP_COLS; col++) {
@@ -954,42 +950,30 @@ void drawMap(GameState &game) {
           ::Hex neighbor = hex_neighbor(cubeHex, dir);
           OffsetCoord neighborOffset = cube_to_offset(neighbor);
 
+          // CRITICAL: Convert offset coordinates back to game coordinates before map lookup
+          HexCoord neighborCoord = offsetToGameCoord(neighborOffset);
+
           bool drawEdge = false;
 
           // Draw edge if neighbor is out of bounds or not in movement range
-          if (neighborOffset.row < 0 || neighborOffset.row >= MAP_ROWS ||
-              neighborOffset.col < 0 || neighborOffset.col >= MAP_COLS) {
+          if (neighborCoord.row < 0 || neighborCoord.row >= MAP_ROWS ||
+              neighborCoord.col < 0 || neighborCoord.col >= MAP_COLS) {
             drawEdge = true;
-          } else if (!game.map[neighborOffset.row][neighborOffset.col].isMoveSel) {
+          } else if (!game.map[neighborCoord.row][neighborCoord.col].isMoveSel) {
             drawEdge = true;
           }
 
           if (drawEdge) {
-            // Collect the edge for drawing
+            // Draw the edge between this hex and its neighbor
             std::vector<Point> corners = polygon_corners(layout, cubeHex);
             Point p1 = corners[dir];
             Point p2 = corners[(dir + 1) % 6];
-            borderEdges.push_back({p1, p2});
+            DrawLineEx(Vector2{(float)p1.x, (float)p1.y},
+                      Vector2{(float)p2.x, (float)p2.y},
+                      3.0f * game.camera.zoom, YELLOW);
           }
         }
       }
-    }
-
-    // Draw all border edges with thicker lines for better visibility
-    for (const auto &edge : borderEdges) {
-      DrawLineEx(Vector2{(float)edge.first.x, (float)edge.first.y},
-                Vector2{(float)edge.second.x, (float)edge.second.y},
-                4.0f * game.camera.zoom, YELLOW);
-    }
-
-    // Draw circles at vertices to ensure contiguous appearance
-    std::set<std::pair<int, int>> vertices;
-    for (const auto &edge : borderEdges) {
-      vertices.insert({(int)edge.first.x, (int)edge.first.y});
-      vertices.insert({(int)edge.second.x, (int)edge.second.y});
-    }
-    for (const auto &vertex : vertices) {
-      DrawCircle(vertex.first, vertex.second, 2.5f * game.camera.zoom, YELLOW);
     }
   }
 
