@@ -120,7 +120,7 @@ int main() {
         if (game.movementSel.isFacingSelection && game.selectedUnit) {
           // Phase 2: Right-click undoes the movement
           GameLogic::setUnitZOC(game, game.selectedUnit, false);
-          GameLogic::setUnitSpotRange(game, game.selectedUnit, false);
+          // Note: spotting was never updated during tentative move, so no need to clear it
 
           game.selectedUnit->position = game.movementSel.oldPosition;
           game.selectedUnit->movesLeft = game.movementSel.oldMovesLeft;
@@ -128,7 +128,7 @@ int main() {
           game.selectedUnit->fuel = game.movementSel.oldFuel;
 
           GameLogic::setUnitZOC(game, game.selectedUnit, true);
-          GameLogic::setUnitSpotRange(game, game.selectedUnit, true);
+          // Note: spotting is still at old position from before the tentative move
 
           // Return to Phase 1
           game.movementSel.reset();
@@ -172,6 +172,13 @@ int main() {
           // Phase 2: confirming facing
           if (game.selectedUnit && game.movementSel.isFacingSelection) {
             game.selectedUnit->facing = game.movementSel.selectedFacing;
+
+            // Now that movement is confirmed, update spotting (clear old, set new)
+            GameLogic::setSpotRangeAtPosition(game, game.selectedUnit->side,
+                                               game.selectedUnit->spotRange,
+                                               game.movementSel.oldPosition, false);
+            GameLogic::setUnitSpotRange(game, game.selectedUnit, true);
+
             game.movementSel.reset();
             Rendering::clearSelectionHighlights(game);
             if (!game.selectedUnit->hasFired) {
@@ -190,7 +197,8 @@ int main() {
                 game.movementSel.oldHasMoved = game.selectedUnit->hasMoved;
                 game.movementSel.oldFuel = game.selectedUnit->fuel;
 
-                GameLogic::moveUnit(game, game.selectedUnit, clickedHex);
+                // Move without updating spotting (defer until facing confirmation)
+                GameLogic::moveUnit(game, game.selectedUnit, clickedHex, false);
                 Rendering::clearSelectionHighlights(game);
                 game.movementSel.isFacingSelection = true;
                 game.movementSel.selectedFacing = game.selectedUnit->facing;
