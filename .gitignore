@@ -9,6 +9,7 @@ build/
 out/
 *.min.js
 *.min.css
+*.o
 openwanzer
 
 # Logs
@@ -77,6 +78,7 @@ temp/
 # Backup files
 *.bak
 *.backup
+*.old
 *~
 
 # Debug files
