@@ -236,18 +236,35 @@ int getMovementCost(MovMethod movMethod, TerrainType terrain) {
   return 255; // Impassable by default
 }
 
-// Convert facing direction (0-5) to compass direction string
-std::string getFacingName(int facing) {
-  // Hex directions (pointy-top): 0=E, 1=NE, 2=NW, 3=W, 4=SW, 5=SE
-  switch (facing) {
-  case 0: return "E";
-  case 1: return "NE";
-  case 2: return "NW";
-  case 3: return "W";
-  case 4: return "SW";
-  case 5: return "SE";
-  default: return "?";
-  }
+// Convert facing angle (0-360 degrees) to hybrid intercardinal/geometric notation
+std::string getFacingName(float facing) {
+  // Normalize angle to 0-360
+  while (facing < 0) facing += 360.0f;
+  while (facing >= 360.0f) facing -= 360.0f;
+
+  // Determine compass direction based on 16-point compass rose
+  const char* direction;
+  if (facing >= 348.75f || facing < 11.25f) direction = "N";
+  else if (facing >= 11.25f && facing < 33.75f) direction = "NNE";
+  else if (facing >= 33.75f && facing < 56.25f) direction = "NE";
+  else if (facing >= 56.25f && facing < 78.75f) direction = "ENE";
+  else if (facing >= 78.75f && facing < 101.25f) direction = "E";
+  else if (facing >= 101.25f && facing < 123.75f) direction = "ESE";
+  else if (facing >= 123.75f && facing < 146.25f) direction = "SE";
+  else if (facing >= 146.25f && facing < 168.75f) direction = "SSE";
+  else if (facing >= 168.75f && facing < 191.25f) direction = "S";
+  else if (facing >= 191.25f && facing < 213.75f) direction = "SSW";
+  else if (facing >= 213.75f && facing < 236.25f) direction = "SW";
+  else if (facing >= 236.25f && facing < 258.75f) direction = "WSW";
+  else if (facing >= 258.75f && facing < 281.25f) direction = "W";
+  else if (facing >= 281.25f && facing < 303.75f) direction = "WNW";
+  else if (facing >= 303.75f && facing < 326.25f) direction = "NW";
+  else direction = "NNW";
+
+  // Format as "NNE (018°)"
+  char buffer[20];
+  snprintf(buffer, sizeof(buffer), "%s (%03d°)", direction, (int)facing);
+  return std::string(buffer);
 }
 
 } // namespace GameLogic
@@ -484,8 +501,8 @@ struct Unit {
   bool hasFired;
   bool isCore; // campaign unit
 
-  // Facing system (0-5 representing hex directions, -1 if not set)
-  int facing;
+  // Facing system (0-360 degrees, exact angle)
+  float facing;
 
   Unit()
       : strength(10), maxStrength(10), experience(0), entrenchment(0),
@@ -493,7 +510,7 @@ struct Unit {
         initiative(5), movMethod(MovMethod::TRACKED), movementPoints(6),
         movesLeft(6), fuel(50), maxFuel(50), ammo(20), maxAmmo(20),
         spotRange(2), rangeDefMod(0), hits(0), entrenchTicks(0),
-        hasMoved(false), hasFired(false), isCore(false), facing(0) {}
+        hasMoved(false), hasFired(false), isCore(false), facing(0.0f) {}
 };
 
 // Combat Log Message
@@ -579,10 +596,10 @@ struct MovementSelection {
   int oldMovesLeft;        // Movement points before move (for undo)
   bool oldHasMoved;        // hasMoved state before move (for undo)
   int oldFuel;             // Fuel before move (for undo)
-  int selectedFacing;      // The facing direction being previewed (-1 if not set)
+  float selectedFacing;    // The facing direction being previewed (0-360 degrees)
 
   MovementSelection() : isFacingSelection(false), oldPosition{-1, -1},
-                        oldMovesLeft(0), oldHasMoved(false), oldFuel(0), selectedFacing(-1) {}
+                        oldMovesLeft(0), oldHasMoved(false), oldFuel(0), selectedFacing(0.0f) {}
 
   void reset() {
     isFacingSelection = false;
@@ -590,7 +607,7 @@ struct MovementSelection {
     oldMovesLeft = 0;
     oldHasMoved = false;
     oldFuel = 0;
-    selectedFacing = -1;
+    selectedFacing = 0.0f;
   }
 };
 
@@ -696,14 +713,13 @@ struct GameState {
       break;
     }
 
-    // Initialize unit facing based on side
-    // Hex directions (pointy-top): 0=E, 1=NE, 2=NW, 3=W, 4=SW, 5=SE
+    // Initialize unit facing based on side (using degrees: E=0°, S=90°, W=180°, N=270°)
     // Axis units (left side) face generally East (toward right/enemy)
     // Allied units (right side) face generally West (toward left/enemy)
     if (side == 0) {
-      unit->facing = 0;  // East - facing toward the right side of map
+      unit->facing = 0.0f;  // East (0°) - facing toward the right side of map
     } else {
-      unit->facing = 3;  // West - facing toward the left side of map
+      unit->facing = 180.0f;  // West (180°) - facing toward the left side of map
     }
 
     units.push_back(std::move(unit));
@@ -888,9 +904,8 @@ void drawMap(GameState &game) {
     float unitWidth = 40 * game.camera.zoom;
     float unitHeight = 30 * game.camera.zoom;
 
-    // Calculate rotation angle based on facing direction (0-5 maps to 0-300 degrees)
-    // For pointy-top hexes: 0=E(0°), 1=NE(60°), 2=NW(120°), 3=W(180°), 4=SW(240°), 5=SE(300°)
-    float rotation = (unit->facing >= 0 && unit->facing <= 5) ? unit->facing * 60.0f : 0.0f;
+    // Use facing angle directly (0-360 degrees)
+    float rotation = unit->facing;
 
     // Draw unit rectangle with rotation
     Color unitColor = getUnitColor(unit->side);
@@ -922,19 +937,37 @@ void drawMap(GameState &game) {
                fontSize, YELLOW);
     }
 
-    // Draw selection highlight (rotated)
+    // Draw selection highlight (rotated to match unit facing)
     if (unit.get() == game.selectedUnit) {
-      Rectangle highlightRect1 = {(float)center.x, (float)center.y, unitWidth + 4, unitHeight + 4};
-      Vector2 highlightOrigin1 = {(unitWidth + 4) / 2, (unitHeight + 4) / 2};
-      DrawRectangleLinesEx(Rectangle{highlightRect1.x - highlightOrigin1.x,
-                                      highlightRect1.y - highlightOrigin1.y,
-                                      highlightRect1.width, highlightRect1.height}, 2.0f, YELLOW);
+      float rotRad = rotation * M_PI / 180.0f;
+      float cosR = cos(rotRad);
+      float sinR = sin(rotRad);
 
-      Rectangle highlightRect2 = {(float)center.x, (float)center.y, unitWidth + 6, unitHeight + 6};
-      Vector2 highlightOrigin2 = {(unitWidth + 6) / 2, (unitHeight + 6) / 2};
-      DrawRectangleLinesEx(Rectangle{highlightRect2.x - highlightOrigin2.x,
-                                      highlightRect2.y - highlightOrigin2.y,
-                                      highlightRect2.width, highlightRect2.height}, 2.0f, YELLOW);
+      // Draw first highlight box (4 pixels larger)
+      float w1 = (unitWidth + 4) / 2;
+      float h1 = (unitHeight + 4) / 2;
+      Vector2 corners1[4] = {
+        {(float)(center.x + (-w1 * cosR - -h1 * sinR)), (float)(center.y + (-w1 * sinR + -h1 * cosR))},
+        {(float)(center.x + ( w1 * cosR - -h1 * sinR)), (float)(center.y + ( w1 * sinR + -h1 * cosR))},
+        {(float)(center.x + ( w1 * cosR -  h1 * sinR)), (float)(center.y + ( w1 * sinR +  h1 * cosR))},
+        {(float)(center.x + (-w1 * cosR -  h1 * sinR)), (float)(center.y + (-w1 * sinR +  h1 * cosR))}
+      };
+      for (int i = 0; i < 4; i++) {
+        DrawLineEx(corners1[i], corners1[(i + 1) % 4], 2.0f, YELLOW);
+      }
+
+      // Draw second highlight box (6 pixels larger)
+      float w2 = (unitWidth + 6) / 2;
+      float h2 = (unitHeight + 6) / 2;
+      Vector2 corners2[4] = {
+        {(float)(center.x + (-w2 * cosR - -h2 * sinR)), (float)(center.y + (-w2 * sinR + -h2 * cosR))},
+        {(float)(center.x + ( w2 * cosR - -h2 * sinR)), (float)(center.y + ( w2 * sinR + -h2 * cosR))},
+        {(float)(center.x + ( w2 * cosR -  h2 * sinR)), (float)(center.y + ( w2 * sinR +  h2 * cosR))},
+        {(float)(center.x + (-w2 * cosR -  h2 * sinR)), (float)(center.y + (-w2 * sinR +  h2 * cosR))}
+      };
+      for (int i = 0; i < 4; i++) {
+        DrawLineEx(corners2[i], corners2[(i + 1) % 4], 2.0f, YELLOW);
+      }
     }
   }
 
@@ -1058,17 +1091,18 @@ void drawMap(GameState &game) {
     float perpX = -dy;
     float perpY = dx;
 
-    float arrowSize = HEX_SIZE * game.camera.zoom * 0.4f;
-    float arrowWidth = HEX_SIZE * game.camera.zoom * 0.3f;
+    // Make indicator longer and further from center
+    float arrowSize = HEX_SIZE * game.camera.zoom * 0.65f;
+    float arrowWidth = HEX_SIZE * game.camera.zoom * 0.35f;
 
-    // Calculate tip position (pointing toward mouse)
-    Point tipPos = Point(center.x + dx * arrowSize * 0.9f,
-                         center.y + dy * arrowSize * 0.9f);
-    // Calculate arm endpoints (forming ">"-shape centered on hex)
-    Point arm1 = Point(tipPos.x - dx * arrowSize * 0.3f + perpX * arrowWidth,
-                      tipPos.y - dy * arrowSize * 0.3f + perpY * arrowWidth);
-    Point arm2 = Point(tipPos.x - dx * arrowSize * 0.3f - perpX * arrowWidth,
-                      tipPos.y - dy * arrowSize * 0.3f - perpY * arrowWidth);
+    // Calculate tip position (pointing toward mouse, further from center)
+    Point tipPos = Point(center.x + dx * arrowSize,
+                         center.y + dy * arrowSize);
+    // Calculate arm endpoints (forming ">"-shape)
+    Point arm1 = Point(tipPos.x - dx * arrowSize * 0.35f + perpX * arrowWidth,
+                      tipPos.y - dy * arrowSize * 0.35f + perpY * arrowWidth);
+    Point arm2 = Point(tipPos.x - dx * arrowSize * 0.35f - perpX * arrowWidth,
+                      tipPos.y - dy * arrowSize * 0.35f - perpY * arrowWidth);
 
     // Draw the angle indicator
     DrawLineEx(Vector2{(float)arm1.x, (float)arm1.y},
@@ -1079,32 +1113,44 @@ void drawMap(GameState &game) {
               4.0f * game.camera.zoom, YELLOW);
   }
 
-  // Draw unit facing indicators (small line from center to faced edge)
-  for (auto &unit : game.units) {
-    if (unit->facing < 0 || unit->facing > 5) continue;
-
-    // FOG OF WAR: Hide facing indicators for enemy units that aren't spotted
-    GameHex &unitHex = game.map[unit->position.row][unit->position.col];
-    if (unit->side != game.currentPlayer && !unitHex.isSpotted[game.currentPlayer])
-      continue;
-
-    OffsetCoord offset = gameCoordToOffset(unit->position);
-    ::Hex cubeHex = offset_to_cube(offset);
+  // Draw facing angle indicator for selected unit (when not in facing selection mode)
+  if (game.selectedUnit && !game.movementSel.isFacingSelection) {
     Layout layout = createHexLayout(HEX_SIZE, game.camera.offsetX,
                                     game.camera.offsetY, game.camera.zoom);
-    Point center = hex_to_pixel(layout, cubeHex);
 
-    // Get hex corners and calculate edge midpoint
-    std::vector<Point> corners = polygon_corners(layout, cubeHex);
-    int dir = unit->facing;
-    Point edgeP1 = corners[dir];
-    Point edgeP2 = corners[(dir + 1) % 6];
-    Point edgeMid = Point((edgeP1.x + edgeP2.x) / 2.0, (edgeP1.y + edgeP2.y) / 2.0);
+    OffsetCoord unitOffset = gameCoordToOffset(game.selectedUnit->position);
+    ::Hex unitCube = offset_to_cube(unitOffset);
+    Point center = hex_to_pixel(layout, unitCube);
 
-    // Draw small yellow line from center to edge midpoint
-    DrawLineEx(Vector2{(float)center.x, (float)center.y},
-              Vector2{(float)edgeMid.x, (float)edgeMid.y},
-              2.0f * game.camera.zoom, YELLOW);
+    // Calculate direction vector from unit's facing angle
+    float facingRad = game.selectedUnit->facing * M_PI / 180.0f;
+    float dx = cos(facingRad);
+    float dy = sin(facingRad);
+
+    // Perpendicular vector
+    float perpX = -dy;
+    float perpY = dx;
+
+    // Same size as movement indicator
+    float arrowSize = HEX_SIZE * game.camera.zoom * 0.65f;
+    float arrowWidth = HEX_SIZE * game.camera.zoom * 0.35f;
+
+    // Calculate tip position
+    Point tipPos = Point(center.x + dx * arrowSize,
+                         center.y + dy * arrowSize);
+    // Calculate arm endpoints (forming ">"-shape)
+    Point arm1 = Point(tipPos.x - dx * arrowSize * 0.35f + perpX * arrowWidth,
+                      tipPos.y - dy * arrowSize * 0.35f + perpY * arrowWidth);
+    Point arm2 = Point(tipPos.x - dx * arrowSize * 0.35f - perpX * arrowWidth,
+                      tipPos.y - dy * arrowSize * 0.35f - perpY * arrowWidth);
+
+    // Draw the angle indicator
+    DrawLineEx(Vector2{(float)arm1.x, (float)arm1.y},
+              Vector2{(float)tipPos.x, (float)tipPos.y},
+              4.0f * game.camera.zoom, YELLOW);
+    DrawLineEx(Vector2{(float)arm2.x, (float)arm2.y},
+              Vector2{(float)tipPos.x, (float)tipPos.y},
+              4.0f * game.camera.zoom, YELLOW);
   }
 }
 
@@ -1819,8 +1865,8 @@ void endTurn(GameState &game) {
   Rendering::clearSelectionHighlights(game);
 }
 
-// Calculate facing direction from center hex to target point using line drawing
-int calculateFacingFromPoint(const HexCoord &center, const Point &targetPoint, Layout &layout) {
+// Calculate exact facing angle from center hex to target point
+float calculateFacingFromPoint(const HexCoord &center, const Point &targetPoint, Layout &layout) {
   OffsetCoord centerOffset = Rendering::gameCoordToOffset(center);
   ::Hex centerCube = offset_to_cube(centerOffset);
   Point centerPixel = hex_to_pixel(layout, centerCube);
@@ -1829,22 +1875,14 @@ int calculateFacingFromPoint(const HexCoord &center, const Point &targetPoint, L
   float dx = targetPoint.x - centerPixel.x;
   float dy = targetPoint.y - centerPixel.y;
 
-  // Determine which of the 6 directions (edges) is closest to this angle
-  // For pointy-top hexes:
-  // 0 = E (0°), 1 = NE (60°), 2 = NW (120°), 3 = W (180°), 4 = SW (240°), 5 = SE (300°)
+  // Calculate exact angle using atan2
+  // In screen coordinates: E=0°, S=90° (y-down), W=180°, N=270°
   float angle = atan2(dy, dx) * 180.0f / M_PI;
 
   // Normalize angle to 0-360
-  if (angle < 0) angle += 360;
+  if (angle < 0) angle += 360.0f;
 
-  // Map angle to hex direction (pointy-top)
-  // E: -30 to 30, NE: 30 to 90, NW: 90 to 150, W: 150 to 210, SW: 210 to 270, SE: 270 to 330
-  if (angle >= 330 || angle < 30) return 0;      // E
-  else if (angle >= 30 && angle < 90) return 1;  // NE
-  else if (angle >= 90 && angle < 150) return 2; // NW
-  else if (angle >= 150 && angle < 210) return 3; // W
-  else if (angle >= 210 && angle < 270) return 4; // SW
-  else return 5;  // SE
+  return angle;
 }
 
 } // namespace GameLogic
