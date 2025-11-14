@@ -10,20 +10,20 @@ AllowShortIfStatementsOnASingleLine: Never
 AllowShortLoopsOnASingleLine: false
 AlwaysBreakTemplateDeclarations: Yes
 BraceWrapping:
-    AfterCaseLabel: true
-    AfterClass: true
-    AfterControlStatement: Always
-    AfterEnum: true
-    AfterFunction: true
-    AfterNamespace: true
-    AfterStruct: true
-    BeforeCatch: true
-    BeforeElse: true
+    AfterCaseLabel: false
+    AfterClass: false
+    AfterControlStatement: Never
+    AfterEnum: false
+    AfterFunction: false
+    AfterNamespace: false
+    AfterStruct: false
+    BeforeCatch: false
+    BeforeElse: false
     SplitEmptyFunction: true
     SplitEmptyRecord: true
     SplitEmptyNamespace: true
 BreakBeforeBinaryOperators: NonAssignment
-BreakBeforeBraces: Custom
+BreakBeforeBraces: Attach
 BreakBeforeTernaryOperators: true
 BreakConstructorInitializers: BeforeColon
 BreakInheritanceList: BeforeColon
