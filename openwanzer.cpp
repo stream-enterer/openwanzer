@@ -209,6 +209,47 @@ int getTerrainEntrenchment(TerrainType terrain) {
   return 0;
 }
 
+// Get terrain type as display string
+std::string getTerrainName(TerrainType terrain) {
+  switch (terrain) {
+  case TerrainType::PLAINS: return "Plains";
+  case TerrainType::FOREST: return "Forest";
+  case TerrainType::MOUNTAIN: return "Mountain";
+  case TerrainType::HILL: return "Hill";
+  case TerrainType::DESERT: return "Desert";
+  case TerrainType::SWAMP: return "Swamp";
+  case TerrainType::CITY: return "City";
+  case TerrainType::WATER: return "Water";
+  case TerrainType::ROAD: return "Road";
+  case TerrainType::ROUGH: return "Rough";
+  default: return "Unknown";
+  }
+}
+
+// Get movement cost for a given terrain and movement method
+int getMovementCost(MovMethod movMethod, TerrainType terrain) {
+  int movMethodIdx = static_cast<int>(movMethod);
+  int terrainIdx = getTerrainIndex(terrain);
+  if (movMethodIdx >= 0 && movMethodIdx < 12 && terrainIdx >= 0 && terrainIdx < 18) {
+    return MOV_TABLE_DRY[movMethodIdx][terrainIdx];
+  }
+  return 255; // Impassable by default
+}
+
+// Convert facing direction (0-5) to compass direction string
+std::string getFacingName(int facing) {
+  // Hex directions (pointy-top): 0=E, 1=NE, 2=NW, 3=W, 4=SW, 5=SE
+  switch (facing) {
+  case 0: return "E";
+  case 1: return "NE";
+  case 2: return "NW";
+  case 3: return "W";
+  case 4: return "SW";
+  case 5: return "SE";
+  default: return "?";
+  }
+}
+
 } // namespace GameLogic
 
 //==============================================================================
@@ -443,13 +484,16 @@ struct Unit {
   bool hasFired;
   bool isCore; // campaign unit
 
+  // Facing system (0-5 representing hex directions, -1 if not set)
+  int facing;
+
   Unit()
       : strength(10), maxStrength(10), experience(0), entrenchment(0),
         hardAttack(8), softAttack(10), groundDefense(6), closeDefense(5),
         initiative(5), movMethod(MovMethod::TRACKED), movementPoints(6),
         movesLeft(6), fuel(50), maxFuel(50), ammo(20), maxAmmo(20),
         spotRange(2), rangeDefMod(0), hits(0), entrenchTicks(0),
-        hasMoved(false), hasFired(false), isCore(false) {}
+        hasMoved(false), hasFired(false), isCore(false), facing(0) {}
 };
 
 // Combat Log Message
@@ -526,6 +570,23 @@ struct UnitInfoBox {
   }
 };
 
+// Movement selection state (for two-phase selection system)
+struct MovementSelection {
+  bool isMovementLocked;    // Phase 2: movement destination locked
+  HexCoord lockedDestination;  // The locked movement destination
+  std::vector<HexCoord> lockedPath;  // The locked path to destination
+  int lockedFacing;  // The facing direction being previewed (-1 if not set)
+
+  MovementSelection() : isMovementLocked(false), lockedDestination{-1, -1}, lockedFacing(-1) {}
+
+  void reset() {
+    isMovementLocked = false;
+    lockedDestination = {-1, -1};
+    lockedPath.clear();
+    lockedFacing = -1;
+  }
+};
+
 // Game State
 struct GameState {
   std::vector<std::vector<GameHex>> map;
@@ -540,6 +601,7 @@ struct GameState {
   CameraState camera;
   CombatLog combatLog;
   UnitInfoBox unitInfoBox;
+  MovementSelection movementSel;  // Two-phase selection state
 
   GameState()
       : selectedUnit(nullptr), currentTurn(1), currentPlayer(0), maxTurns(20),
@@ -627,6 +689,16 @@ struct GameState {
       break;
     }
 
+    // Initialize unit facing based on side
+    // Hex directions (pointy-top): 0=E, 1=NE, 2=NW, 3=W, 4=SW, 5=SE
+    // Axis units (left side) face generally East (toward right/enemy)
+    // Allied units (right side) face generally West (toward left/enemy)
+    if (side == 0) {
+      unit->facing = 0;  // East - facing toward the right side of map
+    } else {
+      unit->facing = 3;  // West - facing toward the left side of map
+    }
+
     units.push_back(std::move(unit));
   }
 };
@@ -634,6 +706,11 @@ struct GameState {
 //==============================================================================
 // SECTION 6: RENDERING FUNCTIONS
 //==============================================================================
+
+// Forward declarations from GameLogic (for cross-namespace calls)
+namespace GameLogic {
+  std::vector<HexCoord> findPath(GameState &game, Unit *unit, const HexCoord &start, const HexCoord &goal);
+}
 
 namespace Rendering {
 
@@ -843,6 +920,175 @@ void drawMap(GameState &game) {
                          (int)(unitWidth + 6), (int)(unitHeight + 6), YELLOW);
     }
   }
+
+  // Draw movement zone outline (yellow contiguous border)
+  if (game.selectedUnit && !game.selectedUnit->hasMoved) {
+    Layout layout = createHexLayout(HEX_SIZE, game.camera.offsetX,
+                                    game.camera.offsetY, game.camera.zoom);
+
+    // Find edge hexes (hexes with at least one neighbor that's not moveable)
+    for (int row = 0; row < MAP_ROWS; row++) {
+      for (int col = 0; col < MAP_COLS; col++) {
+        if (!game.map[row][col].isMoveSel) continue;
+
+        HexCoord coord = {row, col};
+        OffsetCoord offset = gameCoordToOffset(coord);
+        ::Hex cubeHex = offset_to_cube(offset);
+
+        // Check each of the 6 edges
+        for (int dir = 0; dir < 6; dir++) {
+          ::Hex neighbor = hex_neighbor(cubeHex, dir);
+          OffsetCoord neighborOffset = cube_to_offset(neighbor);
+
+          bool drawEdge = false;
+
+          // Draw edge if neighbor is out of bounds or not in movement range
+          if (neighborOffset.row < 0 || neighborOffset.row >= MAP_ROWS ||
+              neighborOffset.col < 0 || neighborOffset.col >= MAP_COLS) {
+            drawEdge = true;
+          } else if (!game.map[neighborOffset.row][neighborOffset.col].isMoveSel) {
+            drawEdge = true;
+          }
+
+          if (drawEdge) {
+            // Draw the edge between this hex and its neighbor
+            std::vector<Point> corners = polygon_corners(layout, cubeHex);
+            Point p1 = corners[dir];
+            Point p2 = corners[(dir + 1) % 6];
+            DrawLineEx(Vector2{(float)p1.x, (float)p1.y},
+                      Vector2{(float)p2.x, (float)p2.y},
+                      3.0f * game.camera.zoom, YELLOW);
+          }
+        }
+      }
+    }
+  }
+
+  // Draw path preview (semi-transparent snake showing planned path)
+  if (game.selectedUnit && !game.movementSel.isMovementLocked) {
+    Vector2 mousePos = GetMousePosition();
+    Layout layout = createHexLayout(HEX_SIZE, game.camera.offsetX,
+                                    game.camera.offsetY, game.camera.zoom);
+    Point mousePoint(mousePos.x, mousePos.y);
+    FractionalHex fracHex = pixel_to_hex(layout, mousePoint);
+    ::Hex cubeHex = hex_round(fracHex);
+    OffsetCoord offset = cube_to_offset(cubeHex);
+    HexCoord hoveredHex = offsetToGameCoord(offset);
+
+    // Only show path if hovering over a valid movement hex
+    if (hoveredHex.row >= 0 && hoveredHex.row < MAP_ROWS &&
+        hoveredHex.col >= 0 && hoveredHex.col < MAP_COLS &&
+        game.map[hoveredHex.row][hoveredHex.col].isMoveSel) {
+
+      // Get path from unit position to hovered hex
+      std::vector<HexCoord> path = GameLogic::findPath(game, game.selectedUnit,
+                                                       game.selectedUnit->position,
+                                                       hoveredHex);
+
+      if (!path.empty() && path.size() > 1) {
+        // Draw path as semi-transparent hexes
+        for (size_t i = 1; i < path.size(); i++) {  // Start at 1 to skip unit's current position
+          OffsetCoord pathOffset = gameCoordToOffset(path[i]);
+          ::Hex pathCube = offset_to_cube(pathOffset);
+          std::vector<Point> corners = polygon_corners(layout, pathCube);
+
+          // Draw semi-transparent yellow fill
+          drawHexagon(corners, Color{255, 255, 0, 80}, true);
+        }
+
+        // Draw target hex with slightly more opacity
+        OffsetCoord targetOffset = gameCoordToOffset(hoveredHex);
+        ::Hex targetCube = offset_to_cube(targetOffset);
+        std::vector<Point> corners = polygon_corners(layout, targetCube);
+        drawHexagon(corners, Color{255, 255, 0, 120}, true);
+      }
+    }
+  }
+
+  // Draw locked path (when movement is locked)
+  if (game.selectedUnit && game.movementSel.isMovementLocked && !game.movementSel.lockedPath.empty()) {
+    Layout layout = createHexLayout(HEX_SIZE, game.camera.offsetX,
+                                    game.camera.offsetY, game.camera.zoom);
+
+    // Draw locked path
+    for (size_t i = 1; i < game.movementSel.lockedPath.size(); i++) {
+      OffsetCoord pathOffset = gameCoordToOffset(game.movementSel.lockedPath[i]);
+      ::Hex pathCube = offset_to_cube(pathOffset);
+      std::vector<Point> corners = polygon_corners(layout, pathCube);
+      drawHexagon(corners, Color{255, 255, 0, 100}, true);
+    }
+
+    // Draw locked destination with more opacity
+    OffsetCoord destOffset = gameCoordToOffset(game.movementSel.lockedDestination);
+    ::Hex destCube = offset_to_cube(destOffset);
+    std::vector<Point> corners = polygon_corners(layout, destCube);
+    drawHexagon(corners, Color{255, 255, 0, 150}, true);
+
+    // Draw facing indicator if facing is being previewed
+    if (game.movementSel.lockedFacing >= 0) {
+      Point center = hex_to_pixel(layout, destCube);
+
+      // Calculate the midpoint of the hex edge being faced
+      std::vector<Point> hexCorners = polygon_corners(layout, destCube);
+      int dir = game.movementSel.lockedFacing;
+      Point edgeP1 = hexCorners[dir];
+      Point edgeP2 = hexCorners[(dir + 1) % 6];
+      Point edgeMid = Point((edgeP1.x + edgeP2.x) / 2.0, (edgeP1.y + edgeP2.y) / 2.0);
+
+      // Draw a wide angle indicator (like ">") pointing toward the edge
+      // Calculate perpendicular vectors for the angle arms
+      float dx = edgeMid.x - center.x;
+      float dy = edgeMid.y - center.y;
+      float len = sqrt(dx * dx + dy * dy);
+      dx /= len;
+      dy /= len;
+
+      // Perpendicular vector
+      float perpX = -dy;
+      float perpY = dx;
+
+      float arrowSize = HEX_SIZE * game.camera.zoom * 0.4f;
+      float arrowWidth = HEX_SIZE * game.camera.zoom * 0.3f;
+
+      Point tipPos = Point(center.x + dx * arrowSize * 0.9f,
+                           center.y + dy * arrowSize * 0.9f);
+      Point arm1 = Point(tipPos.x - dx * arrowSize * 0.3f + perpX * arrowWidth,
+                        tipPos.y - dy * arrowSize * 0.3f + perpY * arrowWidth);
+      Point arm2 = Point(tipPos.x - dx * arrowSize * 0.3f - perpX * arrowWidth,
+                        tipPos.y - dy * arrowSize * 0.3f - perpY * arrowWidth);
+
+      // Draw the angle indicator
+      DrawLineEx(Vector2{(float)arm1.x, (float)arm1.y},
+                Vector2{(float)tipPos.x, (float)tipPos.y},
+                4.0f * game.camera.zoom, YELLOW);
+      DrawLineEx(Vector2{(float)arm2.x, (float)arm2.y},
+                Vector2{(float)tipPos.x, (float)tipPos.y},
+                4.0f * game.camera.zoom, YELLOW);
+    }
+  }
+
+  // Draw unit facing indicators (small line from center to faced edge)
+  for (auto &unit : game.units) {
+    if (unit->facing < 0 || unit->facing > 5) continue;
+
+    OffsetCoord offset = gameCoordToOffset(unit->position);
+    ::Hex cubeHex = offset_to_cube(offset);
+    Layout layout = createHexLayout(HEX_SIZE, game.camera.offsetX,
+                                    game.camera.offsetY, game.camera.zoom);
+    Point center = hex_to_pixel(layout, cubeHex);
+
+    // Get hex corners and calculate edge midpoint
+    std::vector<Point> corners = polygon_corners(layout, cubeHex);
+    int dir = unit->facing;
+    Point edgeP1 = corners[dir];
+    Point edgeP2 = corners[(dir + 1) % 6];
+    Point edgeMid = Point((edgeP1.x + edgeP2.x) / 2.0, (edgeP1.y + edgeP2.y) / 2.0);
+
+    // Draw small yellow line from center to edge midpoint
+    DrawLineEx(Vector2{(float)center.x, (float)center.y},
+              Vector2{(float)edgeMid.x, (float)edgeMid.y},
+              2.0f * game.camera.zoom, YELLOW);
+  }
 }
 
 void clearSelectionHighlights(GameState &game) {
@@ -1010,6 +1256,113 @@ void initializeAllSpotting(GameState &game) {
   }
 }
 
+// BFS pathfinding to find path from start to goal
+// Returns empty vector if no path exists
+std::vector<HexCoord> findPath(GameState &game, Unit *unit, const HexCoord &start, const HexCoord &goal) {
+  if (!unit) return {};
+  if (start == goal) return {start};
+
+  int movMethodIdx = static_cast<int>(unit->movMethod);
+  int enemySide = 1 - unit->side;
+  bool ignoreZOC = isAir(unit);
+
+  // BFS with parent tracking
+  struct PathNode {
+    HexCoord coord;
+    int movementUsed;  // Total movement used to reach this node
+    HexCoord parent;
+    bool hasParent;
+  };
+
+  std::vector<PathNode> queue;
+  std::vector<PathNode> visited;
+
+  // Start node
+  queue.push_back({start, 0, {-1, -1}, false});
+  visited.push_back({start, 0, {-1, -1}, false});
+
+  while (!queue.empty()) {
+    PathNode current = queue.front();
+    queue.erase(queue.begin());  // Remove first element
+
+    // Check if we reached the goal
+    if (current.coord == goal) {
+      // Reconstruct path
+      std::vector<HexCoord> path;
+      HexCoord c = goal;
+
+      while (true) {
+        path.push_back(c);
+        bool found = false;
+        for (const auto& v : visited) {
+          if (v.coord == c && v.hasParent) {
+            c = v.parent;
+            found = true;
+            break;
+          }
+        }
+        if (!found) break;
+        if (c == start) {
+          path.push_back(start);
+          break;
+        }
+      }
+
+      // Reverse path so it goes from start to goal
+      std::reverse(path.begin(), path.end());
+      return path;
+    }
+
+    // Explore neighbors
+    std::vector<HexCoord> adjacent = getAdjacent(current.coord.row, current.coord.col);
+
+    for (const auto& adj : adjacent) {
+      // Get terrain cost
+      GameHex& hex = game.map[adj.row][adj.col];
+      int terrainIdx = getTerrainIndex(hex.terrain);
+      int cost = MOV_TABLE_DRY[movMethodIdx][terrainIdx];
+
+      // Skip impassable terrain
+      if (cost >= 255) continue;
+
+      int newMovementUsed = current.movementUsed + cost;
+
+      // For cost 254, it stops movement
+      if (cost == 254) newMovementUsed = 999;  // Very high cost
+
+      // ZOC: Enemy zone of control stops movement
+      if (!ignoreZOC && hex.isZOC(enemySide) && cost < 254) {
+        newMovementUsed = current.movementUsed + cost + 100;  // High penalty but not impassable
+      }
+
+      // Check if we can afford this movement
+      if (newMovementUsed > unit->movesLeft * 2) continue;  // Allow some extra for pathfinding flexibility
+
+      // Check if another unit occupies this hex (unless it's the goal)
+      Unit *occupant = game.getUnitAt(adj);
+      if (occupant && occupant->side != unit->side && !(adj == goal)) continue;
+
+      // Check if we've already visited this with lower cost
+      bool alreadyVisited = false;
+      for (const auto& v : visited) {
+        if (v.coord == adj && v.movementUsed <= newMovementUsed) {
+          alreadyVisited = true;
+          break;
+        }
+      }
+
+      if (!alreadyVisited) {
+        PathNode newNode = {adj, newMovementUsed, current.coord, true};
+        queue.push_back(newNode);
+        visited.push_back(newNode);
+      }
+    }
+  }
+
+  // No path found
+  return {};
+}
+
 void highlightMovementRange(GameState &game, Unit *unit) {
   Rendering::clearSelectionHighlights(game);
   if (!unit)
@@ -1152,7 +1505,7 @@ void moveUnit(GameState &game, Unit *unit, const HexCoord &target) {
 
     // Move unit
     unit->position = target;
-    unit->movesLeft -= cost;
+    unit->movesLeft = 0;  // One move per turn - all movement used up
     unit->hasMoved = true;
 
     // Set ZOC and spotting at new position
@@ -1443,9 +1796,38 @@ void endTurn(GameState &game) {
     }
   }
 
-  // Clear selection
+  // Clear selection and movement state
   game.selectedUnit = nullptr;
+  game.movementSel.reset();
   Rendering::clearSelectionHighlights(game);
+}
+
+// Calculate facing direction from center hex to target point using line drawing
+int calculateFacingFromPoint(const HexCoord &center, const Point &targetPoint, Layout &layout) {
+  OffsetCoord centerOffset = Rendering::gameCoordToOffset(center);
+  ::Hex centerCube = offset_to_cube(centerOffset);
+  Point centerPixel = hex_to_pixel(layout, centerCube);
+
+  // Calculate direction vector from center to target
+  float dx = targetPoint.x - centerPixel.x;
+  float dy = targetPoint.y - centerPixel.y;
+
+  // Determine which of the 6 directions (edges) is closest to this angle
+  // For pointy-top hexes:
+  // 0 = E (0°), 1 = NE (60°), 2 = NW (120°), 3 = W (180°), 4 = SW (240°), 5 = SE (300°)
+  float angle = atan2(dy, dx) * 180.0f / M_PI;
+
+  // Normalize angle to 0-360
+  if (angle < 0) angle += 360;
+
+  // Map angle to hex direction (pointy-top)
+  // E: -30 to 30, NE: 30 to 90, NW: 90 to 150, W: 150 to 210, SW: 210 to 270, SE: 270 to 330
+  if (angle >= 330 || angle < 30) return 0;      // E
+  else if (angle >= 30 && angle < 90) return 1;  // NE
+  else if (angle >= 90 && angle < 150) return 2; // NW
+  else if (angle >= 150 && angle < 210) return 3; // W
+  else if (angle >= 210 && angle < 270) return 4; // SW
+  else return 5;  // SE
 }
 
 } // namespace GameLogic
@@ -1686,6 +2068,10 @@ void drawUnitInfoBox(GameState &game) {
 
   info = "Entrenchment: " + std::to_string(unit->entrenchment);
   DrawText(info.c_str(), x, y, normalSize, textColor);
+  y += normalSize + 5;
+
+  info = "Facing: " + GameLogic::getFacingName(unit->facing);
+  DrawText(info.c_str(), x, y, normalSize, textColor);
   y += normalSize + 10;
 
   DrawText("Stats:", x, y, normalSize, textColor);
@@ -1717,6 +2103,44 @@ void drawUI(GameState &game) {
   char zoomText[32];
   snprintf(zoomText, sizeof(zoomText), "Zoom: %.0f%%", game.camera.zoom * 100);
   DrawText(zoomText, 400, 10, 20, WHITE);
+
+  // Terrain hover display (shows terrain type, coordinates, and move cost)
+  Vector2 mousePos = GetMousePosition();
+  Layout layout = createHexLayout(HEX_SIZE, game.camera.offsetX,
+                                  game.camera.offsetY, game.camera.zoom);
+  Point mousePoint(mousePos.x, mousePos.y);
+  FractionalHex fracHex = pixel_to_hex(layout, mousePoint);
+  ::Hex cubeHex = hex_round(fracHex);
+  OffsetCoord offset = cube_to_offset(cubeHex);
+  HexCoord hoveredHex = offsetToGameCoord(offset);
+
+  if (hoveredHex.row >= 0 && hoveredHex.row < MAP_ROWS &&
+      hoveredHex.col >= 0 && hoveredHex.col < MAP_COLS) {
+    GameHex &hex = game.map[hoveredHex.row][hoveredHex.col];
+    std::string terrainName = GameLogic::getTerrainName(hex.terrain);
+
+    // Get movement cost (use selected unit's movement method if available, otherwise use TRACKED as default)
+    int moveCost = 255;
+    if (game.selectedUnit) {
+      moveCost = GameLogic::getMovementCost(game.selectedUnit->movMethod, hex.terrain);
+    } else {
+      moveCost = GameLogic::getMovementCost(MovMethod::TRACKED, hex.terrain);
+    }
+
+    std::string costStr;
+    if (moveCost == 255) {
+      costStr = "Impassable";
+    } else if (moveCost == 254) {
+      costStr = "Stops";
+    } else {
+      costStr = std::to_string(moveCost);
+    }
+
+    char hoverText[128];
+    snprintf(hoverText, sizeof(hoverText), "[%s %d,%d Move Cost: %s]",
+             terrainName.c_str(), hoveredHex.row, hoveredHex.col, costStr.c_str());
+    DrawText(hoverText, 580, 10, 20, Color{255, 255, 150, 255}); // Light yellow
+  }
 
   // Reset UI button
   if (GuiButton(Rectangle{game.layout.statusBar.width - 240, 5, 120, 30},
@@ -2350,8 +2774,33 @@ int main() {
         game.showOptionsMenu = true;
       }
 
-      // Mouse input for unit selection (only if not dragging combat log)
-      if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && !game.combatLog.isDragging) {
+      // Right-click deselection
+      if (IsMouseButtonPressed(MOUSE_RIGHT_BUTTON)) {
+        if (game.movementSel.isMovementLocked) {
+          // Phase 2: Right-click returns to Phase 1 (unlock movement)
+          game.movementSel.reset();
+        } else if (game.selectedUnit) {
+          // Phase 1: Right-click deselects unit
+          game.selectedUnit = nullptr;
+          game.movementSel.reset();
+          Rendering::clearSelectionHighlights(game);
+        }
+      }
+
+      // Update facing preview in Phase 2 (movement locked)
+      if (game.selectedUnit && game.movementSel.isMovementLocked) {
+        Vector2 mousePos = GetMousePosition();
+        Layout layout = Rendering::createHexLayout(HEX_SIZE, game.camera.offsetX,
+                                       game.camera.offsetY, game.camera.zoom);
+        Point mousePoint(mousePos.x, mousePos.y);
+
+        // Calculate facing from locked destination to cursor
+        game.movementSel.lockedFacing = GameLogic::calculateFacingFromPoint(
+            game.movementSel.lockedDestination, mousePoint, layout);
+      }
+
+      // Left-click handling (only if not dragging combat log or unit info box)
+      if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && !game.combatLog.isDragging && !game.unitInfoBox.isDragging) {
         Vector2 mousePos = GetMousePosition();
 
         // Convert mouse position to hex coordinate
@@ -2369,46 +2818,80 @@ int main() {
 
           Unit *clickedUnit = game.getUnitAt(clickedHex);
 
-          if (game.selectedUnit) {
-            // Try to move or attack
-            if (game.map[clickedHex.row][clickedHex.col].isMoveSel) {
-              GameLogic::moveUnit(game, game.selectedUnit, clickedHex);
-              Rendering::clearSelectionHighlights(game);
+          // Phase 2: Movement locked, confirm facing and execute move
+          if (game.selectedUnit && game.movementSel.isMovementLocked) {
+            // Execute the movement with the previewed facing
+            GameLogic::moveUnit(game, game.selectedUnit, game.movementSel.lockedDestination);
+            game.selectedUnit->facing = game.movementSel.lockedFacing;
+
+            // Reset selection state
+            game.movementSel.reset();
+            Rendering::clearSelectionHighlights(game);
+
+            // Show attack range after moving
+            if (!game.selectedUnit->hasFired) {
               GameLogic::highlightAttackRange(game, game.selectedUnit);
-            } else if (game.map[clickedHex.row][clickedHex.col].isAttackSel) {
+            }
+          }
+          // Phase 1: Unit selected, handle movement or attack
+          else if (game.selectedUnit && !game.movementSel.isMovementLocked) {
+            // Click on movement hex - lock in movement destination (enter Phase 2)
+            if (game.map[clickedHex.row][clickedHex.col].isMoveSel && !game.selectedUnit->hasMoved) {
+              std::vector<HexCoord> path = GameLogic::findPath(game, game.selectedUnit,
+                                                               game.selectedUnit->position,
+                                                               clickedHex);
+              if (!path.empty()) {
+                game.movementSel.isMovementLocked = true;
+                game.movementSel.lockedDestination = clickedHex;
+                game.movementSel.lockedPath = path;
+                game.movementSel.lockedFacing = game.selectedUnit->facing;  // Start with current facing
+              }
+            }
+            // Click on attack hex - perform attack
+            else if (game.map[clickedHex.row][clickedHex.col].isAttackSel) {
               if (clickedUnit) {
                 GameLogic::performAttack(game, game.selectedUnit, clickedUnit);
                 Rendering::clearSelectionHighlights(game);
                 game.selectedUnit = nullptr;
+                game.movementSel.reset();
               } else {
                 GameLogic::addLogMessage(game, "No target at attack location");
               }
-            } else if (clickedUnit && clickedUnit->side == game.currentPlayer) {
-              // Select new unit
+            }
+            // Click on own unit - switch selection
+            else if (clickedUnit && clickedUnit->side == game.currentPlayer) {
               game.selectedUnit = clickedUnit;
-              GameLogic::highlightMovementRange(game, game.selectedUnit);
+              game.movementSel.reset();
+              Rendering::clearSelectionHighlights(game);
+              if (!clickedUnit->hasMoved) {
+                GameLogic::highlightMovementRange(game, game.selectedUnit);
+              }
               GameLogic::highlightAttackRange(game, game.selectedUnit);
-            } else if (clickedUnit && clickedUnit->side != game.currentPlayer) {
-              // Clicked on enemy unit but not in attack range
+            }
+            // Click on enemy unit but not in attack range
+            else if (clickedUnit && clickedUnit->side != game.currentPlayer) {
               GameLogic::addLogMessage(game, "Target not in range");
-            } else {
-              // Clicked on invalid hex
+            }
+            // Click on invalid hex - keep selection but provide feedback
+            else {
               if (!game.map[clickedHex.row][clickedHex.col].isMoveSel &&
                   !game.map[clickedHex.row][clickedHex.col].isAttackSel) {
                 GameLogic::addLogMessage(game, "Cannot move or attack there");
               }
-              // Deselect
-              game.selectedUnit = nullptr;
-              Rendering::clearSelectionHighlights(game);
             }
-          } else if (clickedUnit && clickedUnit->side == game.currentPlayer) {
-            // Select unit
-            game.selectedUnit = clickedUnit;
-            GameLogic::highlightMovementRange(game, game.selectedUnit);
-            GameLogic::highlightAttackRange(game, game.selectedUnit);
-          } else if (clickedUnit && clickedUnit->side != game.currentPlayer) {
-            // Clicked on enemy unit without selection
-            GameLogic::addLogMessage(game, "Cannot select enemy unit");
+          }
+          // No unit selected - try to select a unit
+          else if (!game.selectedUnit) {
+            if (clickedUnit && clickedUnit->side == game.currentPlayer) {
+              game.selectedUnit = clickedUnit;
+              game.movementSel.reset();
+              if (!clickedUnit->hasMoved) {
+                GameLogic::highlightMovementRange(game, game.selectedUnit);
+              }
+              GameLogic::highlightAttackRange(game, game.selectedUnit);
+            } else if (clickedUnit && clickedUnit->side != game.currentPlayer) {
+              GameLogic::addLogMessage(game, "Cannot select enemy unit");
+            }
           }
         }
       }
