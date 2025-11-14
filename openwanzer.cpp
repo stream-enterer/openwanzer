@@ -571,19 +571,26 @@ struct UnitInfoBox {
 };
 
 // Movement selection state (for two-phase selection system)
+// Phase 1: Select unit, show movement range
+// Phase 2: Unit has moved, selecting facing direction
 struct MovementSelection {
-  bool isMovementLocked;    // Phase 2: movement destination locked
-  HexCoord lockedDestination;  // The locked movement destination
-  std::vector<HexCoord> lockedPath;  // The locked path to destination
-  int lockedFacing;  // The facing direction being previewed (-1 if not set)
+  bool isFacingSelection;  // Phase 2: unit has moved, now selecting facing
+  HexCoord oldPosition;    // Position before move (for undo)
+  int oldMovesLeft;        // Movement points before move (for undo)
+  bool oldHasMoved;        // hasMoved state before move (for undo)
+  int oldFuel;             // Fuel before move (for undo)
+  int selectedFacing;      // The facing direction being previewed (-1 if not set)
 
-  MovementSelection() : isMovementLocked(false), lockedDestination{-1, -1}, lockedFacing(-1) {}
+  MovementSelection() : isFacingSelection(false), oldPosition{-1, -1},
+                        oldMovesLeft(0), oldHasMoved(false), oldFuel(0), selectedFacing(-1) {}
 
   void reset() {
-    isMovementLocked = false;
-    lockedDestination = {-1, -1};
-    lockedPath.clear();
-    lockedFacing = -1;
+    isFacingSelection = false;
+    oldPosition = {-1, -1};
+    oldMovesLeft = 0;
+    oldHasMoved = false;
+    oldFuel = 0;
+    selectedFacing = -1;
   }
 };
 
@@ -982,7 +989,8 @@ void drawMap(GameState &game) {
   }
 
   // Draw path preview (semi-transparent snake showing planned path)
-  if (game.selectedUnit && !game.movementSel.isMovementLocked) {
+  // Only show in Phase 1 (before moving)
+  if (game.selectedUnit && !game.movementSel.isFacingSelection && !game.selectedUnit->hasMoved) {
     Vector2 mousePos = GetMousePosition();
     Layout layout = createHexLayout(HEX_SIZE, game.camera.offsetX,
                                     game.camera.offsetY, game.camera.zoom);
@@ -1022,67 +1030,53 @@ void drawMap(GameState &game) {
     }
   }
 
-  // Draw locked path (when movement is locked)
-  if (game.selectedUnit && game.movementSel.isMovementLocked && !game.movementSel.lockedPath.empty()) {
+  // Draw facing indicator in Phase 2 (after moving, selecting facing)
+  if (game.selectedUnit && game.movementSel.isFacingSelection) {
     Layout layout = createHexLayout(HEX_SIZE, game.camera.offsetX,
                                     game.camera.offsetY, game.camera.zoom);
 
-    // Draw locked path
-    for (size_t i = 1; i < game.movementSel.lockedPath.size(); i++) {
-      OffsetCoord pathOffset = gameCoordToOffset(game.movementSel.lockedPath[i]);
-      ::Hex pathCube = offset_to_cube(pathOffset);
-      std::vector<Point> corners = polygon_corners(layout, pathCube);
-      drawHexagon(corners, Color{255, 255, 0, 100}, true);
+    // Get unit's current position (where it just moved to)
+    OffsetCoord unitOffset = gameCoordToOffset(game.selectedUnit->position);
+    ::Hex unitCube = offset_to_cube(unitOffset);
+    Point center = hex_to_pixel(layout, unitCube);
+
+    // Get mouse position for smooth tracking
+    Vector2 mousePos = GetMousePosition();
+    Point mousePoint(mousePos.x, mousePos.y);
+
+    // Draw a wide angle indicator (like ">") pointing toward mouse cursor
+    // Calculate direction vector from center to mouse (smooth, not snapped)
+    float dx = mousePoint.x - center.x;
+    float dy = mousePoint.y - center.y;
+    float len = sqrt(dx * dx + dy * dy);
+    if (len > 0.1f) {  // Avoid division by zero
+      dx /= len;
+      dy /= len;
     }
 
-    // Draw locked destination with more opacity
-    OffsetCoord destOffset = gameCoordToOffset(game.movementSel.lockedDestination);
-    ::Hex destCube = offset_to_cube(destOffset);
-    std::vector<Point> corners = polygon_corners(layout, destCube);
-    drawHexagon(corners, Color{255, 255, 0, 150}, true);
+    // Perpendicular vector
+    float perpX = -dy;
+    float perpY = dx;
 
-    // Draw facing indicator if facing is being previewed
-    if (game.movementSel.lockedFacing >= 0) {
-      // Get mouse position for smooth tracking
-      Vector2 mousePos = GetMousePosition();
-      Point mousePoint(mousePos.x, mousePos.y);
+    float arrowSize = HEX_SIZE * game.camera.zoom * 0.4f;
+    float arrowWidth = HEX_SIZE * game.camera.zoom * 0.3f;
 
-      Point center = hex_to_pixel(layout, destCube);
+    // Calculate tip position (pointing toward mouse)
+    Point tipPos = Point(center.x + dx * arrowSize * 0.9f,
+                         center.y + dy * arrowSize * 0.9f);
+    // Calculate arm endpoints (forming ">"-shape centered on hex)
+    Point arm1 = Point(tipPos.x - dx * arrowSize * 0.3f + perpX * arrowWidth,
+                      tipPos.y - dy * arrowSize * 0.3f + perpY * arrowWidth);
+    Point arm2 = Point(tipPos.x - dx * arrowSize * 0.3f - perpX * arrowWidth,
+                      tipPos.y - dy * arrowSize * 0.3f - perpY * arrowWidth);
 
-      // Draw a wide angle indicator (like ">") pointing toward mouse cursor
-      // Calculate direction vector from center to mouse (smooth, not snapped)
-      float dx = mousePoint.x - center.x;
-      float dy = mousePoint.y - center.y;
-      float len = sqrt(dx * dx + dy * dy);
-      if (len > 0.1f) {  // Avoid division by zero
-        dx /= len;
-        dy /= len;
-      }
-
-      // Perpendicular vector
-      float perpX = -dy;
-      float perpY = dx;
-
-      float arrowSize = HEX_SIZE * game.camera.zoom * 0.4f;
-      float arrowWidth = HEX_SIZE * game.camera.zoom * 0.3f;
-
-      // Calculate tip position (pointing toward mouse)
-      Point tipPos = Point(center.x + dx * arrowSize * 0.9f,
-                           center.y + dy * arrowSize * 0.9f);
-      // Calculate arm endpoints (forming ">"-shape centered on hex)
-      Point arm1 = Point(tipPos.x - dx * arrowSize * 0.3f + perpX * arrowWidth,
-                        tipPos.y - dy * arrowSize * 0.3f + perpY * arrowWidth);
-      Point arm2 = Point(tipPos.x - dx * arrowSize * 0.3f - perpX * arrowWidth,
-                        tipPos.y - dy * arrowSize * 0.3f - perpY * arrowWidth);
-
-      // Draw the angle indicator
-      DrawLineEx(Vector2{(float)arm1.x, (float)arm1.y},
-                Vector2{(float)tipPos.x, (float)tipPos.y},
-                4.0f * game.camera.zoom, YELLOW);
-      DrawLineEx(Vector2{(float)arm2.x, (float)arm2.y},
-                Vector2{(float)tipPos.x, (float)tipPos.y},
-                4.0f * game.camera.zoom, YELLOW);
-    }
+    // Draw the angle indicator
+    DrawLineEx(Vector2{(float)arm1.x, (float)arm1.y},
+              Vector2{(float)tipPos.x, (float)tipPos.y},
+              4.0f * game.camera.zoom, YELLOW);
+    DrawLineEx(Vector2{(float)arm2.x, (float)arm2.y},
+              Vector2{(float)tipPos.x, (float)tipPos.y},
+              4.0f * game.camera.zoom, YELLOW);
   }
 
   // Draw unit facing indicators (small line from center to faced edge)
@@ -2797,11 +2791,26 @@ int main() {
         game.showOptionsMenu = true;
       }
 
-      // Right-click deselection
+      // Right-click handling (undo or deselect)
       if (IsMouseButtonPressed(MOUSE_RIGHT_BUTTON)) {
-        if (game.movementSel.isMovementLocked) {
-          // Phase 2: Right-click returns to Phase 1 (unlock movement)
+        if (game.movementSel.isFacingSelection && game.selectedUnit) {
+          // Phase 2: Right-click undoes the movement
+          // Restore unit to old position and state
+          GameLogic::setUnitZOC(game, game.selectedUnit, false);
+          GameLogic::setUnitSpotRange(game, game.selectedUnit, false);
+
+          game.selectedUnit->position = game.movementSel.oldPosition;
+          game.selectedUnit->movesLeft = game.movementSel.oldMovesLeft;
+          game.selectedUnit->hasMoved = game.movementSel.oldHasMoved;
+          game.selectedUnit->fuel = game.movementSel.oldFuel;
+
+          GameLogic::setUnitZOC(game, game.selectedUnit, true);
+          GameLogic::setUnitSpotRange(game, game.selectedUnit, true);
+
+          // Return to Phase 1 - re-highlight movement range
           game.movementSel.reset();
+          Rendering::clearSelectionHighlights(game);
+          GameLogic::highlightMovementRange(game, game.selectedUnit);
         } else if (game.selectedUnit) {
           // Phase 1: Right-click deselects unit
           game.selectedUnit = nullptr;
@@ -2810,16 +2819,16 @@ int main() {
         }
       }
 
-      // Update facing preview in Phase 2 (movement locked)
-      if (game.selectedUnit && game.movementSel.isMovementLocked) {
+      // Update facing preview in Phase 2 (after movement, selecting facing)
+      if (game.selectedUnit && game.movementSel.isFacingSelection) {
         Vector2 mousePos = GetMousePosition();
         Layout layout = Rendering::createHexLayout(HEX_SIZE, game.camera.offsetX,
                                        game.camera.offsetY, game.camera.zoom);
         Point mousePoint(mousePos.x, mousePos.y);
 
-        // Calculate facing from locked destination to cursor
-        game.movementSel.lockedFacing = GameLogic::calculateFacingFromPoint(
-            game.movementSel.lockedDestination, mousePoint, layout);
+        // Calculate facing from unit's current position to cursor
+        game.movementSel.selectedFacing = GameLogic::calculateFacingFromPoint(
+            game.selectedUnit->position, mousePoint, layout);
       }
 
       // Left-click handling (only if not dragging combat log or unit info box)
@@ -2841,33 +2850,43 @@ int main() {
 
           Unit *clickedUnit = game.getUnitAt(clickedHex);
 
-          // Phase 2: Movement locked, confirm facing and execute move
-          if (game.selectedUnit && game.movementSel.isMovementLocked) {
-            // Execute the movement with the previewed facing
-            GameLogic::moveUnit(game, game.selectedUnit, game.movementSel.lockedDestination);
-            game.selectedUnit->facing = game.movementSel.lockedFacing;
+          // Phase 2: Unit has moved, confirming facing direction
+          if (game.selectedUnit && game.movementSel.isFacingSelection) {
+            // Set the facing direction
+            game.selectedUnit->facing = game.movementSel.selectedFacing;
 
             // Reset selection state
             game.movementSel.reset();
             Rendering::clearSelectionHighlights(game);
 
-            // Show attack range after moving
+            // Show attack range after setting facing
             if (!game.selectedUnit->hasFired) {
               GameLogic::highlightAttackRange(game, game.selectedUnit);
             }
           }
           // Phase 1: Unit selected, handle movement or attack
-          else if (game.selectedUnit && !game.movementSel.isMovementLocked) {
-            // Click on movement hex - lock in movement destination (enter Phase 2)
+          else if (game.selectedUnit && !game.movementSel.isFacingSelection) {
+            // Click on movement hex - execute move immediately and enter Phase 2 (facing selection)
             if (game.map[clickedHex.row][clickedHex.col].isMoveSel && !game.selectedUnit->hasMoved) {
               std::vector<HexCoord> path = GameLogic::findPath(game, game.selectedUnit,
                                                                game.selectedUnit->position,
                                                                clickedHex);
               if (!path.empty()) {
-                game.movementSel.isMovementLocked = true;
-                game.movementSel.lockedDestination = clickedHex;
-                game.movementSel.lockedPath = path;
-                game.movementSel.lockedFacing = game.selectedUnit->facing;  // Start with current facing
+                // Store old state for undo
+                game.movementSel.oldPosition = game.selectedUnit->position;
+                game.movementSel.oldMovesLeft = game.selectedUnit->movesLeft;
+                game.movementSel.oldHasMoved = game.selectedUnit->hasMoved;
+                game.movementSel.oldFuel = game.selectedUnit->fuel;
+
+                // Execute the move immediately
+                GameLogic::moveUnit(game, game.selectedUnit, clickedHex);
+
+                // Clear movement highlights
+                Rendering::clearSelectionHighlights(game);
+
+                // Enter Phase 2 - facing selection
+                game.movementSel.isFacingSelection = true;
+                game.movementSel.selectedFacing = game.selectedUnit->facing;  // Start with current facing
               }
             }
             // Click on attack hex - perform attack
