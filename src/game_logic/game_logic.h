@@ -40,6 +40,7 @@ float calculateFacingFromPoint(const HexCoord& center, const Point& targetPoint,
 bool isAir(const Unit* unit);
 bool isHardTarget(const Unit* unit);
 bool isSea(const Unit* unit);
+bool isRecon(const Unit* unit);
 
 // Hex math and helpers
 int hexDistance(const HexCoord& a, const HexCoord& b);
