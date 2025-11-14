@@ -60,21 +60,20 @@ void drawTargetArcRing(GameState& game, Unit* unit) {
     // Draw tiny red arrow for front facing
     float arrowAngle = facing * (PI / 180.0f);
     float arrowLength = 12.0f * game.camera.zoom;
-    float arrowWidth = 6.0f * game.camera.zoom;
 
     Vector2 arrowTip = {
-        (float)center.x + cos(arrowAngle) * (radius + arrowLength),
-        (float)center.y + sin(arrowAngle) * (radius + arrowLength)
+        (float)(center.x + cosf(arrowAngle) * (radius + arrowLength)),
+        (float)(center.y + sinf(arrowAngle) * (radius + arrowLength))
     };
 
     Vector2 arrowLeft = {
-        (float)center.x + cos(arrowAngle - 0.5f) * radius,
-        (float)center.y + sin(arrowAngle - 0.5f) * radius
+        (float)(center.x + cosf(arrowAngle - 0.5f) * radius),
+        (float)(center.y + sinf(arrowAngle - 0.5f) * radius)
     };
 
     Vector2 arrowRight = {
-        (float)center.x + cos(arrowAngle + 0.5f) * radius,
-        (float)center.y + sin(arrowAngle + 0.5f) * radius
+        (float)(center.x + cosf(arrowAngle + 0.5f) * radius),
+        (float)(center.y + sinf(arrowAngle + 0.5f) * radius)
     };
 
     DrawTriangle(arrowTip, arrowLeft, arrowRight, RED);
@@ -108,13 +107,13 @@ void drawAttackerFiringCone(GameState& game) {
     float rightAngle = (facing + 90.0f) * (PI / 180.0f);
 
     Vector2 leftEdge = {
-        (float)center.x + cos(leftAngle) * coneRadius,
-        (float)center.y + sin(leftAngle) * coneRadius
+        (float)(center.x + cosf(leftAngle) * coneRadius),
+        (float)(center.y + sinf(leftAngle) * coneRadius)
     };
 
     Vector2 rightEdge = {
-        (float)center.x + cos(rightAngle) * coneRadius,
-        (float)center.y + sin(rightAngle) * coneRadius
+        (float)(center.x + cosf(rightAngle) * coneRadius),
+        (float)(center.y + sinf(rightAngle) * coneRadius)
     };
 
     DrawLineEx(Vector2{(float)center.x, (float)center.y}, leftEdge,
