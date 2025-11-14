@@ -1507,11 +1507,9 @@ void highlightMovementRange(GameState &game, Unit *unit) {
     }
   }
 
-  // Highlight all reachable cells (except starting position)
+  // Highlight all reachable cells (including starting position)
   for (const auto& v : visited) {
-    if (!(v.first == unit->position)) {
-      game.map[v.first.row][v.first.col].isMoveSel = true;
-    }
+    game.map[v.first.row][v.first.col].isMoveSel = true;
   }
 }
 
