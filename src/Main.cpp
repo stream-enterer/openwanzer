@@ -179,7 +179,7 @@ int main() {
         Layout layout = rendering::createHexLayout(HEX_SIZE, game.camera.offsetX,
                                        game.camera.offsetY, game.camera.zoom);
         Point mousePoint(mousePos.x, mousePos.y);
-        FractionalHex fracHex = PixelToHex(layout, mousePoint);
+        FractionalHex fracHex = pixel_to_hex(layout, mousePoint);
         ::Hex cubeHex = hex_round(fracHex);
         OffsetCoord offset = cube_to_offset(cubeHex);
         HexCoord clickedHex = rendering::offsetToGameCoord(offset);
@@ -266,8 +266,8 @@ int main() {
                   OffsetCoord defenderOffset = rendering::gameCoordToOffset(clickedUnit->position);
                   ::Hex attackerCube = offset_to_cube(attackerOffset);
                   ::Hex defenderCube = offset_to_cube(defenderOffset);
-                  Point attackerPixel = HexToPixel(layout, attackerCube);
-                  Point defenderPixel = HexToPixel(layout, defenderCube);
+                  Point attackerPixel = hex_to_pixel(layout, attackerCube);
+                  Point defenderPixel = hex_to_pixel(layout, defenderCube);
                   Vector2 attackerPos = {(float)attackerPixel.x, (float)attackerPixel.y};
                   Vector2 defenderPos = {(float)defenderPixel.x, (float)defenderPixel.y};
                   combatarcs::AttackArc arc = combatarcs::getAttackArc(attackerPos, defenderPos, clickedUnit->facing);

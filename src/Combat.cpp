@@ -36,8 +36,8 @@ void performAttack(GameState &game, Unit *attacker, Unit *defender) {
   OffsetCoord defenderOffset = rendering::gameCoordToOffset(defender->position);
   ::Hex attackerCube = offset_to_cube(attackerOffset);
   ::Hex defenderCube = offset_to_cube(defenderOffset);
-  Point attackerPixel = HexToPixel(layout, attackerCube);
-  Point defenderPixel = HexToPixel(layout, defenderCube);
+  Point attackerPixel = hex_to_pixel(layout, attackerCube);
+  Point defenderPixel = hex_to_pixel(layout, defenderCube);
 
   Vector2 attackerPos = {(float)attackerPixel.x, (float)attackerPixel.y};
   Vector2 defenderPos = {(float)defenderPixel.x, (float)defenderPixel.y};

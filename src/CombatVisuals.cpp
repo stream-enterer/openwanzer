@@ -14,7 +14,7 @@ void drawTargetArcRing(GameState& game, Unit* unit) {
 
     OffsetCoord unitOffset = gameCoordToOffset(unit->position);
     ::Hex unitCube = offset_to_cube(unitOffset);
-    Point center = HexToPixel(layout, unitCube);
+    Point center = hex_to_pixel(layout, unitCube);
 
     float radius = HEX_SIZE * game.camera.zoom * 0.7f;
     float facing = unit->facing;
@@ -88,7 +88,7 @@ void drawAttackerFiringCone(GameState& game) {
 
     OffsetCoord unitOffset = gameCoordToOffset(game.selectedUnit->position);
     ::Hex unitCube = offset_to_cube(unitOffset);
-    Point center = HexToPixel(layout, unitCube);
+    Point center = hex_to_pixel(layout, unitCube);
 
     float facing = game.movementSel.selectedFacing;
     float coneRadius = HEX_SIZE * game.camera.zoom * 8.0f; // Large radius
@@ -136,8 +136,8 @@ void drawAttackLines(GameState& game) {
         ::Hex fromCube = offset_to_cube(fromOffset);
         ::Hex toCube = offset_to_cube(toOffset);
 
-        Point fromPoint = HexToPixel(layout, fromCube);
-        Point toPoint = HexToPixel(layout, toCube);
+        Point fromPoint = hex_to_pixel(layout, fromCube);
+        Point toPoint = hex_to_pixel(layout, toCube);
 
         Color lineColor = combatarcs::getLineColor(line.arc);
 

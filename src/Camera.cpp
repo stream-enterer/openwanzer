@@ -24,7 +24,7 @@ void calculateCenteredCameraOffset(CameraState& camera, int screenWidth, int scr
 
   // Create a temporary layout to calculate pixel position
   Layout tempLayout = rendering::createHexLayout(HEX_SIZE, 0, 0, camera.zoom);
-  Point mapCenterPixel = HexToPixel(tempLayout, cubeHex);
+  Point mapCenterPixel = hex_to_pixel(tempLayout, cubeHex);
 
   // Calculate offset so that map center appears at play area center
   camera.offsetX = playAreaCenterX - mapCenterPixel.x;

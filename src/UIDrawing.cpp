@@ -228,7 +228,7 @@ void drawUI(GameState &game) {
   Layout layout = createHexLayout(HEX_SIZE, game.camera.offsetX,
                                   game.camera.offsetY, game.camera.zoom);
   Point mousePoint(mousePos.x, mousePos.y);
-  FractionalHex fracHex = PixelToHex(layout, mousePoint);
+  FractionalHex fracHex = pixel_to_hex(layout, mousePoint);
   ::Hex cubeHex = hex_round(fracHex);
   OffsetCoord offset = cube_to_offset(cubeHex);
   HexCoord hoveredHex = offsetToGameCoord(offset);
