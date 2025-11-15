@@ -15,14 +15,12 @@ enum class TerrainType {
   ROUGH        // Rocky/broken terrain
 };
 
-// Unit classes
+// Unit classes (BattleTech mech weight classes)
 enum class UnitClass {
-  INFANTRY,
-  TANK,
-  ARTILLERY,
-  RECON,
-  ANTI_TANK,
-  AIR_DEFENSE
+  LIGHT,
+  MEDIUM,
+  HEAVY,
+  ASSAULT
 };
 
 // Sides

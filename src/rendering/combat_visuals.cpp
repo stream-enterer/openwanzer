@@ -18,6 +18,7 @@ void drawTargetArcRing(GameState& game, Unit* unit) {
 
     float radius = HEX_SIZE * game.camera.zoom * 0.7f;
     float facing = unit->facing;
+    float gap = 2.0f; // Small gap between arc segments
 
     // Draw 4 arc segments
     CombatArcs::AttackArc arcs[] = {
@@ -27,12 +28,12 @@ void drawTargetArcRing(GameState& game, Unit* unit) {
         CombatArcs::AttackArc::REAR
     };
 
-    // Arc angles: Front ±30°, Right 30-150°, Left -30 to -150°, Rear ±150-180°
+    // Arc angles with gaps: Front ±30°, Right 30-150°, Left -30 to -150°, Rear ±150-180°
     float arcRanges[][2] = {
-        {facing - 30.0f, facing + 30.0f},      // Front
-        {facing + 30.0f, facing + 150.0f},     // Right
-        {facing - 150.0f, facing - 30.0f},     // Left
-        {facing + 150.0f, facing + 180.0f}     // Rear part 1 (handle wrap)
+        {facing - 30.0f + gap, facing + 30.0f - gap},      // Front
+        {facing + 30.0f + gap, facing + 150.0f - gap},     // Right
+        {facing - 150.0f + gap, facing - 30.0f - gap},     // Left
+        {facing + 150.0f + gap, facing + 180.0f}           // Rear part 1 (handle wrap)
     };
 
     for (int i = 0; i < 4; i++) {
@@ -43,13 +44,13 @@ void drawTargetArcRing(GameState& game, Unit* unit) {
 
         // Handle rear arc wrapping
         if (i == 3) {
-            // Draw rear as two segments
+            // Draw rear as two segments with gaps
             DrawRing(Vector2{(float)center.x, (float)center.y},
                      radius - 3.0f, radius,
-                     facing + 150.0f, facing + 210.0f, 32, color);
+                     facing + 150.0f + gap, facing + 210.0f - gap, 32, color);
             DrawRing(Vector2{(float)center.x, (float)center.y},
                      radius - 3.0f, radius,
-                     facing - 210.0f, facing - 150.0f, 32, color);
+                     facing - 210.0f + gap, facing - 150.0f - gap, 32, color);
         } else {
             DrawRing(Vector2{(float)center.x, (float)center.y},
                      radius - 3.0f, radius,
@@ -92,19 +93,19 @@ void drawAttackerFiringCone(GameState& game) {
     float facing = game.movementSel.selectedFacing;
     float coneRadius = HEX_SIZE * game.camera.zoom * 8.0f; // Large radius
 
-    // Draw 180° cone (±90° from facing)
+    // Draw 120° cone (±60° from facing)
     Color coneColor = Color{255, 255, 0, 40}; // Semi-transparent yellow
 
     DrawCircleSector(Vector2{(float)center.x, (float)center.y},
                      coneRadius,
-                     facing - 90.0f,
-                     facing + 90.0f,
+                     facing - 60.0f,
+                     facing + 60.0f,
                      64,
                      coneColor);
 
     // Draw cone boundary lines
-    float leftAngle = (facing - 90.0f) * (PI / 180.0f);
-    float rightAngle = (facing + 90.0f) * (PI / 180.0f);
+    float leftAngle = (facing - 60.0f) * (PI / 180.0f);
+    float rightAngle = (facing + 60.0f) * (PI / 180.0f);
 
     Vector2 leftEdge = {
         (float)(center.x + cosf(leftAngle) * coneRadius),

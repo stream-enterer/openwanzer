@@ -16,12 +16,6 @@ std::vector<HexCoord> findPath(GameState &game, Unit *unit, const HexCoord &star
   if (start == goal) return {start};
 
   int movMethodIdx = static_cast<int>(unit->movMethod);
-  int enemySide = 1 - unit->side;
-  bool ignoreZOC = isAir(unit) || isRecon(unit);  // Air and recon units ignore ZOC
-
-  // Check if unit starts in enemy ZOC (Panzer General rule: if starting in ZOC, can move one hex)
-  GameHex& startHex = game.map[start.row][start.col];
-  bool startingInZOC = !ignoreZOC && startHex.isZOC(enemySide);
 
   // BFS with parent tracking
   struct PathNode {
@@ -87,30 +81,13 @@ std::vector<HexCoord> findPath(GameState &game, Unit *unit, const HexCoord &star
       // For cost 254, it stops movement
       if (cost == 254) newMovementUsed = 999;  // Very high cost
 
-      // ZOC: Panzer General rules
-      // - If starting in ZOC: can only move to adjacent hexes (one hex movement)
-      // - If not starting in ZOC: entering ZOC adds high penalty
-      // - Air and recon units ignore ZOC
-      if (!ignoreZOC && hex.isZOC(enemySide) && cost < 254) {
-        if (startingInZOC) {
-          // Starting in ZOC: only allow movement to adjacent hexes (distance 1 from start)
-          int distFromStart = hexDistance(start, adj);
-          if (distFromStart > 1) {
-            continue;  // Can't move more than 1 hex when starting in ZOC
-          }
-          newMovementUsed = current.movementUsed + cost + 100;  // High penalty
-        } else {
-          // Not starting in ZOC: entering ZOC adds penalty
-          newMovementUsed = current.movementUsed + cost + 100;
-        }
-      }
-
       // Check if we can afford this movement
       if (newMovementUsed > unit->movesLeft * 2) continue;  // Allow some extra for pathfinding flexibility
 
-      // Check if another unit occupies this hex (unless it's the goal)
+      // Check if another unit occupies this hex
+      // Allow only if it's the goal and it's an enemy (for attacking)
       Unit *occupant = game.getUnitAt(adj);
-      if (occupant && occupant->side != unit->side && !(adj == goal)) continue;
+      if (occupant && !(adj == goal && occupant->side != unit->side)) continue;
 
       // Check if we've already visited this with lower cost
       bool alreadyVisited = false;
@@ -140,12 +117,6 @@ void highlightMovementRange(GameState &game, Unit *unit) {
 
   int maxRange = unit->movesLeft;
   int movMethodIdx = static_cast<int>(unit->movMethod);
-  int enemySide = 1 - unit->side;
-  bool ignoreZOC = isAir(unit) || isRecon(unit);  // Air and recon units ignore ZOC
-
-  // Check if unit starts in enemy ZOC (Panzer General rule: if starting in ZOC, can move one hex)
-  GameHex& startHex = game.map[unit->position.row][unit->position.col];
-  bool startingInZOC = !ignoreZOC && startHex.isZOC(enemySide);
 
   // Track cells we can reach with their remaining movement
   std::vector<std::pair<HexCoord, int>> frontier;
@@ -180,30 +151,12 @@ void highlightMovementRange(GameState &game, Unit *unit) {
       // For cost 254, we can enter but it stops us (remaining becomes 0)
       if (cost == 254) newRemaining = 0;
 
-      // ZOC: Panzer General rules
-      // - If starting in ZOC: can only move to adjacent hexes (one hex movement)
-      // - If not starting in ZOC: entering ZOC stops movement
-      // - Air and recon units ignore ZOC
-      if (!ignoreZOC && hex.isZOC(enemySide) && cost < 254) {
-        if (startingInZOC) {
-          // Starting in ZOC: only allow movement to adjacent hexes (distance 1 from start)
-          int distFromStart = hexDistance(unit->position, adj);
-          if (distFromStart > 1) {
-            continue;  // Can't move more than 1 hex when starting in ZOC
-          }
-          newRemaining = 0;  // Can move one hex but must stop there
-        } else {
-          // Not starting in ZOC: entering ZOC stops movement
-          newRemaining = 0;
-        }
-      }
-
       // Skip if we can't afford to enter
       if (newRemaining < 0) continue;
 
-      // Check if another unit occupies this hex
+      // Check if another unit occupies this hex (block all units, not just enemies)
       Unit *occupant = game.getUnitAt(adj);
-      if (occupant && occupant->side != unit->side) continue;
+      if (occupant) continue;
 
       // Check if we've already visited with more movement
       bool shouldUpdate = true;
@@ -241,8 +194,6 @@ void highlightAttackRange(GameState &game, Unit *unit) {
     return;
 
   int range = 1; // Default attack range
-  if (unit->unitClass == UnitClass::ARTILLERY)
-    range = 3;
 
   for (int row = 0; row < MAP_ROWS; row++) {
     for (int col = 0; col < MAP_COLS; col++) {
@@ -280,29 +231,20 @@ void moveUnit(GameState &game, Unit *unit, const HexCoord &target, bool updateSp
 
   // Only move if we have enough movement points
   if (cost <= unit->movesLeft) {
-    // Clear ZOC and spotting from old position
-    setUnitZOC(game, unit, false);
+    // Clear spotting from old position
     if (updateSpotting) {
       setUnitSpotRange(game, unit, false);
     }
-
-    // Store old position for fuel calculation
-    HexCoord oldPos = unit->position;
 
     // Move unit
     unit->position = target;
     unit->movesLeft = 0;  // One move per turn - all movement used up
     unit->hasMoved = true;
 
-    // Set ZOC and spotting at new position
-    setUnitZOC(game, unit, true);
+    // Set spotting at new position
     if (updateSpotting) {
       setUnitSpotRange(game, unit, true);
     }
-
-    // Reduce fuel by hex distance (not terrain cost)
-    int distance = hexDistance(oldPos, target);
-    unit->fuel = std::max(0, unit->fuel - distance);
 
     // Log movement
     std::string unitName = unit->name + " (" + (unit->side == 0 ? "Axis" : "Allied") + ")";

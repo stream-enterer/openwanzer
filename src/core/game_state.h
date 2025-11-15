@@ -136,11 +136,10 @@ struct MovementSelection {
   HexCoord oldPosition;    // Position before move (for undo)
   int oldMovesLeft;        // Movement points before move (for undo)
   bool oldHasMoved;        // hasMoved state before move (for undo)
-  int oldFuel;             // Fuel before move (for undo)
   float selectedFacing;    // The facing direction being previewed (0-360 degrees)
 
   MovementSelection() : isFacingSelection(false), oldPosition{-1, -1},
-                        oldMovesLeft(0), oldHasMoved(false), oldFuel(0), selectedFacing(0.0f) {}
+                        oldMovesLeft(0), oldHasMoved(false), selectedFacing(0.0f) {}
 
   void reset();
 };
