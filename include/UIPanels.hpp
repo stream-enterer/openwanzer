@@ -1,8 +1,8 @@
 #ifndef OPENWANZER_UI_PANELS_HPP
 #define OPENWANZER_UI_PANELS_HPP
 
-#include "GameState.hpp"
 #include "CombatArcs.hpp"
+#include "GameState.hpp"
 
 namespace uipanel {
 
