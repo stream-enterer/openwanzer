@@ -83,7 +83,6 @@ void MovementSelection::reset() {
   oldPosition = {-1, -1};
   oldMovesLeft = 0;
   oldHasMoved = false;
-  oldFuel = 0;
   selectedFacing = 0.0f;
 }
 
@@ -121,12 +120,6 @@ void GameState::initializeMap() {
         map[row][col].terrain = TerrainType::CITY;        // 4% city
       else
         map[row][col].terrain = TerrainType::WATER;       // 5% water
-
-      // Set some victory hexes
-      if (row == 5 && (col == 4 || col == 12)) {
-        map[row][col].isVictoryHex = true;
-        map[row][col].owner = 1; // Start owned by Allies
-      }
     }
   }
 }
@@ -148,29 +141,21 @@ void GameState::addUnit(UnitClass uClass, int side, int row, int col) {
 
   // Set unit name and movement method based on class
   switch (uClass) {
-  case UnitClass::INFANTRY:
-    unit->name = "Infantry";
+  case UnitClass::LIGHT:
+    unit->name = "Light Mech";
     unit->movMethod = MovMethod::LEG;
     break;
-  case UnitClass::TANK:
-    unit->name = "Tank";
-    unit->movMethod = MovMethod::TRACKED;
-    break;
-  case UnitClass::ARTILLERY:
-    unit->name = "Artillery";
-    unit->movMethod = MovMethod::HALF_TRACKED;
-    break;
-  case UnitClass::RECON:
-    unit->name = "Recon";
+  case UnitClass::MEDIUM:
+    unit->name = "Medium Mech";
     unit->movMethod = MovMethod::WHEELED;
     break;
-  case UnitClass::ANTI_TANK:
-    unit->name = "Anti-Tank";
+  case UnitClass::HEAVY:
+    unit->name = "Heavy Mech";
     unit->movMethod = MovMethod::HALF_TRACKED;
     break;
-  case UnitClass::AIR_DEFENSE:
-    unit->name = "Air Defense";
-    unit->movMethod = MovMethod::HALF_TRACKED;
+  case UnitClass::ASSAULT:
+    unit->name = "Assault Mech";
+    unit->movMethod = MovMethod::TRACKED;
     break;
   }
 

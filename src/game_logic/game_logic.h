@@ -13,22 +13,11 @@
 namespace GameLogic {
 
 // ============================================================================
-// CONSTANTS
-// ============================================================================
-
-// Terrain entrenchment levels (max entrenchment from terrain)
-extern const int TERRAIN_ENTRENCHMENT[10];
-
-// Unit entrenchment rates (how fast they entrench)
-extern const int UNIT_ENTRENCH_RATE[6];
-
-// ============================================================================
 // UTILITY FUNCTIONS (utilities.cpp)
 // ============================================================================
 
 // Terrain utilities
 int getTerrainIndex(TerrainType terrain);
-int getTerrainEntrenchment(TerrainType terrain);
 std::string getTerrainName(TerrainType terrain);
 int getMovementCost(MovMethod movMethod, TerrainType terrain);
 
@@ -75,17 +64,10 @@ void performAttack(GameState& game, Unit* attacker, Unit* defender);
 // SYSTEMS (systems.cpp)
 // ============================================================================
 
-// Zone of Control
-void setUnitZOC(GameState& game, Unit* unit, bool on);
-void initializeAllZOC(GameState& game);
-
 // Fog of War / Spotting
 void setUnitSpotRange(GameState& game, Unit* unit, bool on);
 void setSpotRangeAtPosition(GameState& game, int side, int spotRange, const HexCoord& pos, bool on);
 void initializeAllSpotting(GameState& game);
-
-// Entrenchment
-void entrenchUnit(GameState& game, Unit* unit);
 
 // Turn management
 void endTurn(GameState& game);

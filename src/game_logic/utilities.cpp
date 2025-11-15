@@ -7,34 +7,6 @@
 namespace GameLogic {
 
 // ============================================================================
-// CONSTANTS
-// ============================================================================
-
-// Terrain entrenchment levels (max entrenchment from terrain)
-const int TERRAIN_ENTRENCHMENT[10] = {
-    0,  // PLAINS
-    3,  // CITY
-    2,  // FOREST
-    2,  // MOUNTAIN
-    1,  // HILL
-    0,  // DESERT
-    0,  // SWAMP
-    3,  // (unused - would be FORTIFICATION)
-    0,  // WATER
-    2   // ROUGH
-};
-
-// Unit entrenchment rates (how fast they entrench)
-const int UNIT_ENTRENCH_RATE[6] = {
-    3,  // INFANTRY (fast)
-    1,  // TANK (slow)
-    2,  // ARTILLERY (medium)
-    2,  // RECON (medium)
-    2,  // ANTI_TANK (medium)
-    1   // AIR_DEFENSE (slow)
-};
-
-// ============================================================================
 // TERRAIN UTILITY FUNCTIONS
 // ============================================================================
 
@@ -64,15 +36,6 @@ int getTerrainIndex(TerrainType terrain) {
   default:
     return TI_CLEAR;
   }
-}
-
-// Get terrain entrenchment level
-int getTerrainEntrenchment(TerrainType terrain) {
-  int idx = static_cast<int>(terrain);
-  if (idx >= 0 && idx < 10) {
-    return TERRAIN_ENTRENCHMENT[idx];
-  }
-  return 0;
 }
 
 // Get terrain type as display string
@@ -176,8 +139,8 @@ bool isAir(const Unit* unit) {
 }
 
 bool isHardTarget(const Unit* unit) {
-  return unit->unitClass == UnitClass::TANK ||
-         unit->unitClass == UnitClass::RECON;
+  // All BattleTech mechs are hard targets
+  return true;
 }
 
 bool isSea(const Unit* unit) {
@@ -187,7 +150,8 @@ bool isSea(const Unit* unit) {
 }
 
 bool isRecon(const Unit* unit) {
-  return unit->unitClass == UnitClass::RECON;
+  // No recon units in BattleTech
+  return false;
 }
 
 // ============================================================================

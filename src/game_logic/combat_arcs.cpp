@@ -42,8 +42,8 @@ bool isInFiringArc(Vector2 attackerPos, float attackerFacing, Vector2 targetPos)
     while (relativeAngle > 180.0f) relativeAngle -= 360.0f;
     while (relativeAngle < -180.0f) relativeAngle += 360.0f;
 
-    // Front 180° arc (±90° from facing)
-    return fabs(relativeAngle) <= 90.0f;
+    // Front 120° arc (±60° from facing)
+    return fabs(relativeAngle) <= 60.0f;
 }
 
 Color getLineColor(AttackArc arc) {
@@ -60,7 +60,7 @@ Color getArcSegmentColor(AttackArc arc, bool isFrontArc) {
     if (isFrontArc) {
         return Color{255, 0, 0, 60}; // Semi-transparent red
     }
-    return Color{128, 128, 128, 60}; // Semi-transparent grey
+    return Color{102, 102, 102, 60}; // Semi-transparent darker grey (20% darker)
 }
 
 } // namespace CombatArcs

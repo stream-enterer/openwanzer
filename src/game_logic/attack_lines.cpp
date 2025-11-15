@@ -10,6 +10,11 @@ void updateAttackLines(GameState& game) {
 
     game.attackLines.clear();
 
+    // Only show targeting lines for friendly units that haven't fired yet
+    if (game.selectedUnit->side != game.currentPlayer || game.selectedUnit->hasFired) {
+        return;
+    }
+
     // If in facing selection mode, use preview facing
     // Otherwise use confirmed facing
     float facing = game.movementSel.isFacingSelection
@@ -26,6 +31,10 @@ void updateAttackLines(GameState& game) {
         // Skip self and friendlies
         if (unit.get() == game.selectedUnit ||
             unit->side == game.selectedUnit->side) continue;
+
+        // Only show targeting lines to units that are in LOS (spotted by current player)
+        GameHex& targetHex = game.map[unit->position.row][unit->position.col];
+        if (!targetHex.isSpotted(game.currentPlayer)) continue;
 
         OffsetCoord targetOffset = Rendering::gameCoordToOffset(unit->position);
         ::Hex targetCube = offset_to_cube(targetOffset);

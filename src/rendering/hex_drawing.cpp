@@ -103,18 +103,14 @@ Color getUnitColor(int side) {
 
 std::string getUnitSymbol(UnitClass uClass) {
 	switch (uClass) {
-		case UnitClass::INFANTRY:
-			return "INF";
-		case UnitClass::TANK:
-			return "TNK";
-		case UnitClass::ARTILLERY:
-			return "ART";
-		case UnitClass::RECON:
-			return "RCN";
-		case UnitClass::ANTI_TANK:
-			return "AT";
-		case UnitClass::AIR_DEFENSE:
-			return "AA";
+		case UnitClass::LIGHT:
+			return "LT";
+		case UnitClass::MEDIUM:
+			return "MD";
+		case UnitClass::HEAVY:
+			return "HV";
+		case UnitClass::ASSAULT:
+			return "AS";
 		default:
 			return "???";
 	}
@@ -144,12 +140,6 @@ void drawMap(GameState &game) {
 
 			// Draw hex outline
 			drawHexagon(corners, COLOR_GRID, false);
-
-			// Draw victory hex marker
-			if (hex.isVictoryHex) {
-				Point center = hex_to_pixel(layout, cubeHex);
-				DrawCircle((int)center.x, (int)center.y, 8 * game.camera.zoom, GOLD);
-			}
 
 			// Draw movement/attack selection highlights
 			if (hex.isMoveSel) {

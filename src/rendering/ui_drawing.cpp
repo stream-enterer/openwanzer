@@ -183,24 +183,8 @@ void drawUnitInfoBox(GameState &game) {
   DrawText(info.c_str(), x, y, normalSize, textColor);
   y += normalSize + 5;
 
-  info = "Experience: " + std::string(unit->experience, '*');
-  DrawText(info.c_str(), x, y, normalSize, textColor);
-  y += normalSize + 5;
-
   info = "Moves: " + std::to_string(unit->movesLeft) + "/" +
          std::to_string(unit->movementPoints);
-  DrawText(info.c_str(), x, y, normalSize, textColor);
-  y += normalSize + 5;
-
-  info = "Fuel: " + std::to_string(unit->fuel);
-  DrawText(info.c_str(), x, y, normalSize, textColor);
-  y += normalSize + 5;
-
-  info = "Ammo: " + std::to_string(unit->ammo);
-  DrawText(info.c_str(), x, y, normalSize, textColor);
-  y += normalSize + 5;
-
-  info = "Entrenchment: " + std::to_string(unit->entrenchment);
   DrawText(info.c_str(), x, y, normalSize, textColor);
   y += normalSize + 5;
 
@@ -210,13 +194,10 @@ void drawUnitInfoBox(GameState &game) {
 
   DrawText("Stats:", x, y, normalSize, textColor);
   y += normalSize + 5;
-  info = "Hard Atk: " + std::to_string(unit->hardAttack);
+  info = "Attack: " + std::to_string(unit->attack);
   DrawText(info.c_str(), x, y, normalSize - 2, textColor);
   y += normalSize;
-  info = "Soft Atk: " + std::to_string(unit->softAttack);
-  DrawText(info.c_str(), x, y, normalSize - 2, textColor);
-  y += normalSize;
-  info = "Defense: " + std::to_string(unit->groundDefense);
+  info = "Defense: " + std::to_string(unit->defense);
   DrawText(info.c_str(), x, y, normalSize - 2, textColor);
 }
 

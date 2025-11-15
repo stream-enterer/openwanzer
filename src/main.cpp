@@ -73,17 +73,16 @@ int main() {
   // Center the camera on the hex map
   Input::calculateCenteredCameraOffset(game.camera, SCREEN_WIDTH, SCREEN_HEIGHT);
 
-  // Add some initial units
-  game.addUnit(UnitClass::INFANTRY, 0, 2, 2);
-  game.addUnit(UnitClass::TANK, 0, 2, 3);
-  game.addUnit(UnitClass::ARTILLERY, 0, 1, 2);
+  // Add some initial units (BattleTech mech weight classes)
+  game.addUnit(UnitClass::LIGHT, 0, 2, 2);
+  game.addUnit(UnitClass::MEDIUM, 0, 2, 3);
+  game.addUnit(UnitClass::HEAVY, 0, 1, 2);
 
-  game.addUnit(UnitClass::INFANTRY, 1, 8, 10);
-  game.addUnit(UnitClass::TANK, 1, 9, 10);
-  game.addUnit(UnitClass::RECON, 1, 8, 11);
+  game.addUnit(UnitClass::LIGHT, 1, 8, 10);
+  game.addUnit(UnitClass::MEDIUM, 1, 9, 10);
+  game.addUnit(UnitClass::ASSAULT, 1, 8, 11);
 
-  // Initialize Zone of Control and Spotting for all units
-  GameLogic::initializeAllZOC(game);
+  // Initialize Spotting for all units
   GameLogic::initializeAllSpotting(game);
 
   // Add initial combat log messages
@@ -119,26 +118,28 @@ int main() {
       if (IsMouseButtonPressed(MOUSE_RIGHT_BUTTON)) {
         if (game.movementSel.isFacingSelection && game.selectedUnit) {
           // Phase 2: Right-click undoes the movement
-          GameLogic::setUnitZOC(game, game.selectedUnit, false);
           // Note: spotting was never updated during tentative move, so no need to clear it
 
           game.selectedUnit->position = game.movementSel.oldPosition;
           game.selectedUnit->movesLeft = game.movementSel.oldMovesLeft;
           game.selectedUnit->hasMoved = game.movementSel.oldHasMoved;
-          game.selectedUnit->fuel = game.movementSel.oldFuel;
 
-          GameLogic::setUnitZOC(game, game.selectedUnit, true);
           // Note: spotting is still at old position from before the tentative move
 
           // Return to Phase 1
           game.movementSel.reset();
           Rendering::clearSelectionHighlights(game);
           GameLogic::highlightMovementRange(game, game.selectedUnit);
+
+          // Update attack lines for returned position
+          GameLogic::updateAttackLines(game);
+          game.showAttackLines = true;
         } else if (game.selectedUnit) {
           // Phase 1: deselect
           game.selectedUnit = nullptr;
           game.movementSel.reset();
           Rendering::clearSelectionHighlights(game);
+          game.showAttackLines = false;
         }
       }
 
@@ -203,7 +204,6 @@ int main() {
                 game.movementSel.oldPosition = game.selectedUnit->position;
                 game.movementSel.oldMovesLeft = game.selectedUnit->movesLeft;
                 game.movementSel.oldHasMoved = game.selectedUnit->hasMoved;
-                game.movementSel.oldFuel = game.selectedUnit->fuel;
 
                 // Move without updating spotting (defer until facing confirmation)
                 GameLogic::moveUnit(game, game.selectedUnit, clickedHex, false);
@@ -217,24 +217,47 @@ int main() {
                 Rendering::clearSelectionHighlights(game);
                 game.selectedUnit = nullptr;
                 game.movementSel.reset();
+                game.showAttackLines = false;
               }
-            } else if (clickedUnit && clickedUnit->side == game.currentPlayer) {
+            } else if (clickedUnit) {
               game.selectedUnit = clickedUnit;
               game.movementSel.reset();
               Rendering::clearSelectionHighlights(game);
-              if (!clickedUnit->hasMoved) {
-                GameLogic::highlightMovementRange(game, game.selectedUnit);
+
+              // Only show movement/attack highlights and targeting lines for friendly units
+              if (clickedUnit->side == game.currentPlayer) {
+                if (!clickedUnit->hasMoved) {
+                  GameLogic::highlightMovementRange(game, game.selectedUnit);
+                }
+                GameLogic::highlightAttackRange(game, game.selectedUnit);
+
+                // Update attack lines for selected unit
+                GameLogic::updateAttackLines(game);
+                game.showAttackLines = true;
+              } else {
+                // Enemy unit selected - no highlights or attack lines
+                game.showAttackLines = false;
               }
-              GameLogic::highlightAttackRange(game, game.selectedUnit);
             }
           } else if (!game.selectedUnit) {
-            if (clickedUnit && clickedUnit->side == game.currentPlayer) {
+            if (clickedUnit) {
               game.selectedUnit = clickedUnit;
               game.movementSel.reset();
-              if (!clickedUnit->hasMoved) {
-                GameLogic::highlightMovementRange(game, game.selectedUnit);
+
+              // Only show movement/attack highlights and targeting lines for friendly units
+              if (clickedUnit->side == game.currentPlayer) {
+                if (!clickedUnit->hasMoved) {
+                  GameLogic::highlightMovementRange(game, game.selectedUnit);
+                }
+                GameLogic::highlightAttackRange(game, game.selectedUnit);
+
+                // Update attack lines for selected unit
+                GameLogic::updateAttackLines(game);
+                game.showAttackLines = true;
+              } else {
+                // Enemy unit selected - no highlights or attack lines
+                game.showAttackLines = false;
               }
-              GameLogic::highlightAttackRange(game, game.selectedUnit);
             }
           }
         }
