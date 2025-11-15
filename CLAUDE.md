@@ -499,7 +499,35 @@ cmake --build .
   - Mutable globals kept as SCREAMING_SNAKE_CASE (SCREEN_WIDTH, HEX_SIZE, etc.)
 - Build status: Clean build with zero warnings
 
-**NOTE**: Phase 2b (method names and variable refactoring) is pending. This will refactor all method names to PascalCase, all parameters/locals to camelCase, and all private members to camelCase_. This is a massive undertaking touching thousands of lines of code across all 39 files.
+### 2025-11-15: Method and Variable Refactoring (Phase 2b)
+- **REFACTORED ALL METHOD NAMES** to PascalCase (~200+ methods)
+  - gamelogic:: functions (CalculateDamage, ResolveAttack, GetValidMoves, CanMoveTo, etc.)
+  - rendering:: functions (DrawHexGrid, DrawUnits, DrawUI, CreateHexLayout, etc.)
+  - combatarcs:: functions (GetAttackArc, GetArcColor, GetArcSegmentColor)
+  - damagesystem:: functions (ApplyDamage, GetHitLocation, CalculateArmorDamage)
+  - hittables:: functions (GetMechHitTable, RollHitLocation)
+  - input:: functions (HandleCameraInput, UpdateCamera)
+  - paperdollui:: functions (RenderPaperdoll, GetArmorColor)
+  - uipanel:: functions (ShowPlayerPanel, HidePlayerPanel, ShowTargetPanel, etc.)
+  - config:: functions (LoadConfig, SaveConfig, ApplyTheme)
+  - Utility functions (GetTerrainName, GetFacingAngle, HexDistance, IsAir, etc.)
+  - Unit class methods (GetArmorAt, SetArmorAt, TakeDamageAt, IsLocationDestroyed)
+  - GameState methods (GetUnitAt, AddUnit, RemoveUnit)
+- **REFACTORED ALL VARIABLES** to camelCase (~800+ variables)
+  - Position variables: attackerPos, targetPos, hexPos, currentPos, etc.
+  - Damage variables: baseDamage, totalDamage, armorDamage, structureDamage, etc.
+  - Combat variables: hitRoll, hitChance, hitLocation, attackArc, etc.
+  - Movement variables: moveCost, movementRange, maxRange, minRange, etc.
+  - Type/ID variables: unitId, terrainType, terrainIndex, movMethod, etc.
+  - Screen variables: screenWidth, screenHeight, hexSize, mapRows, mapCols, etc.
+  - Unit references: currentUnit, selectedUnit, clickedUnit, targetUnit, etc.
+  - Boolean flags: isVisible, isValid, isPlayer, isEnemy, isSelected, etc.
+  - Offset variables: offsetX, offsetY, deltaX, deltaY, etc.
+  - UI variables: fontSize, lineHeight, textWidth, colorFg, colorBg, etc.
+- **NOTE**: External library functions (hex_to_pixel, offset_to_cube, etc.) kept as snake_case per their API
+- Build status: Clean build with zero warnings
+
+**COMPLETE**: All naming convention refactoring finished. Project now fully complies with established standards.
 
 ### 2025-11-15: Major Codebase Refactoring (Earlier Session)
 - **Migrated build system** from GNU Make to CMake
