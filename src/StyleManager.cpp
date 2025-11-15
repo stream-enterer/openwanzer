@@ -16,37 +16,16 @@ std::string STYLES_PATH; // Path where styles were found
 // Function to discover available styles
 void discoverStyles() {
 	AVAILABLE_STYLES.clear();
+	const char* stylesPath = "resources/styles";
 
-	// Try multiple possible paths for resources/styles
-	const char* possiblePaths[] = {
-	    "resources/styles",   // Run from project root
-	    "../resources/styles" // Run from build directory
-	};
-
-	const char* stylesPath = nullptr;
-	DIR* dir = nullptr;
-
-	// Try each path until we find one that works
-	for (const char* path : possiblePaths) {
-		dir = opendir(path);
-		if (dir != nullptr) {
-			stylesPath = path;
-			break;
-		}
-	}
-
+	DIR* dir = opendir(stylesPath);
 	if (dir == nullptr) {
-		TraceLog(LOG_WARNING, "Failed to open styles directory from any known path");
+		TraceLog(LOG_WARNING, "Failed to open styles directory");
 		// Add default style as fallback
 		AVAILABLE_STYLES.push_back("default");
 		STYLE_LABELS_STRING = "default";
-		STYLES_PATH = ""; // No valid path found
 		return;
 	}
-
-	// Store the path for later use
-	STYLES_PATH = stylesPath;
-	TraceLog(LOG_INFO, TextFormat("Found styles directory at: %s", stylesPath));
 
 	struct dirent* entry;
 	while ((entry = readdir(dir)) != nullptr) {
@@ -94,25 +73,7 @@ int getStyleIndex(const std::string& styleName) {
 
 // Load style theme
 void loadStyleTheme(const std::string& themeName) {
-	// Use the discovered styles path, or try fallback paths
-	std::string stylePath;
-
-	if (!STYLES_PATH.empty()) {
-		// Use the path discovered during initialization
-		stylePath = STYLES_PATH + "/" + themeName + "/style_" + themeName + ".rgs";
-	} else {
-		// Fallback: try both possible paths
-		std::string path1 = "resources/styles/" + themeName + "/style_" + themeName + ".rgs";
-		std::string path2 = "../resources/styles/" + themeName + "/style_" + themeName + ".rgs";
-
-		std::ifstream testFile(path1);
-		if (testFile.good()) {
-			stylePath = path1;
-		} else {
-			stylePath = path2;
-		}
-		testFile.close();
-	}
+	std::string stylePath = "resources/styles/" + themeName + "/style_" + themeName + ".rgs";
 
 	// Check if file exists
 	std::ifstream styleFile(stylePath);

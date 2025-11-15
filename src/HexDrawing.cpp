@@ -4,9 +4,9 @@
 #include "Constants.hpp"
 #include "GameLogic.hpp"
 #include "Hex.hpp"
+#include "Rendering.hpp"
 #include "rl/raylib.h"
 #include "rl/raymath.h"
-#include "Rendering.hpp"
 
 namespace rendering {
 
@@ -214,7 +214,6 @@ void drawMap(GameState &game) {
 			         (int)(center.y + 5 * game.camera.zoom),
 			         fontSize, YELLOW);
 		}
-
 	}
 
 	// Draw movement zone outline (yellow contiguous border)
