@@ -10,6 +10,7 @@ namespace config {
 // Global variables for style themes
 extern std::vector<std::string> AVAILABLE_STYLES;
 extern std::string STYLE_LABELS_STRING;
+extern std::string STYLES_PATH;
 
 // Style discovery and loading
 void discoverStyles();

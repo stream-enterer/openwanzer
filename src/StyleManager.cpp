@@ -11,6 +11,7 @@ namespace config {
 // Global variables for style themes
 std::vector<std::string> AVAILABLE_STYLES;
 std::string STYLE_LABELS_STRING;
+std::string STYLES_PATH; // Path where styles were found
 
 // Function to discover available styles
 void discoverStyles() {

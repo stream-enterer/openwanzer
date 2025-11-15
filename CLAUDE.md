@@ -224,6 +224,105 @@ This command MUST produce NO OUTPUT. If it shows any warnings from our source fi
 
 ---
 
+## 🔴 CRITICAL: CODE FORMATTING POLICY
+
+**ALL CODE MUST BE FORMATTED WITH CLANG-FORMAT**
+
+### Mandatory Rules
+
+1. **RUN clang-format ON ALL EDITED FILES** before committing
+2. **USE THE PROJECT'S .clang-format FILE** (located in the project root)
+3. **NEVER commit code that violates formatting standards**
+4. **FORMAT ENTIRE FILES**, not just the changes you made
+
+### Formatting Configuration
+
+The project uses a custom clang-format configuration (`.clang-format`) with these key settings:
+- **BasedOnStyle**: Google
+- **IndentWidth**: 8 spaces
+- **UseTab**: ForIndentation (tabs for indentation, spaces for alignment)
+- **TabWidth**: 8
+- **ColumnLimit**: 0 (no line length limit)
+- **PointerAlignment**: Left (e.g., `int* ptr` not `int *ptr`)
+- **NamespaceIndentation**: None
+
+### How to Format Code
+
+#### Format a Single File
+```bash
+clang-format -i src/MyFile.cpp
+clang-format -i include/MyHeader.hpp
+```
+
+#### Format Multiple Files
+```bash
+clang-format -i src/FileOne.cpp src/FileTwo.cpp include/Header.hpp
+```
+
+#### Format All Modified Files (before commit)
+```bash
+# Format all .cpp files in src/
+clang-format -i src/*.cpp
+
+# Format all .hpp files in include/
+clang-format -i include/*.hpp
+```
+
+#### Using the Makefile Target
+```bash
+make format    # Formats ALL .cpp and .hpp files in src/ and include/
+```
+
+**Note**: The `make format` target formats the entire codebase. Use individual `clang-format` commands to format only specific files.
+
+### AI Assistant Instructions
+
+**When you (AI assistant) write or modify code:**
+
+1. **IMMEDIATELY after editing a file**, run clang-format on it:
+   ```bash
+   clang-format -i path/to/edited/file.cpp
+   clang-format -i path/to/edited/file.hpp
+   ```
+
+2. **BEFORE committing**, verify formatting is correct by running:
+   ```bash
+   make format
+   ```
+
+3. **ALWAYS format both .cpp and .hpp files** if you modify them
+
+4. **DO NOT skip formatting** - it's as critical as fixing compiler warnings
+
+5. **FORMAT IN THE SAME SESSION** - don't leave formatting "for later"
+
+### Example Workflow
+
+```bash
+# 1. Make changes to a file
+# ... edit src/GameState.cpp ...
+
+# 2. IMMEDIATELY format it
+clang-format -i src/GameState.cpp
+
+# 3. If you also modified the header
+clang-format -i include/GameState.hpp
+
+# 4. Build to check for warnings
+make
+
+# 5. Before commit, format everything to be sure
+make format
+
+# 6. Commit
+git add .
+git commit -m "Fix: Updated GameState logic"
+```
+
+**This is non-negotiable. Consistent formatting ensures code readability and maintainability across the project.**
+
+---
+
 ### Module Organization
 
 The codebase is logically organized into modules (though physically flat):
@@ -446,6 +545,26 @@ cmake --build .
 ---
 
 ## Recent Changes
+
+### 2025-11-15: Theme Dropdown Fix and Code Formatting Policy
+- **FIXED THEME DROPDOWN ISSUE**: Theme files now load correctly from any working directory
+  - Modified `src/StyleManager.cpp` to support multiple path locations
+  - Added logic to try both `resources/styles` (project root) and `../resources/styles` (build directory)
+  - Theme discovery now stores the successful path for use during theme loading
+  - Added `STYLES_PATH` global variable to Config module (Config.hpp/StyleManager.cpp)
+  - Theme dropdown now populates with all available themes regardless of execution location
+- **ADDED CODE FORMATTING POLICY**: Established mandatory clang-format usage
+  - Added comprehensive "Code Formatting Policy" section to CLAUDE.md
+  - Documented project's .clang-format configuration settings
+  - Provided clear instructions for formatting individual files and entire codebase
+  - Added example workflows for AI assistants
+  - Emphasized formatting is as critical as fixing compiler warnings
+  - Included commands for `make format` and individual file formatting
+- **FILES MODIFIED**:
+  - `src/StyleManager.cpp`: Enhanced path discovery and theme loading logic
+  - `include/Config.hpp`: Added STYLES_PATH extern declaration
+  - `CLAUDE.md`: Added "Code Formatting Policy" section with detailed instructions
+- Build status: Clean build with zero warnings
 
 ### 2025-11-15: Naming Convention Updates and Header Refactoring (Phase 1)
 - **UPDATED NAMING CONVENTIONS**: Established comprehensive new naming standards
