@@ -116,8 +116,8 @@ add_custom_target(run
 # Check dependencies target
 add_custom_target(check-deps
     COMMAND test -f ${CMAKE_SOURCE_DIR}/lib/libraylib.a -o -f ${CMAKE_SOURCE_DIR}/lib/libraylib.so || (echo "✗ raylib not found in ./lib/" && exit 1)
-    COMMAND test -f ${CMAKE_SOURCE_DIR}/include/raylib.h || (echo "✗ raylib.h not found in ./include/" && exit 1)
-    COMMAND test -f ${CMAKE_SOURCE_DIR}/include/raygui.h || (echo "✗ raygui.h not found in ./include/" && exit 1)
+    COMMAND test -f ${CMAKE_SOURCE_DIR}/include/rl/raylib.h || (echo "✗ raylib.h not found in ./include/rl/" && exit 1)
+    COMMAND test -f ${CMAKE_SOURCE_DIR}/include/rl/raygui.h || (echo "✗ raygui.h not found in ./include/rl/" && exit 1)
     COMMAND echo "✓ All dependencies found"
     COMMENT "Checking dependencies"
 )

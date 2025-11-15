@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 #include <memory>
-#include "raylib.h"
+#include "rl/raylib.h"
 #include "HexCoord.hpp"
 #include "GameHex.hpp"
 #include "Unit.hpp"

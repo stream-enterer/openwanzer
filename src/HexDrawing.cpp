@@ -3,9 +3,9 @@
 #include <vector>
 #include "Constants.hpp"
 #include "GameLogic.hpp"
-#include "hex.h"
-#include "raylib.h"
-#include "raymath.h"
+#include "Hex.hpp"
+#include "rl/raylib.h"
+#include "rl/raymath.h"
 #include "Rendering.hpp"
 
 namespace rendering {
@@ -17,7 +17,7 @@ namespace rendering {
 Layout createHexLayout(float hexSize, float offsetX, float offsetY, float zoom) {
 	Point size(hexSize * zoom, hexSize * zoom);
 	Point origin(offsetX, offsetY);
-	return Layout(layout_pointy, size, origin);
+	return Layout(kLayoutPointy, size, origin);
 }
 
 // Convert our game's row/col to hex library's offset coordinates
@@ -130,9 +130,9 @@ void drawMap(GameState &game) {
 			GameHex &hex = game.map[row][col];
 
 			OffsetCoord offset = gameCoordToOffset(hex.coord);
-			::Hex cubeHex = offset_to_cube(offset);
+			::Hex cubeHex = OffsetToCube(offset);
 
-			std::vector<Point> corners = polygon_corners(layout, cubeHex);
+			std::vector<Point> corners = PolygonCorners(layout, cubeHex);
 
 			// Draw terrain
 			Color terrainColor = getTerrainColor(hex.terrain);
@@ -144,9 +144,9 @@ void drawMap(GameState &game) {
 			// Draw movement/attack selection highlights
 			if (hex.isMoveSel) {
 				std::vector<Point> innerCorners;
-				Point center = hex_to_pixel(layout, cubeHex);
+				Point center = HexToPixel(layout, cubeHex);
 				for (int i = 0; i < 6; i++) {
-					Point offset = hex_corner_offset(layout, i);
+					Point offset = HexCornerOffset(layout, i);
 					float scale = 0.85f;
 					innerCorners.push_back(Point(center.x + offset.x * scale,
 					                             center.y + offset.y * scale));
@@ -155,9 +155,9 @@ void drawMap(GameState &game) {
 			}
 			if (hex.isAttackSel) {
 				std::vector<Point> innerCorners;
-				Point center = hex_to_pixel(layout, cubeHex);
+				Point center = HexToPixel(layout, cubeHex);
 				for (int i = 0; i < 6; i++) {
-					Point offset = hex_corner_offset(layout, i);
+					Point offset = HexCornerOffset(layout, i);
 					float scale = 0.85f;
 					innerCorners.push_back(Point(center.x + offset.x * scale,
 					                             center.y + offset.y * scale));
@@ -176,8 +176,8 @@ void drawMap(GameState &game) {
 			continue;
 
 		OffsetCoord offset = gameCoordToOffset(unit->position);
-		::Hex cubeHex = offset_to_cube(offset);
-		Point center = hex_to_pixel(layout, cubeHex);
+		::Hex cubeHex = OffsetToCube(offset);
+		Point center = HexToPixel(layout, cubeHex);
 
 		float unitWidth = 40 * game.camera.zoom;
 		float unitHeight = 30 * game.camera.zoom;
@@ -230,12 +230,12 @@ void drawMap(GameState &game) {
 
 				HexCoord coord = {row, col};
 				OffsetCoord offset = gameCoordToOffset(coord);
-				::Hex cubeHex = offset_to_cube(offset);
+				::Hex cubeHex = OffsetToCube(offset);
 
 				// Check each of the 6 edges
 				for (int dir = 0; dir < 6; dir++) {
-					::Hex neighbor = hex_neighbor(cubeHex, dir);
-					OffsetCoord neighborOffset = cube_to_offset(neighbor);
+					::Hex neighbor = HexNeighbor(cubeHex, dir);
+					OffsetCoord neighborOffset = CubeToOffset(neighbor);
 
 					// CRITICAL: Convert offset coordinates back to game coordinates before map lookup
 					HexCoord neighborCoord = offsetToGameCoord(neighborOffset);
@@ -254,7 +254,7 @@ void drawMap(GameState &game) {
 						// CRITICAL: Direction numbering doesn't match edge numbering!
 						// For pointy-top hexes, direction → edge mapping is: dir → (5 - dir)
 						// Direction 0 (E) uses edge 5, Direction 1 (SE) uses edge 4, etc.
-						std::vector<Point> corners = polygon_corners(layout, cubeHex);
+						std::vector<Point> corners = PolygonCorners(layout, cubeHex);
 						int edgeIndex = (5 - dir + 6) % 6; // Correct edge for this direction
 						Point p1 = corners[edgeIndex];
 						Point p2 = corners[(edgeIndex + 1) % 6];
@@ -274,9 +274,9 @@ void drawMap(GameState &game) {
 		Layout layout = createHexLayout(HEX_SIZE, game.camera.offsetX,
 		                                game.camera.offsetY, game.camera.zoom);
 		Point mousePoint(mousePos.x, mousePos.y);
-		FractionalHex fracHex = pixel_to_hex(layout, mousePoint);
-		::Hex cubeHex = hex_round(fracHex);
-		OffsetCoord offset = cube_to_offset(cubeHex);
+		FractionalHex fracHex = PixelToHex(layout, mousePoint);
+		::Hex cubeHex = HexRound(fracHex);
+		OffsetCoord offset = CubeToOffset(cubeHex);
 		HexCoord hoveredHex = offsetToGameCoord(offset);
 
 		// Only show path if hovering over a valid movement hex
@@ -290,8 +290,8 @@ void drawMap(GameState &game) {
 				// Draw path as semi-transparent hexes
 				for (size_t i = 1; i < path.size(); i++) { // Start at 1 to skip unit's current position
 					OffsetCoord pathOffset = gameCoordToOffset(path[i]);
-					::Hex pathCube = offset_to_cube(pathOffset);
-					std::vector<Point> corners = polygon_corners(layout, pathCube);
+					::Hex pathCube = OffsetToCube(pathOffset);
+					std::vector<Point> corners = PolygonCorners(layout, pathCube);
 
 					// Draw semi-transparent yellow fill
 					drawHexagon(corners, Color {255, 255, 0, 80}, true);
@@ -299,8 +299,8 @@ void drawMap(GameState &game) {
 
 				// Draw target hex with slightly more opacity
 				OffsetCoord targetOffset = gameCoordToOffset(hoveredHex);
-				::Hex targetCube = offset_to_cube(targetOffset);
-				std::vector<Point> corners = polygon_corners(layout, targetCube);
+				::Hex targetCube = OffsetToCube(targetOffset);
+				std::vector<Point> corners = PolygonCorners(layout, targetCube);
 				drawHexagon(corners, Color {255, 255, 0, 120}, true);
 			}
 		}

@@ -3,7 +3,7 @@
 
 #include <string>
 #include <vector>
-#include "hex.h"
+#include "Hex.hpp"
 #include "Enums.hpp"
 #include "HexCoord.hpp"
 #include "GameHex.hpp"

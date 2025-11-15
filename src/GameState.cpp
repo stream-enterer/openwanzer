@@ -1,6 +1,6 @@
 #include "GameState.hpp"
 #include "Constants.hpp"
-#include "raylib.h"
+#include "rl/raylib.h"
 
 // Resolution options
 const Resolution RESOLUTIONS[] = {

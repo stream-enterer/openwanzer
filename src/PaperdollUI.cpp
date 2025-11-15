@@ -2,9 +2,9 @@
 #include "ArmorLocation.hpp"
 #include "Constants.hpp"
 #include "GameLogic.hpp"
-#include "raylib.h"
-#include "raymath.h"
-#include "raygui.h"
+#include "rl/raylib.h"
+#include "rl/raymath.h"
+#include "rl/raygui.h"
 #include <string>
 #include <cmath>
 
