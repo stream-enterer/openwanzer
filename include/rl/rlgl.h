@@ -2916,7 +2916,7 @@ rlRenderBatch rlLoadRenderBatch(int numBuffers, int bufferElements) {
 	batch.bufferCount = numBuffers; // Record buffer count
 	batch.drawCounter = 1;          // Reset draws counter
 	batch.currentDepth = -1.0f;     // Reset depth value
-		                        //--------------------------------------------------------------------------------------------
+	                                //--------------------------------------------------------------------------------------------
 #endif
 
 	return batch;

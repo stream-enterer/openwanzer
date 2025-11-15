@@ -578,7 +578,7 @@ typedef enum {
 	TEXT_ALIGNMENT_VERTICAL, // Text vertical alignment inside text bounds (after border and padding)
 	TEXT_WRAP_MODE           // Text wrap-mode inside text bounds
 	                         // TEXT_DECORATION             // Text decoration: 0-None, 1-Underline, 2-Line-through, 3-Overline
-	// TEXT_DECORATION_THICK       // Text decoration line thickness
+	                         // TEXT_DECORATION_THICK       // Text decoration line thickness
 } GuiDefaultProperty;
 
 // Other possible text properties:
@@ -1496,7 +1496,7 @@ static int GetCodepointNext(const char *text, int *codepointSize); // Get next c
 static const char *CodepointToUTF8(int codepoint, int *byteSize);  // Encode codepoint into UTF-8 text (char array size returned as parameter)
 
 static void DrawRectangleGradientV(int posX, int posY, int width, int height, Color color1, Color color2); // Draw rectangle vertical gradient
-	//-------------------------------------------------------------------------------
+                                                                                                           //-------------------------------------------------------------------------------
 
 #endif // RAYGUI_STANDALONE
 

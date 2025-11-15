@@ -123,3 +123,6 @@ vcpkg_installed/
 
 # Misc
 TODO.md
+
+#Raylib
+include/rl/*
