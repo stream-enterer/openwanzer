@@ -1,35 +1,43 @@
-# Dependencies
-node_modules/
-bower_components/
-jspm_packages/
-
 # Build outputs
-dist/
 build/
+dist/
 out/
-*.min.js
-*.min.css
 *.o
+*.obj
+*.exe
+*.out
+*.app
 openwanzer
 
-# Logs
-logs/
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-lerna-debug.log*
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile.cmake
+*.cmake
 
-# Runtime data
-pids/
-*.pid
-*.seed
-*.pid.lock
+# Compiled Dynamic libraries
+*.so
+*.so.*
+*.dylib
+*.dll
 
-# Coverage directory
-coverage/
-*.lcov
-.nyc_output/
+# Compiled Static libraries
+*.lib
+*.a
+*.la
+*.lo
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
 
 # IDE and Editor files
 .vscode/
@@ -40,6 +48,8 @@ coverage/
 .DS_Store
 *.sublime-project
 *.sublime-workspace
+.clangd/
+compile_commands.json
 
 # OS files
 .DS_Store
@@ -50,51 +60,61 @@ coverage/
 ehthumbs.db
 Thumbs.db
 
-# Optional npm cache
-.npm
+# Test outputs
+tests/build/
+tests/bin/
+test_results/
+*.test
 
-# Optional eslint cache
-.eslintcache
+# Coverage
+*.gcno
+*.gcda
+*.gcov
+coverage/
+*.lcov
 
-# Optional REPL history
-.node_repl_history
+# Documentation builds
+docs/_build/
+docs/html/
+docs/latex/
 
-# Environment variables
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# Package manager lock files (optional - comment out if you want to commit these)
-# package-lock.json
-# yarn.lock
+# Logs
+*.log
+logs/
 
 # Temporary files
 tmp/
 temp/
 *.tmp
-
-# Backup files
 *.bak
 *.backup
 *.old
-*~
-
-# Debug files
-debug/
-*.debug
 
 # User-specific files
 *.user
 *.suo
+*.ncb
+*.sdf
+*.opensdf
 
-# Test coverage
-test-results/
-.nyc_output/
+# Profiling
+*.prof
+gmon.out
+callgrind.out.*
+perf.data
+perf.data.old
 
-# Documentation builds
-docs/_build/
+# Dependencies (optional - uncomment if managing dependencies locally)
+# dependencies/
+# vendor/
+
+# Environment variables
+.env
+.env.local
+
+# Package manager files
+conan/
+vcpkg_installed/
 
 # Misc
 TODO.md
