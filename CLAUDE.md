@@ -31,7 +31,7 @@ This ensures continuity across sessions and prevents knowledge loss.
 - **Language**: C++17
 - **Graphics**: raylib 5.5.0
 - **UI**: raygui (immediate mode GUI)
-- **Build System**: GNU Make
+- **Build System**: CMake 3.15+ (with Makefile wrapper for convenience)
 
 ### Project Goals
 - Classic turn-based tactical gameplay
@@ -157,23 +157,75 @@ The codebase is logically organized into modules (though physically flat):
 
 ## Build System
 
-### Makefile Targets
+### Overview
+
+The project uses **CMake** as the build system, with all build artifacts placed in the `build/` directory. A **Makefile wrapper** is provided for convenience, allowing you to use familiar `make` commands.
+
+### Quick Start
 
 ```bash
 make              # Build release version
-make debug        # Build with debug symbols
-make clean        # Remove build artifacts
-make run          # Build and run
-make format       # Format code with clang-format
-make install      # Install to /usr/local/bin
-make uninstall    # Uninstall
-make help         # Show all targets
+make run          # Build and run the game
+make clean        # Remove all build artifacts
+make help         # Show all available targets
 ```
 
+### Makefile Targets (CMake Wrapper)
+
+```bash
+# Build Commands
+make              # Build release version (default)
+make release      # Build release version
+make debug        # Build debug version with symbols
+make build        # Build with current configuration
+
+# Configuration
+make configure       # Configure CMake (Release)
+make configure-debug # Configure CMake (Debug)
+
+# Utilities
+make clean        # Remove all build artifacts
+make run          # Build and run the game
+make check-deps   # Verify all dependencies are present
+make format       # Format code with clang-format
+
+# Installation
+make install      # Install to /usr/local/bin (requires sudo)
+make uninstall    # Remove from /usr/local/bin (requires sudo)
+
+# Help
+make help         # Show all available targets
+```
+
+### Using CMake Directly
+
+For advanced usage, you can use CMake directly:
+
+```bash
+# Configure and build
+mkdir build && cd build
+cmake ..
+cmake --build .
+
+# Configure with specific build type
+cmake -DCMAKE_BUILD_TYPE=Debug ..
+cmake --build .
+
+# Run the executable
+./openwanzer
+```
+
+### Build Output
+
+- **Binary**: `build/openwanzer`
+- **Build artifacts**: `build/` directory (git-ignored)
+- **Libraries**: `build/lib/` (if any)
+
 ### Dependencies
+- CMake 3.15 or higher
 - raylib 5.5.0 (included in `lib/` and `include/`)
 - X11 libraries (Linux only)
-- C++17 compiler
+- C++17 compiler (GCC, Clang, etc.)
 
 ---
 
@@ -184,7 +236,7 @@ make help         # Show all targets
 1. Create `NewFile.cpp` in `src/` and `NewFile.h` in `include/`
 2. Use header guard: `#ifndef OPENWANZER_NEWFILE_H`
 3. Include header in relevant files: `#include "NewFile.h"`
-4. No need to update Makefile (uses automatic detection)
+4. No need to update CMakeLists.txt (uses automatic file globbing)
 
 ### Adding a New Feature
 
@@ -234,6 +286,27 @@ make help         # Show all targets
 ---
 
 ## Recent Changes
+
+### 2025-11-15: CMake Build System Migration
+- **Migrated build system** from GNU Make to CMake
+- **Created CMakeLists.txt** with comprehensive configuration
+  - C++17 standard enforcement
+  - Automatic source file detection via globbing
+  - Separate Release and Debug build configurations
+  - Custom targets for format, run, and check-deps
+  - Proper rpath configuration for raylib
+- **Implemented Makefile wrapper** for convenience
+  - Provides familiar `make` commands (build, debug, clean, run, etc.)
+  - Wraps CMake commands underneath
+  - Maintains backwards compatibility with previous workflow
+- **Updated build output directory** to `build/`
+  - All build artifacts now in `build/` directory
+  - Binary located at `build/openwanzer`
+  - Clean separation from source code
+- **Enhanced .gitignore** with additional CMake-specific patterns
+- **Archived old Makefile** as `Makefile.old`
+- **Updated documentation** to reflect new build system
+- **Tested successfully** - build completes without errors
 
 ### 2025-11-15: Major Codebase Refactoring
 - **Restructured entire codebase** to use flat directory structure
