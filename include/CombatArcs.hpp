@@ -1,7 +1,7 @@
 #ifndef OPENWANZER_COMBAT_ARCS_HPP
 #define OPENWANZER_COMBAT_ARCS_HPP
 
-#include "raylib.h"
+#include "rl/raylib.h"
 #include "HexCoord.hpp"
 
 namespace combatarcs {

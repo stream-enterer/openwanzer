@@ -4,10 +4,10 @@
 #include "Input.hpp"
 #include "Config.hpp"
 #include "UIPanels.hpp"
-#include "raylib.h"
-#include "raymath.h"
-#include "raygui.h"
-#include "hex.h"
+#include "rl/raylib.h"
+#include "rl/raymath.h"
+#include "rl/raygui.h"
+#include "Hex.hpp"
 #include <string>
 #include <sstream>
 #include <vector>
@@ -228,9 +228,9 @@ void drawUI(GameState &game) {
   Layout layout = createHexLayout(HEX_SIZE, game.camera.offsetX,
                                   game.camera.offsetY, game.camera.zoom);
   Point mousePoint(mousePos.x, mousePos.y);
-  FractionalHex fracHex = pixel_to_hex(layout, mousePoint);
-  ::Hex cubeHex = hex_round(fracHex);
-  OffsetCoord offset = cube_to_offset(cubeHex);
+  FractionalHex fracHex = PixelToHex(layout, mousePoint);
+  ::Hex cubeHex = HexRound(fracHex);
+  OffsetCoord offset = CubeToOffset(cubeHex);
   HexCoord hoveredHex = offsetToGameCoord(offset);
 
   if (hoveredHex.row >= 0 && hoveredHex.row < MAP_ROWS &&

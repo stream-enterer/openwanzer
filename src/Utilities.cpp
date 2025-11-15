@@ -1,6 +1,6 @@
 #include "GameLogic.hpp"
 #include "Constants.hpp"
-#include "hex.h"
+#include "Hex.hpp"
 #include <cmath>
 #include <cstdio>
 
@@ -113,8 +113,8 @@ std::string getFacingName(float facing) {
 // implemented in a separate file to avoid circular dependencies
 float calculateFacingFromPoint(const HexCoord &center, const Point &targetPoint, Layout &layout) {
   OffsetCoord centerOffset = OffsetCoord(center.col, center.row);  // Direct conversion
-  ::Hex centerCube = offset_to_cube(centerOffset);
-  Point centerPixel = hex_to_pixel(layout, centerCube);
+  ::Hex centerCube = OffsetToCube(centerOffset);
+  Point centerPixel = HexToPixel(layout, centerCube);
 
   // Calculate direction vector from center to target
   float dx = targetPoint.x - centerPixel.x;
@@ -163,8 +163,8 @@ int hexDistance(const HexCoord& a, const HexCoord& b) {
   OffsetCoord offsetA = {a.col, a.row};
   OffsetCoord offsetB = {b.col, b.row};
 
-  Hex cubeA = offset_to_cube(offsetA);
-  Hex cubeB = offset_to_cube(offsetB);
+  Hex cubeA = OffsetToCube(offsetA);
+  Hex cubeB = OffsetToCube(offsetB);
 
   // Manhattan distance in cube space
   return (abs(cubeA.q - cubeB.q) + abs(cubeA.r - cubeB.r) + abs(cubeA.s - cubeB.s)) / 2;
@@ -174,11 +174,11 @@ int hexDistance(const HexCoord& a, const HexCoord& b) {
 std::vector<HexCoord> getAdjacent(int row, int col) {
   std::vector<HexCoord> result;
   OffsetCoord center(col, row);
-  ::Hex cubeHex = offset_to_cube(center);
+  ::Hex cubeHex = OffsetToCube(center);
 
   for (int i = 0; i < 6; i++) {
-    ::Hex neighbor = hex_neighbor(cubeHex, i);
-    OffsetCoord neighborOffset = cube_to_offset(neighbor);
+    ::Hex neighbor = HexNeighbor(cubeHex, i);
+    OffsetCoord neighborOffset = CubeToOffset(neighbor);
 
     if (neighborOffset.row >= 0 && neighborOffset.row < MAP_ROWS &&
         neighborOffset.col >= 0 && neighborOffset.col < MAP_COLS) {

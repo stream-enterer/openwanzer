@@ -1,6 +1,6 @@
 #include "Config.hpp"
 #include "GameState.hpp"
-#include "raylib.h"
+#include "rl/raylib.h"
 #include <fstream>
 #include <string>
 

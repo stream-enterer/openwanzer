@@ -2,18 +2,18 @@
 // OPEN WANZER - Turn-based Tactical Mech Combat Game
 //==============================================================================
 
-#include "raylib.h"
-#include "raymath.h"
+#include "rl/raylib.h"
+#include "rl/raymath.h"
 
 // Suppress warnings from raygui.h
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-result"
 #pragma GCC diagnostic ignored "-Wstringop-overflow"
 #define RAYGUI_IMPLEMENTATION
-#include "raygui.h"
+#include "rl/raygui.h"
 #pragma GCC diagnostic pop
 
-#include "hex.h"
+#include "Hex.hpp"
 
 // Include all module headers
 #include "Constants.hpp"
@@ -179,9 +179,9 @@ int main() {
         Layout layout = rendering::createHexLayout(HEX_SIZE, game.camera.offsetX,
                                        game.camera.offsetY, game.camera.zoom);
         Point mousePoint(mousePos.x, mousePos.y);
-        FractionalHex fracHex = pixel_to_hex(layout, mousePoint);
-        ::Hex cubeHex = hex_round(fracHex);
-        OffsetCoord offset = cube_to_offset(cubeHex);
+        FractionalHex fracHex = PixelToHex(layout, mousePoint);
+        ::Hex cubeHex = HexRound(fracHex);
+        OffsetCoord offset = CubeToOffset(cubeHex);
         HexCoord clickedHex = rendering::offsetToGameCoord(offset);
 
         if (clickedHex.row >= 0 && clickedHex.row < MAP_ROWS &&
@@ -264,10 +264,10 @@ int main() {
                                                              game.camera.offsetY, game.camera.zoom);
                   OffsetCoord attackerOffset = rendering::gameCoordToOffset(game.selectedUnit->position);
                   OffsetCoord defenderOffset = rendering::gameCoordToOffset(clickedUnit->position);
-                  ::Hex attackerCube = offset_to_cube(attackerOffset);
-                  ::Hex defenderCube = offset_to_cube(defenderOffset);
-                  Point attackerPixel = hex_to_pixel(layout, attackerCube);
-                  Point defenderPixel = hex_to_pixel(layout, defenderCube);
+                  ::Hex attackerCube = OffsetToCube(attackerOffset);
+                  ::Hex defenderCube = OffsetToCube(defenderOffset);
+                  Point attackerPixel = HexToPixel(layout, attackerCube);
+                  Point defenderPixel = HexToPixel(layout, defenderCube);
                   Vector2 attackerPos = {(float)attackerPixel.x, (float)attackerPixel.y};
                   Vector2 defenderPos = {(float)defenderPixel.x, (float)defenderPixel.y};
                   combatarcs::AttackArc arc = combatarcs::getAttackArc(attackerPos, defenderPos, clickedUnit->facing);

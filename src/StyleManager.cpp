@@ -1,6 +1,6 @@
 #include "Config.hpp"
-#include "raylib.h"
-#include "raygui.h"
+#include "rl/raylib.h"
+#include "rl/raygui.h"
 #include <algorithm>
 #include <fstream>
 #include <dirent.h>

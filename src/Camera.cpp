@@ -1,9 +1,9 @@
 #include "Input.hpp"
 #include "Rendering.hpp"
 #include "Constants.hpp"
-#include "raylib.h"
-#include "raymath.h"
-#include "hex.h"
+#include "rl/raylib.h"
+#include "rl/raymath.h"
+#include "Hex.hpp"
 #include <cmath>
 
 namespace input {
@@ -20,11 +20,11 @@ void calculateCenteredCameraOffset(CameraState& camera, int screenWidth, int scr
   // The map center is approximately at hex (MAP_ROWS/2, MAP_COLS/2)
   HexCoord mapCenter = {MAP_ROWS / 2, MAP_COLS / 2};
   OffsetCoord offset = rendering::gameCoordToOffset(mapCenter);
-  ::Hex cubeHex = offset_to_cube(offset);
+  ::Hex cubeHex = OffsetToCube(offset);
 
   // Create a temporary layout to calculate pixel position
   Layout tempLayout = rendering::createHexLayout(HEX_SIZE, 0, 0, camera.zoom);
-  Point mapCenterPixel = hex_to_pixel(tempLayout, cubeHex);
+  Point mapCenterPixel = HexToPixel(tempLayout, cubeHex);
 
   // Calculate offset so that map center appears at play area center
   camera.offsetX = playAreaCenterX - mapCenterPixel.x;

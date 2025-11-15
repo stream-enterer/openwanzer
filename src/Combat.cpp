@@ -5,7 +5,7 @@
 #include "ArmorLocation.hpp"
 #include "Constants.hpp"
 #include "Rendering.hpp"
-#include "hex.h"
+#include "Hex.hpp"
 #include <string>
 
 namespace gamelogic {
@@ -34,10 +34,10 @@ void performAttack(GameState &game, Unit *attacker, Unit *defender) {
 
   OffsetCoord attackerOffset = rendering::gameCoordToOffset(attacker->position);
   OffsetCoord defenderOffset = rendering::gameCoordToOffset(defender->position);
-  ::Hex attackerCube = offset_to_cube(attackerOffset);
-  ::Hex defenderCube = offset_to_cube(defenderOffset);
-  Point attackerPixel = hex_to_pixel(layout, attackerCube);
-  Point defenderPixel = hex_to_pixel(layout, defenderCube);
+  ::Hex attackerCube = OffsetToCube(attackerOffset);
+  ::Hex defenderCube = OffsetToCube(defenderOffset);
+  Point attackerPixel = HexToPixel(layout, attackerCube);
+  Point defenderPixel = HexToPixel(layout, defenderCube);
 
   Vector2 attackerPos = {(float)attackerPixel.x, (float)attackerPixel.y};
   Vector2 defenderPos = {(float)defenderPixel.x, (float)defenderPixel.y};

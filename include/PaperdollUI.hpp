@@ -3,7 +3,7 @@
 
 #include "GameState.hpp"
 #include "Unit.hpp"
-#include "raylib.h"
+#include "rl/raylib.h"
 
 namespace paperdollui {
 

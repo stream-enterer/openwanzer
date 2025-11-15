@@ -24,8 +24,8 @@ void updateAttackLines(GameState& game) {
     Layout layout = rendering::createHexLayout(HEX_SIZE, 0, 0, 1.0f);
 
     OffsetCoord attackerOffset = rendering::gameCoordToOffset(game.selectedUnit->position);
-    ::Hex attackerCube = offset_to_cube(attackerOffset);
-    Point attackerPos = hex_to_pixel(layout, attackerCube);
+    ::Hex attackerCube = OffsetToCube(attackerOffset);
+    Point attackerPos = HexToPixel(layout, attackerCube);
 
     for (const auto& unit : game.units) {
         // Skip self and friendlies
@@ -37,8 +37,8 @@ void updateAttackLines(GameState& game) {
         if (!targetHex.isSpotted(game.currentPlayer)) continue;
 
         OffsetCoord targetOffset = rendering::gameCoordToOffset(unit->position);
-        ::Hex targetCube = offset_to_cube(targetOffset);
-        Point targetPos = hex_to_pixel(layout, targetCube);
+        ::Hex targetCube = OffsetToCube(targetOffset);
+        Point targetPos = HexToPixel(layout, targetCube);
 
         Vector2 atkPos = {(float)attackerPos.x, (float)attackerPos.y};
         Vector2 tgtPos = {(float)targetPos.x, (float)targetPos.y};
