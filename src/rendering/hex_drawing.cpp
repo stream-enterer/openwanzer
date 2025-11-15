@@ -205,11 +205,11 @@ void drawMap(GameState &game) {
 			         (int)(center.y - fontSize / 2 - 5),
 			         fontSize, WHITE);
 
-			// Draw strength
-			std::string strength = std::to_string(unit->strength);
+			// Draw health percentage
+			std::string health = std::to_string(unit->getOverallHealthPercent()) + "%";
 			fontSize = (int)(12 * game.camera.zoom);
-			textWidth = MeasureText(strength.c_str(), fontSize);
-			DrawText(strength.c_str(),
+			textWidth = MeasureText(health.c_str(), fontSize);
+			DrawText(health.c_str(),
 			         (int)(center.x - textWidth / 2),
 			         (int)(center.y + 5 * game.camera.zoom),
 			         fontSize, YELLOW);

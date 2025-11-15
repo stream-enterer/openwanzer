@@ -2,20 +2,29 @@
 #define OPENWANZER_CORE_UNIT_H
 
 #include <string>
+#include <map>
 #include "hex_coord.h"
 #include "enums.h"
+#include "armor_location.h"
 
 struct Unit {
   std::string name;
   UnitClass unitClass;
   int side;     // 0 = axis, 1 = allied
-  int strength; // 1-10
-  int maxStrength;
+
+  // **NEW: Location-based damage**
+  enum class WeightClass { LIGHT, MEDIUM, HEAVY, ASSAULT };
+  WeightClass weightClass;
+  std::map<ArmorLocation, LocationStatus> locations;
+
   HexCoord position;
 
   // Combat stats
   int attack;
   int defense;
+
+  // **NEW: Weapon range (3 hexes for testing)**
+  int weaponRange;
 
   // Movement & logistics
   MovMethod movMethod;
@@ -31,11 +40,19 @@ struct Unit {
   float facing;
 
   Unit()
-      : strength(10), maxStrength(10),
+      : weightClass(WeightClass::MEDIUM),
         attack(8), defense(6),
+        weaponRange(3),
         movMethod(MovMethod::TRACKED), movementPoints(6),
         movesLeft(6), spotRange(2),
-        hasMoved(false), hasFired(false), isCore(false), facing(0.0f) {}
+        hasMoved(false), hasFired(false), isCore(false), facing(0.0f) {
+    initializeLocations(WeightClass::MEDIUM);
+  }
+
+  void initializeLocations(WeightClass wClass);
+  bool isAlive() const;
+  bool canMove() const;
+  int getOverallHealthPercent() const;
 };
 
 #endif // OPENWANZER_CORE_UNIT_H
