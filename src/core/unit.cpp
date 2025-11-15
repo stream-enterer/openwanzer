@@ -94,3 +94,37 @@ int Unit::getOverallHealthPercent() const {
     if (totalMax == 0) return 0;
     return (totalCurrent * 100) / totalMax;
 }
+
+void Unit::initializeWeapons() {
+    weapons.clear();
+
+    // Assign weapons based on weight class for testing variety
+    switch (weightClass) {
+        case WeightClass::LIGHT:
+            weapons.push_back(Weapon("L LASER", WeaponType::ENERGY, 5));
+            weapons.push_back(Weapon("S LASER", WeaponType::ENERGY, 3));
+            weapons.push_back(Weapon("SRM2", WeaponType::MISSILE, 2));
+            break;
+
+        case WeightClass::MEDIUM:
+            weapons.push_back(Weapon("M LASER", WeaponType::ENERGY, 7));
+            weapons.push_back(Weapon("LRM5", WeaponType::MISSILE, 5));
+            weapons.push_back(Weapon("AC/5", WeaponType::BALLISTIC, 5));
+            break;
+
+        case WeightClass::HEAVY:
+            weapons.push_back(Weapon("PPC", WeaponType::ENERGY, 10));
+            weapons.push_back(Weapon("SRM6", WeaponType::MISSILE, 2));
+            weapons.push_back(Weapon("AC/10", WeaponType::BALLISTIC, 10));
+            weapons.push_back(Weapon("M LASER", WeaponType::ENERGY, 7));
+            break;
+
+        case WeightClass::ASSAULT:
+            weapons.push_back(Weapon("AC/20", WeaponType::BALLISTIC, 20));
+            weapons.push_back(Weapon("LRM15", WeaponType::MISSILE, 15));
+            weapons.push_back(Weapon("ER L LASER", WeaponType::ENERGY, 8));
+            weapons.push_back(Weapon("SRM4", WeaponType::MISSILE, 2));
+            weapons.push_back(Weapon("MELEE", WeaponType::MELEE, 100));
+            break;
+    }
+}

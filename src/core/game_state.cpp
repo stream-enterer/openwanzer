@@ -167,6 +167,9 @@ void GameState::addUnit(UnitClass uClass, int side, int row, int col) {
   // Initialize armor locations for this weight class
   unit->initializeLocations(wClass);
 
+  // Initialize weapons for this weight class
+  unit->initializeWeapons();
+
   // Initialize unit facing based on side (using degrees: E=0°, S=90°, W=180°, N=270°)
   // Axis units (left side) face generally East (toward right/enemy)
   // Allied units (right side) face generally West (toward left/enemy)

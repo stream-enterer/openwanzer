@@ -3,6 +3,7 @@
 #include "../game_logic/game_logic.h"
 #include "../input/input.h"
 #include "../config/config.h"
+#include "../ui/ui_panels.h"
 #include "raylib.h"
 #include "raymath.h"
 #include "raygui.h"
@@ -202,13 +203,6 @@ void drawUnitInfoBox(GameState &game) {
   DrawText(info.c_str(), x, y, normalSize, textColor);
   y += normalSize + 10;
 
-  DrawText("Stats:", x, y, normalSize, textColor);
-  y += normalSize + 5;
-  info = "Attack: " + std::to_string(unit->attack);
-  DrawText(info.c_str(), x, y, normalSize - 2, textColor);
-  y += normalSize;
-  info = "Defense: " + std::to_string(unit->defense);
-  DrawText(info.c_str(), x, y, normalSize - 2, textColor);
 }
 
 void drawUI(GameState &game) {
@@ -278,6 +272,9 @@ void drawUI(GameState &game) {
     // Reset combat log and unit info box positions
     game.combatLog.resetPosition();
     game.unitInfoBox.resetPosition();
+
+    // Reset paperdoll panel positions
+    UIPanel::resetPanelPositions(game);
   }
 
   // Options button

@@ -154,6 +154,54 @@ struct AttackLine {
       : from(f), to(t), arc(a) {}
 };
 
+// Paperdoll Panel structures for HBS-style mech UI
+struct PaperdollPanel {
+    Rectangle bounds;           // Panel position and size
+    bool isVisible;
+    bool isDragging;
+    Vector2 dragOffset;
+    Vector2 defaultPosition;    // For reset functionality
+
+    // Paperdoll regions (for hover detection)
+    Rectangle frontHead;
+    Rectangle frontCT, frontLT, frontRT;
+    Rectangle frontLA, frontRA;
+    Rectangle frontLL, frontRL;
+
+    Rectangle rearCT, rearLT, rearRT;
+    Rectangle rearLA, rearRA;  // Blackened, non-interactive
+
+    // Current tooltip state
+    ArmorLocation hoveredLocation;
+    bool showTooltip;
+    Vector2 tooltipPos;
+
+    PaperdollPanel() : isVisible(false), isDragging(false),
+                       hoveredLocation(ArmorLocation::NONE),
+                       showTooltip(false) {
+        bounds = {0, 0, 0, 0};
+        dragOffset = {0, 0};
+        defaultPosition = {0, 0};
+        frontHead = frontCT = frontLT = frontRT = {0, 0, 0, 0};
+        frontLA = frontRA = frontLL = frontRL = {0, 0, 0, 0};
+        rearCT = rearLT = rearRT = rearLA = rearRA = {0, 0, 0, 0};
+        tooltipPos = {0, 0};
+    }
+};
+
+struct TargetPanel : public PaperdollPanel {
+    Unit* targetUnit;
+    CombatArcs::AttackArc currentArc;  // For red line indicators
+
+    TargetPanel() : targetUnit(nullptr), currentArc(CombatArcs::AttackArc::FRONT) {}
+};
+
+struct PlayerPanel : public PaperdollPanel {
+    Unit* playerUnit;
+
+    PlayerPanel() : playerUnit(nullptr) {}
+};
+
 // Game State
 struct GameState {
   std::vector<std::vector<GameHex>> map;
@@ -171,6 +219,8 @@ struct GameState {
   MovementSelection movementSel;  // Two-phase selection state
   std::vector<AttackLine> attackLines;  // Active attack lines to display
   bool showAttackLines;  // Whether to show attack lines
+  TargetPanel targetPanel;  // HBS-style target mech panel
+  PlayerPanel playerPanel;  // HBS-style player mech panel
 
   GameState();
 
