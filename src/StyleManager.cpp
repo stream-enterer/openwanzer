@@ -1,95 +1,137 @@
-#include "Config.hpp"
-#include "rl/raylib.h"
-#include "rl/raygui.h"
-#include <algorithm>
-#include <fstream>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <algorithm>
+#include <fstream>
+#include "Config.hpp"
+#include "rl/raygui.h"
+#include "rl/raylib.h"
 
 namespace config {
 
 // Global variables for style themes
 std::vector<std::string> AVAILABLE_STYLES;
 std::string STYLE_LABELS_STRING;
+std::string STYLES_PATH; // Path where styles were found
 
 // Function to discover available styles
 void discoverStyles() {
-  AVAILABLE_STYLES.clear();
-  const char* stylesPath = "resources/styles";
+	AVAILABLE_STYLES.clear();
 
-  DIR* dir = opendir(stylesPath);
-  if (dir == nullptr) {
-    TraceLog(LOG_WARNING, "Failed to open styles directory");
-    // Add default style as fallback
-    AVAILABLE_STYLES.push_back("default");
-    STYLE_LABELS_STRING = "default";
-    return;
-  }
+	// Try multiple possible paths for resources/styles
+	const char* possiblePaths[] = {
+	    "resources/styles",   // Run from project root
+	    "../resources/styles" // Run from build directory
+	};
 
-  struct dirent* entry;
-  while ((entry = readdir(dir)) != nullptr) {
-    // Skip . and ..
-    if (entry->d_name[0] == '.') continue;
+	const char* stylesPath = nullptr;
+	DIR* dir = nullptr;
 
-    // Check if it's a directory
-    std::string fullPath = std::string(stylesPath) + "/" + entry->d_name;
-    struct stat statbuf;
-    if (stat(fullPath.c_str(), &statbuf) == 0 && S_ISDIR(statbuf.st_mode)) {
-      // Check if .rgs file exists
-      std::string rgsPath = fullPath + "/style_" + entry->d_name + ".rgs";
-      std::ifstream rgsFile(rgsPath);
-      if (rgsFile.good()) {
-        AVAILABLE_STYLES.push_back(entry->d_name);
-      }
-    }
-  }
-  closedir(dir);
+	// Try each path until we find one that works
+	for (const char* path : possiblePaths) {
+		dir = opendir(path);
+		if (dir != nullptr) {
+			stylesPath = path;
+			break;
+		}
+	}
 
-  // Sort styles alphabetically
-  std::sort(AVAILABLE_STYLES.begin(), AVAILABLE_STYLES.end());
+	if (dir == nullptr) {
+		TraceLog(LOG_WARNING, "Failed to open styles directory from any known path");
+		// Add default style as fallback
+		AVAILABLE_STYLES.push_back("default");
+		STYLE_LABELS_STRING = "default";
+		STYLES_PATH = ""; // No valid path found
+		return;
+	}
 
-  // Create labels string
-  STYLE_LABELS_STRING.clear();
-  for (size_t i = 0; i < AVAILABLE_STYLES.size(); i++) {
-    if (i > 0) STYLE_LABELS_STRING += ";";
-    STYLE_LABELS_STRING += AVAILABLE_STYLES[i];
-  }
+	// Store the path for later use
+	STYLES_PATH = stylesPath;
+	TraceLog(LOG_INFO, TextFormat("Found styles directory at: %s", stylesPath));
 
-  TraceLog(LOG_INFO, TextFormat("Found %d styles", (int)AVAILABLE_STYLES.size()));
+	struct dirent* entry;
+	while ((entry = readdir(dir)) != nullptr) {
+		// Skip . and ..
+		if (entry->d_name[0] == '.')
+			continue;
+
+		// Check if it's a directory
+		std::string fullPath = std::string(stylesPath) + "/" + entry->d_name;
+		struct stat statbuf;
+		if (stat(fullPath.c_str(), &statbuf) == 0 && S_ISDIR(statbuf.st_mode)) {
+			// Check if .rgs file exists
+			std::string rgsPath = fullPath + "/style_" + entry->d_name + ".rgs";
+			std::ifstream rgsFile(rgsPath);
+			if (rgsFile.good()) {
+				AVAILABLE_STYLES.push_back(entry->d_name);
+			}
+		}
+	}
+	closedir(dir);
+
+	// Sort styles alphabetically
+	std::sort(AVAILABLE_STYLES.begin(), AVAILABLE_STYLES.end());
+
+	// Create labels string
+	STYLE_LABELS_STRING.clear();
+	for (size_t i = 0; i < AVAILABLE_STYLES.size(); i++) {
+		if (i > 0)
+			STYLE_LABELS_STRING += ";";
+		STYLE_LABELS_STRING += AVAILABLE_STYLES[i];
+	}
+
+	TraceLog(LOG_INFO, TextFormat("Found %d styles", (int)AVAILABLE_STYLES.size()));
 }
 
 // Get index of a style by name
 int getStyleIndex(const std::string& styleName) {
-  for (size_t i = 0; i < AVAILABLE_STYLES.size(); i++) {
-    if (AVAILABLE_STYLES[i] == styleName) {
-      return (int)i;
-    }
-  }
-  return 0; // Default to first style if not found
+	for (size_t i = 0; i < AVAILABLE_STYLES.size(); i++) {
+		if (AVAILABLE_STYLES[i] == styleName) {
+			return (int)i;
+		}
+	}
+	return 0; // Default to first style if not found
 }
 
 // Load style theme
 void loadStyleTheme(const std::string& themeName) {
-  std::string stylePath = "resources/styles/" + themeName + "/style_" + themeName + ".rgs";
+	// Use the discovered styles path, or try fallback paths
+	std::string stylePath;
 
-  // Check if file exists
-  std::ifstream styleFile(stylePath);
-  if (!styleFile.good()) {
-    TraceLog(LOG_WARNING, TextFormat("Style file not found: %s", stylePath.c_str()));
-    return;
-  }
-  styleFile.close();
+	if (!STYLES_PATH.empty()) {
+		// Use the path discovered during initialization
+		stylePath = STYLES_PATH + "/" + themeName + "/style_" + themeName + ".rgs";
+	} else {
+		// Fallback: try both possible paths
+		std::string path1 = "resources/styles/" + themeName + "/style_" + themeName + ".rgs";
+		std::string path2 = "../resources/styles/" + themeName + "/style_" + themeName + ".rgs";
 
-  // Load the style
-  GuiLoadStyle(stylePath.c_str());
-  TraceLog(LOG_INFO, TextFormat("Style loaded: %s", themeName.c_str()));
+		std::ifstream testFile(path1);
+		if (testFile.good()) {
+			stylePath = path1;
+		} else {
+			stylePath = path2;
+		}
+		testFile.close();
+	}
+
+	// Check if file exists
+	std::ifstream styleFile(stylePath);
+	if (!styleFile.good()) {
+		TraceLog(LOG_WARNING, TextFormat("Style file not found: %s", stylePath.c_str()));
+		return;
+	}
+	styleFile.close();
+
+	// Load the style
+	GuiLoadStyle(stylePath.c_str());
+	TraceLog(LOG_INFO, TextFormat("Style loaded: %s", themeName.c_str()));
 }
 
 // Apply GUI scale (currently disabled)
 void applyGuiScale(float scale) {
-  // GUI scaling functionality has been removed as requested
-  // The menu option remains for potential future use
-  TraceLog(LOG_INFO, TextFormat("GUI scale setting: %.2f (scaling disabled)", scale));
+	// GUI scaling functionality has been removed as requested
+	// The menu option remains for potential future use
+	TraceLog(LOG_INFO, TextFormat("GUI scale setting: %.2f (scaling disabled)", scale));
 }
 
 } // namespace config
