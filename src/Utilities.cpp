@@ -114,7 +114,7 @@ std::string getFacingName(float facing) {
 float calculateFacingFromPoint(const HexCoord &center, const Point &targetPoint, Layout &layout) {
   OffsetCoord centerOffset = OffsetCoord(center.col, center.row);  // Direct conversion
   ::Hex centerCube = offset_to_cube(centerOffset);
-  Point centerPixel = hex_to_pixel(layout, centerCube);
+  Point centerPixel = HexToPixel(layout, centerCube);
 
   // Calculate direction vector from center to target
   float dx = targetPoint.x - centerPixel.x;

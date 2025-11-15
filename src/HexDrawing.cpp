@@ -144,7 +144,7 @@ void drawMap(GameState &game) {
 			// Draw movement/attack selection highlights
 			if (hex.isMoveSel) {
 				std::vector<Point> innerCorners;
-				Point center = hex_to_pixel(layout, cubeHex);
+				Point center = HexToPixel(layout, cubeHex);
 				for (int i = 0; i < 6; i++) {
 					Point offset = hex_corner_offset(layout, i);
 					float scale = 0.85f;
@@ -155,7 +155,7 @@ void drawMap(GameState &game) {
 			}
 			if (hex.isAttackSel) {
 				std::vector<Point> innerCorners;
-				Point center = hex_to_pixel(layout, cubeHex);
+				Point center = HexToPixel(layout, cubeHex);
 				for (int i = 0; i < 6; i++) {
 					Point offset = hex_corner_offset(layout, i);
 					float scale = 0.85f;
@@ -177,7 +177,7 @@ void drawMap(GameState &game) {
 
 		OffsetCoord offset = gameCoordToOffset(unit->position);
 		::Hex cubeHex = offset_to_cube(offset);
-		Point center = hex_to_pixel(layout, cubeHex);
+		Point center = HexToPixel(layout, cubeHex);
 
 		float unitWidth = 40 * game.camera.zoom;
 		float unitHeight = 30 * game.camera.zoom;
@@ -274,7 +274,7 @@ void drawMap(GameState &game) {
 		Layout layout = createHexLayout(HEX_SIZE, game.camera.offsetX,
 		                                game.camera.offsetY, game.camera.zoom);
 		Point mousePoint(mousePos.x, mousePos.y);
-		FractionalHex fracHex = pixel_to_hex(layout, mousePoint);
+		FractionalHex fracHex = PixelToHex(layout, mousePoint);
 		::Hex cubeHex = hex_round(fracHex);
 		OffsetCoord offset = cube_to_offset(cubeHex);
 		HexCoord hoveredHex = offsetToGameCoord(offset);
