@@ -1,4 +1,4 @@
-#include "Config.h"
+#include "Config.hpp"
 #include "raylib.h"
 #include "raygui.h"
 #include <algorithm>
@@ -6,7 +6,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 
-namespace Config {
+namespace config {
 
 // Global variables for style themes
 std::vector<std::string> AVAILABLE_STYLES;
@@ -92,4 +92,4 @@ void applyGuiScale(float scale) {
   TraceLog(LOG_INFO, TextFormat("GUI scale setting: %.2f (scaling disabled)", scale));
 }
 
-} // namespace Config
+} // namespace config

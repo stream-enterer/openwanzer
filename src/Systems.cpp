@@ -1,14 +1,14 @@
-#include "GameLogic.h"
-#include "Constants.h"
+#include "GameLogic.hpp"
+#include "Constants.hpp"
 #include <algorithm>
 #include <string>
 
 // Forward declaration for Rendering function
-namespace Rendering {
+namespace rendering {
   void clearSelectionHighlights(GameState& game);
 }
 
-namespace GameLogic {
+namespace gamelogic {
 
 // ============================================================================
 // FOG OF WAR / SPOTTING
@@ -85,11 +85,11 @@ void endTurn(GameState &game) {
   // Clear selection and movement state
   game.selectedUnit = nullptr;
   game.movementSel.reset();
-  Rendering::clearSelectionHighlights(game);
+  rendering::clearSelectionHighlights(game);
 
   // Clear attack lines when ending turn
   game.attackLines.clear();
   game.showAttackLines = false;
 }
 
-} // namespace GameLogic
+} // namespace gamelogic

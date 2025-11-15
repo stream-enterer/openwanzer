@@ -1,11 +1,11 @@
-#ifndef OPENWANZER_CONFIG_H
-#define OPENWANZER_CONFIG_H
+#ifndef OPENWANZER_CONFIG_HPP
+#define OPENWANZER_CONFIG_HPP
 
 #include <string>
 #include <vector>
-#include "GameState.h"
+#include "GameState.hpp"
 
-namespace Config {
+namespace config {
 
 // Global variables for style themes
 extern std::vector<std::string> AVAILABLE_STYLES;
@@ -23,6 +23,6 @@ void loadConfig(VideoSettings& settings);
 // GUI scaling
 void applyGuiScale(float scale);
 
-} // namespace Config
+} // namespace config
 
-#endif // OPENWANZER_CONFIG_H
+#endif // OPENWANZER_CONFIG_HPP

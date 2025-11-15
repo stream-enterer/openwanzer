@@ -1,5 +1,5 @@
-#ifndef OPENWANZER_TYPES_H
-#define OPENWANZER_TYPES_H
+#ifndef OPENWANZER_TYPES_HPP
+#define OPENWANZER_TYPES_HPP
 
 // Forward declarations for core types
 struct HexCoord;
@@ -17,4 +17,4 @@ struct GameState;
 // Forward declarations for structs
 struct Resolution;
 
-#endif // OPENWANZER_TYPES_H
+#endif // OPENWANZER_TYPES_HPP

@@ -1,11 +1,11 @@
-#ifndef OPENWANZER_RENDERING_H
-#define OPENWANZER_RENDERING_H
+#ifndef OPENWANZER_RENDERING_HPP
+#define OPENWANZER_RENDERING_HPP
 
 #include "raylib.h"
 #include "hex.h"
-#include "GameState.h"
+#include "GameState.hpp"
 
-namespace Rendering {
+namespace rendering {
 
 // ============================================================================
 // HEX COORDINATE CONVERSIONS (hex_drawing.cpp)
@@ -44,6 +44,6 @@ void drawTargetArcRing(GameState& game, Unit* unit);
 void drawAttackerFiringCone(GameState& game);
 void drawAttackLines(GameState& game);
 
-} // namespace Rendering
+} // namespace rendering
 
-#endif // OPENWANZER_RENDERING_H
+#endif // OPENWANZER_RENDERING_HPP

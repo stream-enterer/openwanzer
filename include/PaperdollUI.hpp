@@ -1,11 +1,11 @@
-#ifndef OPENWANZER_PAPERDOLL_UI_H
-#define OPENWANZER_PAPERDOLL_UI_H
+#ifndef OPENWANZER_PAPERDOLL_UI_HPP
+#define OPENWANZER_PAPERDOLL_UI_HPP
 
-#include "GameState.h"
-#include "Unit.h"
+#include "GameState.hpp"
+#include "Unit.hpp"
 #include "raylib.h"
 
-namespace PaperdollUI {
+namespace paperdollui {
 
 // Main panel rendering functions
 void renderTargetPanel(const GameState& game);
@@ -15,6 +15,6 @@ void renderPlayerPanel(const GameState& game);
 void handlePaperdollPanelDrag(GameState& game);
 void handlePaperdollTooltips(GameState& game);
 
-} // namespace PaperdollUI
+} // namespace paperdollui
 
-#endif // OPENWANZER_PAPERDOLL_UI_H
+#endif // OPENWANZER_PAPERDOLL_UI_HPP

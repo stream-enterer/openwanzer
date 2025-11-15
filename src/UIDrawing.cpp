@@ -1,9 +1,9 @@
-#include "Rendering.h"
-#include "Constants.h"
-#include "GameLogic.h"
-#include "Input.h"
-#include "Config.h"
-#include "UIPanels.h"
+#include "Rendering.hpp"
+#include "Constants.hpp"
+#include "GameLogic.hpp"
+#include "Input.hpp"
+#include "Config.hpp"
+#include "UIPanels.hpp"
 #include "raylib.h"
 #include "raymath.h"
 #include "raygui.h"
@@ -13,7 +13,7 @@
 #include <vector>
 #include <algorithm>
 
-namespace Rendering {
+namespace rendering {
 
 void drawCombatLog(GameState &game) {
   // Get font size from raygui theme (same as dropdowns)
@@ -199,7 +199,7 @@ void drawUnitInfoBox(GameState &game) {
   DrawText(info.c_str(), x, y, normalSize, textColor);
   y += normalSize + 5;
 
-  info = "Facing: " + GameLogic::getFacingName(unit->facing);
+  info = "Facing: " + gamelogic::getFacingName(unit->facing);
   DrawText(info.c_str(), x, y, normalSize, textColor);
   y += normalSize + 10;
 
@@ -236,14 +236,14 @@ void drawUI(GameState &game) {
   if (hoveredHex.row >= 0 && hoveredHex.row < MAP_ROWS &&
       hoveredHex.col >= 0 && hoveredHex.col < MAP_COLS) {
     GameHex &hex = game.map[hoveredHex.row][hoveredHex.col];
-    std::string terrainName = GameLogic::getTerrainName(hex.terrain);
+    std::string terrainName = gamelogic::getTerrainName(hex.terrain);
 
     // Get movement cost (use selected unit's movement method if available, otherwise use TRACKED as default)
     int moveCost = 255;
     if (game.selectedUnit) {
-      moveCost = GameLogic::getMovementCost(game.selectedUnit->movMethod, hex.terrain);
+      moveCost = gamelogic::getMovementCost(game.selectedUnit->movMethod, hex.terrain);
     } else {
-      moveCost = GameLogic::getMovementCost(MovMethod::TRACKED, hex.terrain);
+      moveCost = gamelogic::getMovementCost(MovMethod::TRACKED, hex.terrain);
     }
 
     std::string costStr;
@@ -267,14 +267,14 @@ void drawUI(GameState &game) {
     // Reset camera to center and 100% zoom
     game.camera.zoom = 1.0f;
     game.camera.zoomDirection = 0;
-    Input::calculateCenteredCameraOffset(game.camera, SCREEN_WIDTH, SCREEN_HEIGHT);
+    input::calculateCenteredCameraOffset(game.camera, SCREEN_WIDTH, SCREEN_HEIGHT);
 
     // Reset combat log and unit info box positions
     game.combatLog.resetPosition();
     game.unitInfoBox.resetPosition();
 
     // Reset paperdoll panel positions
-    UIPanel::resetPanelPositions(game);
+    uipanel::resetPanelPositions(game);
   }
 
   // Options button
@@ -422,13 +422,13 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
     HEX_SIZE = game.settings.hexSize;
 
     // Apply style theme
-    Config::loadStyleTheme(game.settings.styleTheme);
+    config::loadStyleTheme(game.settings.styleTheme);
 
     // Apply GUI scale (after style is loaded)
-    Config::applyGuiScale(GUI_SCALE_VALUES[game.settings.guiScaleIndex]);
+    config::applyGuiScale(GUI_SCALE_VALUES[game.settings.guiScaleIndex]);
 
     // Save config to file
-    Config::saveConfig(game.settings);
+    config::saveConfig(game.settings);
 
     // Menu stays open after applying settings
   }
@@ -467,15 +467,15 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
 
   // Style Theme dropdown (draw first - bottommost)
   // Get current style index
-  int currentStyleIndex = Config::getStyleIndex(game.settings.styleTheme);
+  int currentStyleIndex = config::getStyleIndex(game.settings.styleTheme);
   if (GuiDropdownBox(
           Rectangle{(float)controlX, (float)styleThemeY - 5, (float)controlWidth, 30},
-          Config::STYLE_LABELS_STRING.c_str(), &currentStyleIndex, game.settings.styleThemeDropdownEdit)) {
+          config::STYLE_LABELS_STRING.c_str(), &currentStyleIndex, game.settings.styleThemeDropdownEdit)) {
     game.settings.styleThemeDropdownEdit = !game.settings.styleThemeDropdownEdit;
   }
   // Update style theme name if index changed
-  if (currentStyleIndex >= 0 && currentStyleIndex < (int)Config::AVAILABLE_STYLES.size()) {
-    game.settings.styleTheme = Config::AVAILABLE_STYLES[currentStyleIndex];
+  if (currentStyleIndex >= 0 && currentStyleIndex < (int)config::AVAILABLE_STYLES.size()) {
+    game.settings.styleTheme = config::AVAILABLE_STYLES[currentStyleIndex];
   }
 
   // GUI Scale dropdown
@@ -509,4 +509,4 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
   }
 }
 
-} // namespace Rendering
+} // namespace rendering

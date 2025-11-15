@@ -1,7 +1,7 @@
-#include "UIPanels.h"
-#include "Constants.h"
+#include "UIPanels.hpp"
+#include "Constants.hpp"
 
-namespace UIPanel {
+namespace uipanel {
 
 // Panel dimensions
 const int TARGET_PANEL_WIDTH = 720;
@@ -51,7 +51,7 @@ void initializePlayerPanel(GameState& game) {
     game.playerPanel.isVisible = false;
 }
 
-void showTargetPanel(GameState& game, Unit* target, CombatArcs::AttackArc arc) {
+void showTargetPanel(GameState& game, Unit* target, combatarcs::AttackArc arc) {
     game.targetPanel.targetUnit = target;
     game.targetPanel.currentArc = arc;
     game.targetPanel.isVisible = true;
@@ -130,4 +130,4 @@ void calculatePaperdollRegions(PaperdollPanel& panel) {
                               sectionWidth * 0.8f, sectionHeight};
 }
 
-} // namespace UIPanel
+} // namespace uipanel

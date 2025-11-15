@@ -1,5 +1,5 @@
-#ifndef OPENWANZER_ENUMS_H
-#define OPENWANZER_ENUMS_H
+#ifndef OPENWANZER_ENUMS_HPP
+#define OPENWANZER_ENUMS_HPP
 
 // Terrain types
 enum class TerrainType {
@@ -64,4 +64,4 @@ enum TerrainIndex {
   TI_ROAD = 17
 };
 
-#endif // OPENWANZER_ENUMS_H
+#endif // OPENWANZER_ENUMS_HPP

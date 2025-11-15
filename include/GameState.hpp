@@ -1,14 +1,14 @@
-#ifndef OPENWANZER_GAMESTATE_H
-#define OPENWANZER_GAMESTATE_H
+#ifndef OPENWANZER_GAME_STATE_HPP
+#define OPENWANZER_GAME_STATE_HPP
 
 #include <string>
 #include <vector>
 #include <memory>
 #include "raylib.h"
-#include "HexCoord.h"
-#include "GameHex.h"
-#include "Unit.h"
-#include "CombatArcs.h"
+#include "HexCoord.hpp"
+#include "GameHex.hpp"
+#include "Unit.hpp"
+#include "CombatArcs.hpp"
 
 // Forward declaration for calculateCenteredCameraOffset
 struct CameraState;
@@ -148,9 +148,9 @@ struct MovementSelection {
 struct AttackLine {
   HexCoord from;
   HexCoord to;
-  CombatArcs::AttackArc arc;
+  combatarcs::AttackArc arc;
 
-  AttackLine(HexCoord f, HexCoord t, CombatArcs::AttackArc a)
+  AttackLine(HexCoord f, HexCoord t, combatarcs::AttackArc a)
       : from(f), to(t), arc(a) {}
 };
 
@@ -191,9 +191,9 @@ struct PaperdollPanel {
 
 struct TargetPanel : public PaperdollPanel {
     Unit* targetUnit;
-    CombatArcs::AttackArc currentArc;  // For red line indicators
+    combatarcs::AttackArc currentArc;  // For red line indicators
 
-    TargetPanel() : targetUnit(nullptr), currentArc(CombatArcs::AttackArc::FRONT) {}
+    TargetPanel() : targetUnit(nullptr), currentArc(combatarcs::AttackArc::FRONT) {}
 };
 
 struct PlayerPanel : public PaperdollPanel {
@@ -231,4 +231,4 @@ struct GameState {
   void addUnit(UnitClass uClass, int side, int row, int col);
 };
 
-#endif // OPENWANZER_GAMESTATE_H
+#endif // OPENWANZER_GAME_STATE_HPP

@@ -1,4 +1,4 @@
-#include "ArmorLocation.h"
+#include "ArmorLocation.hpp"
 
 std::string locationToString(ArmorLocation loc) {
     switch (loc) {

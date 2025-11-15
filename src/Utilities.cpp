@@ -1,10 +1,10 @@
-#include "GameLogic.h"
-#include "Constants.h"
+#include "GameLogic.hpp"
+#include "Constants.hpp"
 #include "hex.h"
 #include <cmath>
 #include <cstdio>
 
-namespace GameLogic {
+namespace gamelogic {
 
 // ============================================================================
 // TERRAIN UTILITY FUNCTIONS
@@ -60,7 +60,7 @@ int getMovementCost(MovMethod movMethod, TerrainType terrain) {
   int movMethodIdx = static_cast<int>(movMethod);
   int terrainIdx = getTerrainIndex(terrain);
   if (movMethodIdx >= 0 && movMethodIdx < 12 && terrainIdx >= 0 && terrainIdx < 18) {
-    return MOV_TABLE_DRY[movMethodIdx][terrainIdx];
+    return kMovTableDry[movMethodIdx][terrainIdx];
   }
   return 255; // Impassable by default
 }
@@ -109,7 +109,7 @@ std::string getFacingName(float facing) {
 }
 
 // Calculate facing angle from a hex center to a point on screen
-// Note: This function needs Rendering::gameCoordToOffset, so it will be
+// Note: This function needs rendering::gameCoordToOffset, so it will be
 // implemented in a separate file to avoid circular dependencies
 float calculateFacingFromPoint(const HexCoord &center, const Point &targetPoint, Layout &layout) {
   OffsetCoord centerOffset = OffsetCoord(center.col, center.row);  // Direct conversion
@@ -138,7 +138,7 @@ bool isAir(const Unit* unit) {
   return unit->movMethod == MovMethod::AIR;
 }
 
-bool isHardTarget(const Unit* unit) {
+bool isHardTarget([[maybe_unused]] const Unit* unit) {
   // All BattleTech mechs are hard targets
   return true;
 }
@@ -149,7 +149,7 @@ bool isSea(const Unit* unit) {
          unit->movMethod == MovMethod::NAVAL;
 }
 
-bool isRecon(const Unit* unit) {
+bool isRecon([[maybe_unused]] const Unit* unit) {
   // No recon units in BattleTech
   return false;
 }
@@ -230,4 +230,4 @@ void addLogMessage(GameState& game, const std::string& message) {
   game.combatLog.scrollOffset = 999999.0f;  // Large value to force scroll to bottom
 }
 
-} // namespace GameLogic
+} // namespace gamelogic

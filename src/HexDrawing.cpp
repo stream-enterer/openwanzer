@@ -1,14 +1,14 @@
 #include <cmath>
 #include <string>
 #include <vector>
-#include "Constants.h"
-#include "GameLogic.h"
+#include "Constants.hpp"
+#include "GameLogic.hpp"
 #include "hex.h"
 #include "raylib.h"
 #include "raymath.h"
-#include "Rendering.h"
+#include "Rendering.hpp"
 
-namespace Rendering {
+namespace rendering {
 
 // ============================================================================
 // HEX LAYOUT AND COORDINATE CONVERSION
@@ -139,7 +139,7 @@ void drawMap(GameState &game) {
 			drawHexagon(corners, terrainColor, true);
 
 			// Draw hex outline
-			drawHexagon(corners, COLOR_GRID, false);
+			drawHexagon(corners, kColorGrid, false);
 
 			// Draw movement/attack selection highlights
 			if (hex.isMoveSel) {
@@ -282,7 +282,7 @@ void drawMap(GameState &game) {
 		// Only show path if hovering over a valid movement hex
 		if (hoveredHex.row >= 0 && hoveredHex.row < MAP_ROWS && hoveredHex.col >= 0 && hoveredHex.col < MAP_COLS && game.map[hoveredHex.row][hoveredHex.col].isMoveSel) {
 			// Get path from unit position to hovered hex
-			std::vector<HexCoord> path = GameLogic::findPath(game, game.selectedUnit,
+			std::vector<HexCoord> path = gamelogic::findPath(game, game.selectedUnit,
 			                                                 game.selectedUnit->position,
 			                                                 hoveredHex);
 
@@ -327,4 +327,4 @@ void clearSelectionHighlights(GameState &game) {
 	}
 }
 
-} // namespace Rendering
+} // namespace rendering

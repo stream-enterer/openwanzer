@@ -1,4 +1,4 @@
-#include "Unit.h"
+#include "Unit.hpp"
 
 void Unit::initializeLocations(WeightClass wClass) {
     weightClass = wClass;

@@ -1,16 +1,16 @@
-#ifndef OPENWANZER_DAMAGE_SYSTEM_H
-#define OPENWANZER_DAMAGE_SYSTEM_H
+#ifndef OPENWANZER_DAMAGE_SYSTEM_HPP
+#define OPENWANZER_DAMAGE_SYSTEM_HPP
 
-#include "Unit.h"
-#include "ArmorLocation.h"
-#include "GameState.h"
+#include "Unit.hpp"
+#include "ArmorLocation.hpp"
+#include "GameState.hpp"
 
-namespace DamageSystem {
+namespace damagesystem {
 
 void applyDamageToLocation(GameState& game, Unit* target, ArmorLocation location, int damage);
 ArmorLocation getTransferLocation(ArmorLocation destroyed);
 ArmorLocation mapRearToFront(ArmorLocation rear);
 
-} // namespace DamageSystem
+} // namespace damagesystem
 
 #endif

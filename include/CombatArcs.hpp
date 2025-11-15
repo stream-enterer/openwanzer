@@ -1,10 +1,10 @@
-#ifndef OPENWANZER_COMBAT_ARCS_H
-#define OPENWANZER_COMBAT_ARCS_H
+#ifndef OPENWANZER_COMBAT_ARCS_HPP
+#define OPENWANZER_COMBAT_ARCS_HPP
 
 #include "raylib.h"
-#include "HexCoord.h"
+#include "HexCoord.hpp"
 
-namespace CombatArcs {
+namespace combatarcs {
 
 enum class AttackArc { FRONT, LEFT_SIDE, RIGHT_SIDE, REAR };
 
@@ -20,6 +20,6 @@ Color getLineColor(AttackArc arc);
 // Get color for target arc segment
 Color getArcSegmentColor(AttackArc arc, bool isFrontArc);
 
-} // namespace CombatArcs
+} // namespace combatarcs
 
 #endif
