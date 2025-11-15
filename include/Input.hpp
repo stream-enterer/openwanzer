@@ -3,7 +3,7 @@
 
 #include "GameState.hpp"
 
-namespace Input {
+namespace input {
 
 // Camera controls
 void calculateCenteredCameraOffset(CameraState& camera, int screenWidth, int screenHeight);
@@ -14,6 +14,6 @@ void handlePan(GameState& game);
 void handleCombatLogScroll(GameState& game);
 void handleCombatLogDrag(GameState& game);
 
-} // namespace Input
+} // namespace input
 
 #endif // OPENWANZER_INPUT_HPP

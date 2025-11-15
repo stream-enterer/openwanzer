@@ -8,7 +8,7 @@
 #include "hex.h"
 #include <string>
 
-namespace GameLogic {
+namespace gamelogic {
 
 void performAttack(GameState &game, Unit *attacker, Unit *defender) {
   if (!attacker || !defender) return;
@@ -30,10 +30,10 @@ void performAttack(GameState &game, Unit *attacker, Unit *defender) {
   }
 
   // Get attack arc using existing system
-  Layout layout = Rendering::createHexLayout(HEX_SIZE, 0, 0, 1.0f);
+  Layout layout = rendering::createHexLayout(HEX_SIZE, 0, 0, 1.0f);
 
-  OffsetCoord attackerOffset = Rendering::gameCoordToOffset(attacker->position);
-  OffsetCoord defenderOffset = Rendering::gameCoordToOffset(defender->position);
+  OffsetCoord attackerOffset = rendering::gameCoordToOffset(attacker->position);
+  OffsetCoord defenderOffset = rendering::gameCoordToOffset(defender->position);
   ::Hex attackerCube = offset_to_cube(attackerOffset);
   ::Hex defenderCube = offset_to_cube(defenderOffset);
   Point attackerPixel = hex_to_pixel(layout, attackerCube);
@@ -43,24 +43,24 @@ void performAttack(GameState &game, Unit *attacker, Unit *defender) {
   Vector2 defenderPos = {(float)defenderPixel.x, (float)defenderPixel.y};
 
   // Use existing getAttackArc function
-  CombatArcs::AttackArc arc = CombatArcs::getAttackArc(attackerPos, defenderPos, defender->facing);
+  combatarcs::AttackArc arc = combatarcs::getAttackArc(attackerPos, defenderPos, defender->facing);
 
   std::string arcName;
   switch (arc) {
-    case CombatArcs::AttackArc::FRONT: arcName = "FRONT"; break;
-    case CombatArcs::AttackArc::LEFT_SIDE: arcName = "LEFT SIDE"; break;
-    case CombatArcs::AttackArc::RIGHT_SIDE: arcName = "RIGHT SIDE"; break;
-    case CombatArcs::AttackArc::REAR: arcName = "REAR"; break;
+    case combatarcs::AttackArc::FRONT: arcName = "FRONT"; break;
+    case combatarcs::AttackArc::LEFT_SIDE: arcName = "LEFT SIDE"; break;
+    case combatarcs::AttackArc::RIGHT_SIDE: arcName = "RIGHT SIDE"; break;
+    case combatarcs::AttackArc::REAR: arcName = "REAR"; break;
   }
   addLogMessage(game, "[HIT LOCATION] Attack from " + arcName + " arc");
 
   // Roll hit location
-  ArmorLocation hitLoc = HitTables::rollHitLocation(arc);
+  ArmorLocation hitLoc = hittables::rollHitLocation(arc);
   addLogMessage(game, "[HIT LOCATION] Hit: " + locationToString(hitLoc));
 
   // Apply damage
   int damage = attacker->attack;
-  DamageSystem::applyDamageToLocation(game, defender, hitLoc, damage);
+  damagesystem::applyDamageToLocation(game, defender, hitLoc, damage);
 
   // Check death
   if (!defender->isAlive()) {
@@ -74,4 +74,4 @@ void performAttack(GameState &game, Unit *attacker, Unit *defender) {
   addLogMessage(game, "---");
 }
 
-} // namespace GameLogic
+} // namespace gamelogic

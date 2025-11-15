@@ -1,13 +1,13 @@
 #include "HitTables.hpp"
 #include <cstdlib>
 
-namespace HitTables {
+namespace hittables {
 
-ArmorLocation rollHitLocation(CombatArcs::AttackArc arc) {
+ArmorLocation rollHitLocation(combatarcs::AttackArc arc) {
     int roll = rand() % 81; // 0-80
 
     switch (arc) {
-        case CombatArcs::AttackArc::FRONT:
+        case combatarcs::AttackArc::FRONT:
             if (roll < 1) return ArmorLocation::HEAD;
             if (roll < 17) return ArmorLocation::CENTER_TORSO;
             if (roll < 31) return ArmorLocation::LEFT_TORSO;
@@ -17,21 +17,21 @@ ArmorLocation rollHitLocation(CombatArcs::AttackArc arc) {
             if (roll < 73) return ArmorLocation::LEFT_LEG;
             return ArmorLocation::RIGHT_LEG;
 
-        case CombatArcs::AttackArc::LEFT_SIDE:
+        case combatarcs::AttackArc::LEFT_SIDE:
             if (roll < 1) return ArmorLocation::HEAD;
             if (roll < 5) return ArmorLocation::CENTER_TORSO;
             if (roll < 33) return ArmorLocation::LEFT_TORSO;
             if (roll < 61) return ArmorLocation::LEFT_ARM;
             return ArmorLocation::LEFT_LEG;
 
-        case CombatArcs::AttackArc::RIGHT_SIDE:
+        case combatarcs::AttackArc::RIGHT_SIDE:
             if (roll < 1) return ArmorLocation::HEAD;
             if (roll < 5) return ArmorLocation::CENTER_TORSO;
             if (roll < 33) return ArmorLocation::RIGHT_TORSO;
             if (roll < 61) return ArmorLocation::RIGHT_ARM;
             return ArmorLocation::RIGHT_LEG;
 
-        case CombatArcs::AttackArc::REAR:
+        case combatarcs::AttackArc::REAR:
             if (roll < 16) return ArmorLocation::CENTER_TORSO_REAR;
             if (roll < 30) return ArmorLocation::LEFT_TORSO_REAR;
             if (roll < 44) return ArmorLocation::RIGHT_TORSO_REAR;
@@ -45,4 +45,4 @@ ArmorLocation rollHitLocation(CombatArcs::AttackArc arc) {
     }
 }
 
-} // namespace HitTables
+} // namespace hittables

@@ -5,7 +5,7 @@
 #include "hex.h"
 #include "GameState.hpp"
 
-namespace Rendering {
+namespace rendering {
 
 // ============================================================================
 // HEX COORDINATE CONVERSIONS (hex_drawing.cpp)
@@ -44,6 +44,6 @@ void drawTargetArcRing(GameState& game, Unit* unit);
 void drawAttackerFiringCone(GameState& game);
 void drawAttackLines(GameState& game);
 
-} // namespace Rendering
+} // namespace rendering
 
 #endif // OPENWANZER_RENDERING_HPP

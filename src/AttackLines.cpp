@@ -3,7 +3,7 @@
 #include "Rendering.hpp"
 #include "Constants.hpp"
 
-namespace GameLogic {
+namespace gamelogic {
 
 void updateAttackLines(GameState& game) {
     if (!game.selectedUnit) return;
@@ -21,9 +21,9 @@ void updateAttackLines(GameState& game) {
                    ? game.movementSel.selectedFacing
                    : game.selectedUnit->facing;
 
-    Layout layout = Rendering::createHexLayout(HEX_SIZE, 0, 0, 1.0f);
+    Layout layout = rendering::createHexLayout(HEX_SIZE, 0, 0, 1.0f);
 
-    OffsetCoord attackerOffset = Rendering::gameCoordToOffset(game.selectedUnit->position);
+    OffsetCoord attackerOffset = rendering::gameCoordToOffset(game.selectedUnit->position);
     ::Hex attackerCube = offset_to_cube(attackerOffset);
     Point attackerPos = hex_to_pixel(layout, attackerCube);
 
@@ -36,7 +36,7 @@ void updateAttackLines(GameState& game) {
         GameHex& targetHex = game.map[unit->position.row][unit->position.col];
         if (!targetHex.isSpotted(game.currentPlayer)) continue;
 
-        OffsetCoord targetOffset = Rendering::gameCoordToOffset(unit->position);
+        OffsetCoord targetOffset = rendering::gameCoordToOffset(unit->position);
         ::Hex targetCube = offset_to_cube(targetOffset);
         Point targetPos = hex_to_pixel(layout, targetCube);
 
@@ -44,10 +44,10 @@ void updateAttackLines(GameState& game) {
         Vector2 tgtPos = {(float)targetPos.x, (float)targetPos.y};
 
         // Check if target is in firing arc
-        if (!CombatArcs::isInFiringArc(atkPos, facing, tgtPos)) continue;
+        if (!combatarcs::isInFiringArc(atkPos, facing, tgtPos)) continue;
 
         // Calculate which arc of target we're hitting
-        CombatArcs::AttackArc arc = CombatArcs::getAttackArc(
+        combatarcs::AttackArc arc = combatarcs::getAttackArc(
             atkPos, tgtPos, unit->facing
         );
 
@@ -59,4 +59,4 @@ void updateAttackLines(GameState& game) {
     }
 }
 
-} // namespace GameLogic
+} // namespace gamelogic

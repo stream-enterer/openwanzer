@@ -4,7 +4,7 @@
 #include "raylib.h"
 #include "HexCoord.hpp"
 
-namespace CombatArcs {
+namespace combatarcs {
 
 enum class AttackArc { FRONT, LEFT_SIDE, RIGHT_SIDE, REAR };
 
@@ -20,6 +20,6 @@ Color getLineColor(AttackArc arc);
 // Get color for target arc segment
 Color getArcSegmentColor(AttackArc arc, bool isFrontArc);
 
-} // namespace CombatArcs
+} // namespace combatarcs
 
 #endif

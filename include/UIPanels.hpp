@@ -4,14 +4,14 @@
 #include "GameState.hpp"
 #include "CombatArcs.hpp"
 
-namespace UIPanel {
+namespace uipanel {
 
 // Panel initialization
 void initializeTargetPanel(GameState& game);
 void initializePlayerPanel(GameState& game);
 
 // Panel visibility control
-void showTargetPanel(GameState& game, Unit* target, CombatArcs::AttackArc arc);
+void showTargetPanel(GameState& game, Unit* target, combatarcs::AttackArc arc);
 void showPlayerPanel(GameState& game, Unit* player);
 void hideTargetPanel(GameState& game);
 void hidePlayerPanel(GameState& game);
@@ -20,6 +20,6 @@ void hidePlayerPanel(GameState& game);
 void resetPanelPositions(GameState& game);
 void calculatePaperdollRegions(PaperdollPanel& panel);
 
-} // namespace UIPanel
+} // namespace uipanel
 
 #endif // OPENWANZER_UI_PANELS_HPP

@@ -6,7 +6,7 @@
 #include "hex.h"
 #include <cmath>
 
-namespace Input {
+namespace input {
 
 // Calculate centered camera offset to center the hex map in the play area
 void calculateCenteredCameraOffset(CameraState& camera, int screenWidth, int screenHeight) {
@@ -19,11 +19,11 @@ void calculateCenteredCameraOffset(CameraState& camera, int screenWidth, int scr
   // Calculate the center of the hex map in world coordinates
   // The map center is approximately at hex (MAP_ROWS/2, MAP_COLS/2)
   HexCoord mapCenter = {MAP_ROWS / 2, MAP_COLS / 2};
-  OffsetCoord offset = Rendering::gameCoordToOffset(mapCenter);
+  OffsetCoord offset = rendering::gameCoordToOffset(mapCenter);
   ::Hex cubeHex = offset_to_cube(offset);
 
   // Create a temporary layout to calculate pixel position
-  Layout tempLayout = Rendering::createHexLayout(HEX_SIZE, 0, 0, camera.zoom);
+  Layout tempLayout = rendering::createHexLayout(HEX_SIZE, 0, 0, camera.zoom);
   Point mapCenterPixel = hex_to_pixel(tempLayout, cubeHex);
 
   // Calculate offset so that map center appears at play area center
@@ -193,4 +193,4 @@ void handleCombatLogDrag(GameState &game) {
   }
 }
 
-} // namespace Input
+} // namespace input

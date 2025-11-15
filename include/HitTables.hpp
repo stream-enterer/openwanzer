@@ -4,11 +4,11 @@
 #include "ArmorLocation.hpp"
 #include "CombatArcs.hpp"
 
-namespace HitTables {
+namespace hittables {
 
 // Roll hit location based on attack arc
-ArmorLocation rollHitLocation(CombatArcs::AttackArc arc);
+ArmorLocation rollHitLocation(combatarcs::AttackArc arc);
 
-} // namespace HitTables
+} // namespace hittables
 
 #endif

@@ -148,9 +148,9 @@ struct MovementSelection {
 struct AttackLine {
   HexCoord from;
   HexCoord to;
-  CombatArcs::AttackArc arc;
+  combatarcs::AttackArc arc;
 
-  AttackLine(HexCoord f, HexCoord t, CombatArcs::AttackArc a)
+  AttackLine(HexCoord f, HexCoord t, combatarcs::AttackArc a)
       : from(f), to(t), arc(a) {}
 };
 
@@ -191,9 +191,9 @@ struct PaperdollPanel {
 
 struct TargetPanel : public PaperdollPanel {
     Unit* targetUnit;
-    CombatArcs::AttackArc currentArc;  // For red line indicators
+    combatarcs::AttackArc currentArc;  // For red line indicators
 
-    TargetPanel() : targetUnit(nullptr), currentArc(CombatArcs::AttackArc::FRONT) {}
+    TargetPanel() : targetUnit(nullptr), currentArc(combatarcs::AttackArc::FRONT) {}
 };
 
 struct PlayerPanel : public PaperdollPanel {

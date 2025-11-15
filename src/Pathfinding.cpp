@@ -4,11 +4,11 @@
 #include <string>
 
 // Forward declaration for Rendering function
-namespace Rendering {
+namespace rendering {
   void clearSelectionHighlights(GameState& game);
 }
 
-namespace GameLogic {
+namespace gamelogic {
 
 // BFS pathfinding - returns path from start to goal
 std::vector<HexCoord> findPath(GameState &game, Unit *unit, const HexCoord &start, const HexCoord &goal) {
@@ -71,7 +71,7 @@ std::vector<HexCoord> findPath(GameState &game, Unit *unit, const HexCoord &star
       // Get terrain cost
       GameHex& hex = game.map[adj.row][adj.col];
       int terrainIdx = getTerrainIndex(hex.terrain);
-      int cost = MOV_TABLE_DRY[movMethodIdx][terrainIdx];
+      int cost = kMovTableDry[movMethodIdx][terrainIdx];
 
       // Skip impassable terrain
       if (cost >= 255) continue;
@@ -111,7 +111,7 @@ std::vector<HexCoord> findPath(GameState &game, Unit *unit, const HexCoord &star
 }
 
 void highlightMovementRange(GameState &game, Unit *unit) {
-  Rendering::clearSelectionHighlights(game);
+  rendering::clearSelectionHighlights(game);
   if (!unit)
     return;
 
@@ -140,7 +140,7 @@ void highlightMovementRange(GameState &game, Unit *unit) {
       // Get terrain cost
       GameHex& hex = game.map[adj.row][adj.col];
       int terrainIdx = getTerrainIndex(hex.terrain);
-      int cost = MOV_TABLE_DRY[movMethodIdx][terrainIdx];
+      int cost = kMovTableDry[movMethodIdx][terrainIdx];
 
       // Skip impassable terrain
       if (cost >= 255) continue;
@@ -218,7 +218,7 @@ void moveUnit(GameState &game, Unit *unit, const HexCoord &target, bool updateSp
   int movMethodIdx = static_cast<int>(unit->movMethod);
   GameHex& targetHex = game.map[target.row][target.col];
   int terrainIdx = getTerrainIndex(targetHex.terrain);
-  int cost = MOV_TABLE_DRY[movMethodIdx][terrainIdx];
+  int cost = kMovTableDry[movMethodIdx][terrainIdx];
 
   // Don't move if impassable
   if (cost >= 255) {
@@ -254,4 +254,4 @@ void moveUnit(GameState &game, Unit *unit, const HexCoord &target, bool updateSp
   }
 }
 
-} // namespace GameLogic
+} // namespace gamelogic

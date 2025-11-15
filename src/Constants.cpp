@@ -1,27 +1,27 @@
 #include "Constants.hpp"
 
 // Default configuration values
-const int DEFAULT_SCREEN_WIDTH = 1920;
-const int DEFAULT_SCREEN_HEIGHT = 1080;
-const float DEFAULT_HEX_SIZE = 40.0f;
-const int DEFAULT_MAP_ROWS = 12;
-const int DEFAULT_MAP_COLS = 16;
+const int kDefaultScreenWidth = 1920;
+const int kDefaultScreenHeight = 1080;
+const float kDefaultHexSize = 40.0f;
+const int kDefaultMapRows = 12;
+const int kDefaultMapCols = 16;
 
 // Current settings (can be modified at runtime)
-int SCREEN_WIDTH = DEFAULT_SCREEN_WIDTH;
-int SCREEN_HEIGHT = DEFAULT_SCREEN_HEIGHT;
-float HEX_SIZE = DEFAULT_HEX_SIZE;
-int MAP_ROWS = DEFAULT_MAP_ROWS;
-int MAP_COLS = DEFAULT_MAP_COLS;
+int SCREEN_WIDTH = kDefaultScreenWidth;
+int SCREEN_HEIGHT = kDefaultScreenHeight;
+float HEX_SIZE = kDefaultHexSize;
+int MAP_ROWS = kDefaultMapRows;
+int MAP_COLS = kDefaultMapCols;
 
 // Color definitions
-const Color COLOR_BACKGROUND = BLACK;
-const Color COLOR_GRID = Color{245, 245, 220, 255}; // Pale beige
-const Color COLOR_FPS = Color{192, 192, 192, 255};   // Light grey
+const Color kColorBackground = BLACK;
+const Color kColorGrid = Color{245, 245, 220, 255}; // Pale beige
+const Color kColorFps = Color{192, 192, 192, 255};   // Light grey
 
 // Movement cost table [movMethod][terrain]
 // 254 = Stop move (can enter but stops there), 255 = Don't enter (impassable)
-const int MOV_TABLE_DRY[12][18] = {
+const int kMovTableDry[12][18] = {
     // Clear, City, Airfield, Forest, Bocage, Hill, Mountain, Sand, Swamp, Ocean, River, Fort, Port, Stream, Escarp, ImpassRiver, Rough, Road
     {1, 1, 1, 2, 4, 2, 254, 1, 4, 255, 254, 1, 1, 2, 255, 255, 2, 1}, // Tracked
     {1, 1, 1, 2, 254, 2, 254, 1, 4, 255, 254, 1, 1, 2, 255, 255, 2, 1}, // Half Tracked

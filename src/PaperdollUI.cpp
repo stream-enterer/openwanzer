@@ -8,7 +8,7 @@
 #include <string>
 #include <cmath>
 
-namespace PaperdollUI {
+namespace paperdollui {
 
 // ============================================================================
 // COLORS AND CONSTANTS
@@ -190,28 +190,28 @@ void drawVerticalArcLine(Rectangle bounds, bool isLeftSide) {
                (float)ARC_LINE_THICKNESS, ARC_INDICATOR_COLOR);
 }
 
-void renderAttackArcIndicators(const PaperdollPanel& panel, CombatArcs::AttackArc arc) {
+void renderAttackArcIndicators(const PaperdollPanel& panel, combatarcs::AttackArc arc) {
     Rectangle frontBounds = getBoundingRectForFrontPaperdoll(panel);
     Rectangle rearBounds = getBoundingRectForRearPaperdoll(panel);
 
     switch (arc) {
-        case CombatArcs::AttackArc::FRONT:
+        case combatarcs::AttackArc::FRONT:
             // Lines on left and right of front paperdoll
             drawVerticalArcLine(frontBounds, true);   // left
             drawVerticalArcLine(frontBounds, false);  // right
             break;
 
-        case CombatArcs::AttackArc::LEFT_SIDE:
+        case combatarcs::AttackArc::LEFT_SIDE:
             // Line on left side of front paperdoll only
             drawVerticalArcLine(frontBounds, true);
             break;
 
-        case CombatArcs::AttackArc::RIGHT_SIDE:
+        case combatarcs::AttackArc::RIGHT_SIDE:
             // Line on right side of front paperdoll only
             drawVerticalArcLine(frontBounds, false);
             break;
 
-        case CombatArcs::AttackArc::REAR:
+        case combatarcs::AttackArc::REAR:
             // Lines on both sides of rear paperdoll
             drawVerticalArcLine(rearBounds, true);
             drawVerticalArcLine(rearBounds, false);
@@ -541,4 +541,4 @@ void handlePaperdollTooltips(GameState& game) {
     }
 }
 
-} // namespace PaperdollUI
+} // namespace paperdollui

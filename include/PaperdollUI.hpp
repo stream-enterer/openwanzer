@@ -5,7 +5,7 @@
 #include "Unit.hpp"
 #include "raylib.h"
 
-namespace PaperdollUI {
+namespace paperdollui {
 
 // Main panel rendering functions
 void renderTargetPanel(const GameState& game);
@@ -15,6 +15,6 @@ void renderPlayerPanel(const GameState& game);
 void handlePaperdollPanelDrag(GameState& game);
 void handlePaperdollTooltips(GameState& game);
 
-} // namespace PaperdollUI
+} // namespace paperdollui
 
 #endif // OPENWANZER_PAPERDOLL_UI_HPP

@@ -2,7 +2,7 @@
 #include "GameLogic.hpp"
 #include <algorithm>
 
-namespace DamageSystem {
+namespace damagesystem {
 
 ArmorLocation mapRearToFront(ArmorLocation rear) {
     switch (rear) {
@@ -36,7 +36,7 @@ void applyDamageToLocation(GameState& game, Unit* target, ArmorLocation location
     LocationStatus& loc = target->locations[location];
     LocationStatus& structLocation = target->locations[structLoc];
 
-    GameLogic::addLogMessage(game, "[DAMAGE] " + std::to_string(damage) +
+    gamelogic::addLogMessage(game, "[DAMAGE] " + std::to_string(damage) +
                               " damage to " + locationToString(location));
 
     int remainingDamage = damage;
@@ -47,13 +47,13 @@ void applyDamageToLocation(GameState& game, Unit* target, ArmorLocation location
         loc.currentArmor -= armorAbsorbed;
         remainingDamage -= armorAbsorbed;
 
-        GameLogic::addLogMessage(game, "[DAMAGE] " + locationToString(location) +
+        gamelogic::addLogMessage(game, "[DAMAGE] " + locationToString(location) +
                                   " armor: " + std::to_string(loc.currentArmor + armorAbsorbed) +
                                   " → " + std::to_string(loc.currentArmor) +
                                   " (absorbed " + std::to_string(armorAbsorbed) + ")");
 
         if (remainingDamage > 0) {
-            GameLogic::addLogMessage(game, "[DAMAGE] " + std::to_string(remainingDamage) +
+            gamelogic::addLogMessage(game, "[DAMAGE] " + std::to_string(remainingDamage) +
                                       " overflow to structure");
         }
     }
@@ -64,7 +64,7 @@ void applyDamageToLocation(GameState& game, Unit* target, ArmorLocation location
         structLocation.currentStructure -= structureAbsorbed;
         remainingDamage -= structureAbsorbed;
 
-        GameLogic::addLogMessage(game, "[DAMAGE] " + locationToString(structLoc) +
+        gamelogic::addLogMessage(game, "[DAMAGE] " + locationToString(structLoc) +
                                   " structure: " + std::to_string(structLocation.currentStructure + structureAbsorbed) +
                                   " → " + std::to_string(structLocation.currentStructure) +
                                   " (absorbed " + std::to_string(structureAbsorbed) + ")");
@@ -73,20 +73,20 @@ void applyDamageToLocation(GameState& game, Unit* target, ArmorLocation location
     // Check for location destruction
     if (structLocation.currentStructure <= 0 && !structLocation.isDestroyed) {
         structLocation.isDestroyed = true;
-        GameLogic::addLogMessage(game, "[LOCATION DESTROYED] " +
+        gamelogic::addLogMessage(game, "[LOCATION DESTROYED] " +
                                   locationToString(structLoc) + " destroyed!");
 
         // Death conditions
         if (structLoc == ArmorLocation::HEAD ||
             structLoc == ArmorLocation::CENTER_TORSO) {
-            GameLogic::addLogMessage(game, "[MECH DEATH] Critical location destroyed!");
+            gamelogic::addLogMessage(game, "[MECH DEATH] Critical location destroyed!");
             return;
         }
 
         // Both legs destroyed
         if (target->locations[ArmorLocation::LEFT_LEG].isDestroyed &&
             target->locations[ArmorLocation::RIGHT_LEG].isDestroyed) {
-            GameLogic::addLogMessage(game, "[MECH DEATH] Both legs destroyed!");
+            gamelogic::addLogMessage(game, "[MECH DEATH] Both legs destroyed!");
             return;
         }
 
@@ -95,14 +95,14 @@ void applyDamageToLocation(GameState& game, Unit* target, ArmorLocation location
             structLoc == ArmorLocation::RIGHT_LEG) {
             target->movementPoints = 1;
             target->movesLeft = std::min(target->movesLeft, 1);
-            GameLogic::addLogMessage(game, "[MOVEMENT] Leg destroyed - reduced to 1 MP");
+            gamelogic::addLogMessage(game, "[MOVEMENT] Leg destroyed - reduced to 1 MP");
         }
 
         // Transfer overflow
         if (remainingDamage > 0) {
             ArmorLocation transferLocation = getTransferLocation(structLoc);
             if (transferLocation != ArmorLocation::NONE) {
-                GameLogic::addLogMessage(game, "[DAMAGE TRANSFER] " + std::to_string(remainingDamage) +
+                gamelogic::addLogMessage(game, "[DAMAGE TRANSFER] " + std::to_string(remainingDamage) +
                                           " overflow → " + locationToString(transferLocation));
                 applyDamageToLocation(game, target, transferLocation, remainingDamage);
             }
@@ -110,10 +110,10 @@ void applyDamageToLocation(GameState& game, Unit* target, ArmorLocation location
     }
 
     // Log final status
-    GameLogic::addLogMessage(game, "[LOCATION STATUS] " + locationToString(location) + ": " +
+    gamelogic::addLogMessage(game, "[LOCATION STATUS] " + locationToString(location) + ": " +
                               std::to_string(loc.currentArmor) + "/" + std::to_string(loc.maxArmor) +
                               " armor, " + std::to_string(structLocation.currentStructure) + "/" +
                               std::to_string(structLocation.maxStructure) + " structure");
 }
 
-} // namespace DamageSystem
+} // namespace damagesystem

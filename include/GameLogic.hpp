@@ -10,7 +10,7 @@
 #include "Unit.hpp"
 #include "GameState.hpp"
 
-namespace GameLogic {
+namespace gamelogic {
 
 // ============================================================================
 // UTILITY FUNCTIONS (utilities.cpp)
@@ -78,6 +78,6 @@ void endTurn(GameState& game);
 
 void updateAttackLines(GameState& game);
 
-} // namespace GameLogic
+} // namespace gamelogic
 
 #endif // OPENWANZER_GAME_LOGIC_HPP

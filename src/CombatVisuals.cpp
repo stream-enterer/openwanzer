@@ -4,7 +4,7 @@
 #include "hex.h"
 #include <cmath>
 
-namespace Rendering {
+namespace rendering {
 
 void drawTargetArcRing(GameState& game, Unit* unit) {
     if (!unit) return;
@@ -21,11 +21,11 @@ void drawTargetArcRing(GameState& game, Unit* unit) {
     float gap = 2.0f; // Small gap between arc segments
 
     // Draw 4 arc segments
-    CombatArcs::AttackArc arcs[] = {
-        CombatArcs::AttackArc::FRONT,
-        CombatArcs::AttackArc::RIGHT_SIDE,
-        CombatArcs::AttackArc::LEFT_SIDE,
-        CombatArcs::AttackArc::REAR
+    combatarcs::AttackArc arcs[] = {
+        combatarcs::AttackArc::FRONT,
+        combatarcs::AttackArc::RIGHT_SIDE,
+        combatarcs::AttackArc::LEFT_SIDE,
+        combatarcs::AttackArc::REAR
     };
 
     // Arc angles with gaps: Front ±30°, Right 30-150°, Left -30 to -150°, Rear ±150-180°
@@ -37,7 +37,7 @@ void drawTargetArcRing(GameState& game, Unit* unit) {
     };
 
     for (int i = 0; i < 4; i++) {
-        Color color = CombatArcs::getArcSegmentColor(arcs[i], i == 0);
+        Color color = combatarcs::getArcSegmentColor(arcs[i], i == 0);
 
         float startAngle = arcRanges[i][0];
         float endAngle = arcRanges[i][1];
@@ -139,7 +139,7 @@ void drawAttackLines(GameState& game) {
         Point fromPoint = hex_to_pixel(layout, fromCube);
         Point toPoint = hex_to_pixel(layout, toCube);
 
-        Color lineColor = CombatArcs::getLineColor(line.arc);
+        Color lineColor = combatarcs::getLineColor(line.arc);
 
         DrawLineEx(Vector2{(float)fromPoint.x, (float)fromPoint.y},
                    Vector2{(float)toPoint.x, (float)toPoint.y},
@@ -148,4 +148,4 @@ void drawAttackLines(GameState& game) {
     }
 }
 
-} // namespace Rendering
+} // namespace rendering

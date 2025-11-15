@@ -1,7 +1,7 @@
 #include "CombatArcs.hpp"
 #include <cmath>
 
-namespace CombatArcs {
+namespace combatarcs {
 
 AttackArc getAttackArc(Vector2 attackerPos, Vector2 targetPos, float targetFacing) {
     // Calculate angle from target to attacker
@@ -63,4 +63,4 @@ Color getArcSegmentColor([[maybe_unused]] AttackArc arc, bool isFrontArc) {
     return Color{102, 102, 102, 60}; // Semi-transparent darker grey (20% darker)
 }
 
-} // namespace CombatArcs
+} // namespace combatarcs

@@ -4,7 +4,7 @@
 #include <fstream>
 #include <string>
 
-namespace Config {
+namespace config {
 
 // Save config to file
 void saveConfig(const VideoSettings& settings) {
@@ -93,4 +93,4 @@ void loadConfig(VideoSettings& settings) {
   TraceLog(LOG_INFO, "Config loaded from config.txt");
 }
 
-} // namespace Config
+} // namespace config

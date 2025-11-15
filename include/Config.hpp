@@ -5,7 +5,7 @@
 #include <vector>
 #include "GameState.hpp"
 
-namespace Config {
+namespace config {
 
 // Global variables for style themes
 extern std::vector<std::string> AVAILABLE_STYLES;
@@ -23,6 +23,6 @@ void loadConfig(VideoSettings& settings);
 // GUI scaling
 void applyGuiScale(float scale);
 
-} // namespace Config
+} // namespace config
 
 #endif // OPENWANZER_CONFIG_HPP
