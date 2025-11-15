@@ -19,9 +19,11 @@
 #include "core/constants.h"
 #include "core/game_state.h"
 #include "rendering/rendering.h"
+#include "rendering/paperdoll_ui.h"
 #include "game_logic/game_logic.h"
 #include "input/input.h"
 #include "config/config.h"
+#include "ui/ui_panels.h"
 
 int main() {
   // Discover available styles first (before window init)
@@ -85,6 +87,10 @@ int main() {
   // Initialize Spotting for all units
   GameLogic::initializeAllSpotting(game);
 
+  // Initialize paperdoll panels
+  UIPanel::initializeTargetPanel(game);
+  UIPanel::initializePlayerPanel(game);
+
   // Add initial combat log messages
   GameLogic::addLogMessage(game, "=== Battle Start ===");
   GameLogic::addLogMessage(game, "Axis turn begins");
@@ -94,8 +100,14 @@ int main() {
   while (!WindowShouldClose()) {
     // Input handling (only when menu is closed)
     if (!game.showOptionsMenu) {
+      // Handle paperdoll panel dragging (must be before selection)
+      PaperdollUI::handlePaperdollPanelDrag(game);
+
       // Handle combat log dragging (must be first for left click priority)
       Input::handleCombatLogDrag(game);
+
+      // Handle paperdoll tooltips
+      PaperdollUI::handlePaperdollTooltips(game);
 
       // Handle combat log scrolling (must be before zoom)
       Input::handleCombatLogScroll(game);
@@ -140,6 +152,9 @@ int main() {
           game.movementSel.reset();
           Rendering::clearSelectionHighlights(game);
           game.showAttackLines = false;
+          // Hide panels on deselect
+          UIPanel::hideTargetPanel(game);
+          UIPanel::hidePlayerPanel(game);
         }
       }
 
@@ -218,6 +233,9 @@ int main() {
                 game.selectedUnit = nullptr;
                 game.movementSel.reset();
                 game.showAttackLines = false;
+                // Hide panels after attack
+                UIPanel::hideTargetPanel(game);
+                UIPanel::hidePlayerPanel(game);
               }
             } else if (clickedUnit) {
               game.selectedUnit = clickedUnit;
@@ -234,10 +252,34 @@ int main() {
                 // Update attack lines for selected unit
                 GameLogic::updateAttackLines(game);
                 game.showAttackLines = true;
+
+                // Show player panel for friendly unit
+                UIPanel::showPlayerPanel(game, clickedUnit);
+                UIPanel::hideTargetPanel(game);
               } else {
-                // Enemy unit selected - no highlights or attack lines
+                // Enemy unit selected - show target panel
+                // Calculate attack arc from current selected unit to this enemy
+                if (game.selectedUnit) {
+                  Layout layout = Rendering::createHexLayout(HEX_SIZE, game.camera.offsetX,
+                                                             game.camera.offsetY, game.camera.zoom);
+                  OffsetCoord attackerOffset = Rendering::gameCoordToOffset(game.selectedUnit->position);
+                  OffsetCoord defenderOffset = Rendering::gameCoordToOffset(clickedUnit->position);
+                  ::Hex attackerCube = offset_to_cube(attackerOffset);
+                  ::Hex defenderCube = offset_to_cube(defenderOffset);
+                  Point attackerPixel = hex_to_pixel(layout, attackerCube);
+                  Point defenderPixel = hex_to_pixel(layout, defenderCube);
+                  Vector2 attackerPos = {(float)attackerPixel.x, (float)attackerPixel.y};
+                  Vector2 defenderPos = {(float)defenderPixel.x, (float)defenderPixel.y};
+                  CombatArcs::AttackArc arc = CombatArcs::getAttackArc(attackerPos, defenderPos, clickedUnit->facing);
+                  UIPanel::showTargetPanel(game, clickedUnit, arc);
+                }
                 game.showAttackLines = false;
+                UIPanel::hidePlayerPanel(game);
               }
+            } else {
+              // Clicked empty hex - hide panels
+              UIPanel::hideTargetPanel(game);
+              UIPanel::hidePlayerPanel(game);
             }
           } else if (!game.selectedUnit) {
             if (clickedUnit) {
@@ -254,10 +296,28 @@ int main() {
                 // Update attack lines for selected unit
                 GameLogic::updateAttackLines(game);
                 game.showAttackLines = true;
+
+                // Show player panel for friendly unit
+                UIPanel::showPlayerPanel(game, clickedUnit);
+                UIPanel::hideTargetPanel(game);
               } else {
-                // Enemy unit selected - no highlights or attack lines
+                // Enemy unit selected - show target panel
+                Layout layout = Rendering::createHexLayout(HEX_SIZE, game.camera.offsetX,
+                                                           game.camera.offsetY, game.camera.zoom);
+                OffsetCoord defenderOffset = Rendering::gameCoordToOffset(clickedUnit->position);
+                ::Hex defenderCube = offset_to_cube(defenderOffset);
+                Point defenderPixel = hex_to_pixel(layout, defenderCube);
+                Vector2 defenderPos = {(float)defenderPixel.x, (float)defenderPixel.y};
+                // Default to FRONT arc when no attacker selected
+                CombatArcs::AttackArc arc = CombatArcs::AttackArc::FRONT;
+                UIPanel::showTargetPanel(game, clickedUnit, arc);
                 game.showAttackLines = false;
+                UIPanel::hidePlayerPanel(game);
               }
+            } else {
+              // Clicked empty hex - hide panels
+              UIPanel::hideTargetPanel(game);
+              UIPanel::hidePlayerPanel(game);
             }
           }
         }
@@ -325,6 +385,10 @@ int main() {
 
     Rendering::drawMap(game);
     Rendering::drawUI(game);
+
+    // Draw paperdoll panels
+    PaperdollUI::renderTargetPanel(game);
+    PaperdollUI::renderPlayerPanel(game);
 
     if (game.showOptionsMenu) {
       Rendering::drawOptionsMenu(game, needsRestart);

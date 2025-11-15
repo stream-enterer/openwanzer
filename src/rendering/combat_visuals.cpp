@@ -46,14 +46,14 @@ void drawTargetArcRing(GameState& game, Unit* unit) {
         if (i == 3) {
             // Draw rear as two segments with gaps
             DrawRing(Vector2{(float)center.x, (float)center.y},
-                     radius - 3.0f, radius,
+                     radius - 5.0f, radius,
                      facing + 150.0f + gap, facing + 210.0f - gap, 32, color);
             DrawRing(Vector2{(float)center.x, (float)center.y},
-                     radius - 3.0f, radius,
+                     radius - 5.0f, radius,
                      facing - 210.0f + gap, facing - 150.0f - gap, 32, color);
         } else {
             DrawRing(Vector2{(float)center.x, (float)center.y},
-                     radius - 3.0f, radius,
+                     radius - 5.0f, radius,
                      startAngle, endAngle, 32, color);
         }
     }

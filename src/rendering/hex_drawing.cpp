@@ -215,36 +215,6 @@ void drawMap(GameState &game) {
 			         fontSize, YELLOW);
 		}
 
-		// Draw selection highlight (rotated to match unit facing)
-		if (unit.get() == game.selectedUnit) {
-			float rotRad = rotation * M_PI / 180.0f;
-			float cosR = cos(rotRad);
-			float sinR = sin(rotRad);
-
-			// Draw first highlight box (4 pixels larger)
-			float w1 = (unitWidth + 4) / 2;
-			float h1 = (unitHeight + 4) / 2;
-			Vector2 corners1[4] = {
-			    {(float)(center.x + (-w1 * cosR - -h1 * sinR)), (float)(center.y + (-w1 * sinR + -h1 * cosR))},
-			    {(float)(center.x + (w1 * cosR - -h1 * sinR)), (float)(center.y + (w1 * sinR + -h1 * cosR))},
-			    {(float)(center.x + (w1 * cosR - h1 * sinR)), (float)(center.y + (w1 * sinR + h1 * cosR))},
-			    {(float)(center.x + (-w1 * cosR - h1 * sinR)), (float)(center.y + (-w1 * sinR + h1 * cosR))}};
-			for (int i = 0; i < 4; i++) {
-				DrawLineEx(corners1[i], corners1[(i + 1) % 4], 2.0f, YELLOW);
-			}
-
-			// Draw second highlight box (6 pixels larger)
-			float w2 = (unitWidth + 6) / 2;
-			float h2 = (unitHeight + 6) / 2;
-			Vector2 corners2[4] = {
-			    {(float)(center.x + (-w2 * cosR - -h2 * sinR)), (float)(center.y + (-w2 * sinR + -h2 * cosR))},
-			    {(float)(center.x + (w2 * cosR - -h2 * sinR)), (float)(center.y + (w2 * sinR + -h2 * cosR))},
-			    {(float)(center.x + (w2 * cosR - h2 * sinR)), (float)(center.y + (w2 * sinR + h2 * cosR))},
-			    {(float)(center.x + (-w2 * cosR - h2 * sinR)), (float)(center.y + (-w2 * sinR + h2 * cosR))}};
-			for (int i = 0; i < 4; i++) {
-				DrawLineEx(corners2[i], corners2[(i + 1) % 4], 2.0f, YELLOW);
-			}
-		}
 	}
 
 	// Draw movement zone outline (yellow contiguous border)

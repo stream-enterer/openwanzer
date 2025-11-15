@@ -193,7 +193,7 @@ void highlightAttackRange(GameState &game, Unit *unit) {
   if (!unit || unit->hasFired)
     return;
 
-  int range = 1; // Default attack range
+  int range = unit->weaponRange; // Use unit's weapon range
 
   for (int row = 0; row < MAP_ROWS; row++) {
     for (int col = 0; col < MAP_COLS; col++) {
