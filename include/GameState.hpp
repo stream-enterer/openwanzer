@@ -1,14 +1,14 @@
-#ifndef OPENWANZER_GAMESTATE_H
-#define OPENWANZER_GAMESTATE_H
+#ifndef OPENWANZER_GAME_STATE_HPP
+#define OPENWANZER_GAME_STATE_HPP
 
 #include <string>
 #include <vector>
 #include <memory>
 #include "raylib.h"
-#include "HexCoord.h"
-#include "GameHex.h"
-#include "Unit.h"
-#include "CombatArcs.h"
+#include "HexCoord.hpp"
+#include "GameHex.hpp"
+#include "Unit.hpp"
+#include "CombatArcs.hpp"
 
 // Forward declaration for calculateCenteredCameraOffset
 struct CameraState;
@@ -231,4 +231,4 @@ struct GameState {
   void addUnit(UnitClass uClass, int side, int row, int col);
 };
 
-#endif // OPENWANZER_GAMESTATE_H
+#endif // OPENWANZER_GAME_STATE_HPP

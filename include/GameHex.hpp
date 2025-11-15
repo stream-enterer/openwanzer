@@ -1,8 +1,8 @@
-#ifndef OPENWANZER_GAMEHEX_H
-#define OPENWANZER_GAMEHEX_H
+#ifndef OPENWANZER_GAME_HEX_HPP
+#define OPENWANZER_GAME_HEX_HPP
 
-#include "HexCoord.h"
-#include "Enums.h"
+#include "HexCoord.hpp"
+#include "Enums.hpp"
 
 struct GameHex {
   HexCoord coord;
@@ -31,4 +31,4 @@ struct GameHex {
   bool isSpotted(int side) const { return spotted[side] > 0; }
 };
 
-#endif // OPENWANZER_GAMEHEX_H
+#endif // OPENWANZER_GAME_HEX_HPP

@@ -16,14 +16,14 @@
 #include "hex.h"
 
 // Include all module headers
-#include "Constants.h"
-#include "GameState.h"
-#include "Rendering.h"
-#include "PaperdollUI.h"
-#include "GameLogic.h"
-#include "Input.h"
-#include "Config.h"
-#include "UIPanels.h"
+#include "Constants.hpp"
+#include "GameState.hpp"
+#include "Rendering.hpp"
+#include "PaperdollUI.hpp"
+#include "GameLogic.hpp"
+#include "Input.hpp"
+#include "Config.hpp"
+#include "UIPanels.hpp"
 
 int main() {
   // Discover available styles first (before window init)
@@ -302,12 +302,6 @@ int main() {
                 UIPanel::hideTargetPanel(game);
               } else {
                 // Enemy unit selected - show target panel
-                Layout layout = Rendering::createHexLayout(HEX_SIZE, game.camera.offsetX,
-                                                           game.camera.offsetY, game.camera.zoom);
-                OffsetCoord defenderOffset = Rendering::gameCoordToOffset(clickedUnit->position);
-                ::Hex defenderCube = offset_to_cube(defenderOffset);
-                Point defenderPixel = hex_to_pixel(layout, defenderCube);
-                Vector2 defenderPos = {(float)defenderPixel.x, (float)defenderPixel.y};
                 // Default to FRONT arc when no attacker selected
                 CombatArcs::AttackArc arc = CombatArcs::AttackArc::FRONT;
                 UIPanel::showTargetPanel(game, clickedUnit, arc);

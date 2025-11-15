@@ -1,4 +1,4 @@
-#include "Config.h"
+#include "Config.hpp"
 #include "raylib.h"
 #include "raygui.h"
 #include <algorithm>

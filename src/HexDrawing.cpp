@@ -1,12 +1,12 @@
 #include <cmath>
 #include <string>
 #include <vector>
-#include "Constants.h"
-#include "GameLogic.h"
+#include "Constants.hpp"
+#include "GameLogic.hpp"
 #include "hex.h"
 #include "raylib.h"
 #include "raymath.h"
-#include "Rendering.h"
+#include "Rendering.hpp"
 
 namespace Rendering {
 

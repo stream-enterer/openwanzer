@@ -1,4 +1,4 @@
-#include "HitTables.h"
+#include "HitTables.hpp"
 #include <cstdlib>
 
 namespace HitTables {

@@ -1,4 +1,4 @@
-#include "CombatArcs.h"
+#include "CombatArcs.hpp"
 #include <cmath>
 
 namespace CombatArcs {
@@ -56,7 +56,7 @@ Color getLineColor(AttackArc arc) {
     return WHITE; // Fallback
 }
 
-Color getArcSegmentColor(AttackArc arc, bool isFrontArc) {
+Color getArcSegmentColor([[maybe_unused]] AttackArc arc, bool isFrontArc) {
     if (isFrontArc) {
         return Color{255, 0, 0, 60}; // Semi-transparent red
     }

@@ -1,5 +1,5 @@
-#ifndef OPENWANZER_CONSTANTS_H
-#define OPENWANZER_CONSTANTS_H
+#ifndef OPENWANZER_CONSTANTS_HPP
+#define OPENWANZER_CONSTANTS_HPP
 
 #include "raylib.h"
 
@@ -26,4 +26,4 @@ extern const Color COLOR_FPS;
 // 254 = Stop move (can enter but stops there), 255 = Don't enter (impassable)
 extern const int MOV_TABLE_DRY[12][18];
 
-#endif // OPENWANZER_CONSTANTS_H
+#endif // OPENWANZER_CONSTANTS_HPP

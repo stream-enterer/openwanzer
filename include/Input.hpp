@@ -1,7 +1,7 @@
-#ifndef OPENWANZER_INPUT_H
-#define OPENWANZER_INPUT_H
+#ifndef OPENWANZER_INPUT_HPP
+#define OPENWANZER_INPUT_HPP
 
-#include "GameState.h"
+#include "GameState.hpp"
 
 namespace Input {
 
@@ -16,4 +16,4 @@ void handleCombatLogDrag(GameState& game);
 
 } // namespace Input
 
-#endif // OPENWANZER_INPUT_H
+#endif // OPENWANZER_INPUT_HPP

@@ -1,12 +1,12 @@
-#ifndef OPENWANZER_UNIT_H
-#define OPENWANZER_UNIT_H
+#ifndef OPENWANZER_UNIT_HPP
+#define OPENWANZER_UNIT_HPP
 
 #include <string>
 #include <map>
 #include <vector>
-#include "HexCoord.h"
-#include "Enums.h"
-#include "ArmorLocation.h"
+#include "HexCoord.hpp"
+#include "Enums.hpp"
+#include "ArmorLocation.hpp"
 
 enum class WeaponType {
     MISSILE,    // Magenta
@@ -75,4 +75,4 @@ struct Unit {
   int getOverallHealthPercent() const;
 };
 
-#endif // OPENWANZER_UNIT_H
+#endif // OPENWANZER_UNIT_HPP

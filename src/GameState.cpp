@@ -1,5 +1,5 @@
-#include "GameState.h"
-#include "Constants.h"
+#include "GameState.hpp"
+#include "Constants.hpp"
 #include "raylib.h"
 
 // Resolution options
@@ -62,7 +62,7 @@ UnitInfoBox::UnitInfoBox()
   initialBounds = bounds;
 }
 
-void UnitInfoBox::recalculateBounds(int screenWidth, int screenHeight) {
+void UnitInfoBox::recalculateBounds(int screenWidth, [[maybe_unused]] int screenHeight) {
   // Position in upper right (preserving offset from initial if dragged)
   float defaultX = screenWidth - 250.0f;
   float defaultY = 50.0f;

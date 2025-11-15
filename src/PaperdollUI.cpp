@@ -1,7 +1,7 @@
-#include "PaperdollUI.h"
-#include "ArmorLocation.h"
-#include "Constants.h"
-#include "GameLogic.h"
+#include "PaperdollUI.hpp"
+#include "ArmorLocation.hpp"
+#include "Constants.hpp"
+#include "GameLogic.hpp"
 #include "raylib.h"
 #include "raymath.h"
 #include "raygui.h"
@@ -272,7 +272,7 @@ void renderStatusBar(float x, float y, float width, float height,
 // PANEL HEADER
 // ============================================================================
 
-void renderPanelHeader(const PaperdollPanel& panel, const Unit* unit, bool isTargetPanel) {
+void renderPanelHeader(const PaperdollPanel& panel, const Unit* unit, [[maybe_unused]] bool isTargetPanel) {
     float x = panel.bounds.x + 10;
     float y = panel.bounds.y + 10;
 

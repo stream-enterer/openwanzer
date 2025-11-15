@@ -1,5 +1,5 @@
-#include "Config.h"
-#include "GameState.h"
+#include "Config.hpp"
+#include "GameState.hpp"
 #include "raylib.h"
 #include <fstream>
 #include <string>

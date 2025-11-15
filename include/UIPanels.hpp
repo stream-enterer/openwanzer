@@ -1,8 +1,8 @@
-#ifndef OPENWANZER_UIPANELS_H
-#define OPENWANZER_UIPANELS_H
+#ifndef OPENWANZER_UI_PANELS_HPP
+#define OPENWANZER_UI_PANELS_HPP
 
-#include "GameState.h"
-#include "CombatArcs.h"
+#include "GameState.hpp"
+#include "CombatArcs.hpp"
 
 namespace UIPanel {
 
@@ -22,4 +22,4 @@ void calculatePaperdollRegions(PaperdollPanel& panel);
 
 } // namespace UIPanel
 
-#endif // OPENWANZER_UIPANELS_H
+#endif // OPENWANZER_UI_PANELS_HPP

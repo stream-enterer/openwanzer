@@ -1,5 +1,5 @@
-#ifndef OPENWANZER_HEXCOORD_H
-#define OPENWANZER_HEXCOORD_H
+#ifndef OPENWANZER_HEX_COORD_HPP
+#define OPENWANZER_HEX_COORD_HPP
 
 struct HexCoord {
   int row;
@@ -10,4 +10,4 @@ struct HexCoord {
   }
 };
 
-#endif // OPENWANZER_HEXCOORD_H
+#endif // OPENWANZER_HEX_COORD_HPP

@@ -1,8 +1,8 @@
-#ifndef OPENWANZER_HIT_TABLES_H
-#define OPENWANZER_HIT_TABLES_H
+#ifndef OPENWANZER_HIT_TABLES_HPP
+#define OPENWANZER_HIT_TABLES_HPP
 
-#include "ArmorLocation.h"
-#include "CombatArcs.h"
+#include "ArmorLocation.hpp"
+#include "CombatArcs.hpp"
 
 namespace HitTables {
 

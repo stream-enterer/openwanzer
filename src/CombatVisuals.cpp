@@ -1,6 +1,6 @@
-#include "Rendering.h"
-#include "CombatArcs.h"
-#include "Constants.h"
+#include "Rendering.hpp"
+#include "CombatArcs.hpp"
+#include "Constants.hpp"
 #include "hex.h"
 #include <cmath>
 

@@ -1,8 +1,8 @@
-#ifndef OPENWANZER_PAPERDOLL_UI_H
-#define OPENWANZER_PAPERDOLL_UI_H
+#ifndef OPENWANZER_PAPERDOLL_UI_HPP
+#define OPENWANZER_PAPERDOLL_UI_HPP
 
-#include "GameState.h"
-#include "Unit.h"
+#include "GameState.hpp"
+#include "Unit.hpp"
 #include "raylib.h"
 
 namespace PaperdollUI {
@@ -17,4 +17,4 @@ void handlePaperdollTooltips(GameState& game);
 
 } // namespace PaperdollUI
 
-#endif // OPENWANZER_PAPERDOLL_UI_H
+#endif // OPENWANZER_PAPERDOLL_UI_HPP

@@ -1,5 +1,5 @@
-#include "DamageSystem.h"
-#include "GameLogic.h"
+#include "DamageSystem.hpp"
+#include "GameLogic.hpp"
 #include <algorithm>
 
 namespace DamageSystem {

@@ -1,14 +1,14 @@
-#ifndef OPENWANZER_GAMELOGIC_H
-#define OPENWANZER_GAMELOGIC_H
+#ifndef OPENWANZER_GAME_LOGIC_HPP
+#define OPENWANZER_GAME_LOGIC_HPP
 
 #include <string>
 #include <vector>
 #include "hex.h"
-#include "Enums.h"
-#include "HexCoord.h"
-#include "GameHex.h"
-#include "Unit.h"
-#include "GameState.h"
+#include "Enums.hpp"
+#include "HexCoord.hpp"
+#include "GameHex.hpp"
+#include "Unit.hpp"
+#include "GameState.hpp"
 
 namespace GameLogic {
 
@@ -80,4 +80,4 @@ void updateAttackLines(GameState& game);
 
 } // namespace GameLogic
 
-#endif // OPENWANZER_GAMELOGIC_H
+#endif // OPENWANZER_GAME_LOGIC_HPP

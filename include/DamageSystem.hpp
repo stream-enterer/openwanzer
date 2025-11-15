@@ -1,9 +1,9 @@
-#ifndef OPENWANZER_DAMAGE_SYSTEM_H
-#define OPENWANZER_DAMAGE_SYSTEM_H
+#ifndef OPENWANZER_DAMAGE_SYSTEM_HPP
+#define OPENWANZER_DAMAGE_SYSTEM_HPP
 
-#include "Unit.h"
-#include "ArmorLocation.h"
-#include "GameState.h"
+#include "Unit.hpp"
+#include "ArmorLocation.hpp"
+#include "GameState.hpp"
 
 namespace DamageSystem {
 

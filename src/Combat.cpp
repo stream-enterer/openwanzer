@@ -1,10 +1,10 @@
-#include "GameLogic.h"
-#include "DamageSystem.h"
-#include "HitTables.h"
-#include "CombatArcs.h"
-#include "ArmorLocation.h"
-#include "Constants.h"
-#include "Rendering.h"
+#include "GameLogic.hpp"
+#include "DamageSystem.hpp"
+#include "HitTables.hpp"
+#include "CombatArcs.hpp"
+#include "ArmorLocation.hpp"
+#include "Constants.hpp"
+#include "Rendering.hpp"
 #include "hex.h"
 #include <string>
 

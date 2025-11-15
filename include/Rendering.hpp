@@ -1,9 +1,9 @@
-#ifndef OPENWANZER_RENDERING_H
-#define OPENWANZER_RENDERING_H
+#ifndef OPENWANZER_RENDERING_HPP
+#define OPENWANZER_RENDERING_HPP
 
 #include "raylib.h"
 #include "hex.h"
-#include "GameState.h"
+#include "GameState.hpp"
 
 namespace Rendering {
 
@@ -46,4 +46,4 @@ void drawAttackLines(GameState& game);
 
 } // namespace Rendering
 
-#endif // OPENWANZER_RENDERING_H
+#endif // OPENWANZER_RENDERING_HPP

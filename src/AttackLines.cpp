@@ -1,7 +1,7 @@
-#include "GameLogic.h"
-#include "CombatArcs.h"
-#include "Rendering.h"
-#include "Constants.h"
+#include "GameLogic.hpp"
+#include "CombatArcs.hpp"
+#include "Rendering.hpp"
+#include "Constants.hpp"
 
 namespace GameLogic {
 

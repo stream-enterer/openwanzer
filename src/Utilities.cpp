@@ -1,5 +1,5 @@
-#include "GameLogic.h"
-#include "Constants.h"
+#include "GameLogic.hpp"
+#include "Constants.hpp"
 #include "hex.h"
 #include <cmath>
 #include <cstdio>
@@ -138,7 +138,7 @@ bool isAir(const Unit* unit) {
   return unit->movMethod == MovMethod::AIR;
 }
 
-bool isHardTarget(const Unit* unit) {
+bool isHardTarget([[maybe_unused]] const Unit* unit) {
   // All BattleTech mechs are hard targets
   return true;
 }
@@ -149,7 +149,7 @@ bool isSea(const Unit* unit) {
          unit->movMethod == MovMethod::NAVAL;
 }
 
-bool isRecon(const Unit* unit) {
+bool isRecon([[maybe_unused]] const Unit* unit) {
   // No recon units in BattleTech
   return false;
 }

@@ -1,5 +1,5 @@
-#include "UIPanels.h"
-#include "Constants.h"
+#include "UIPanels.hpp"
+#include "Constants.hpp"
 
 namespace UIPanel {
 

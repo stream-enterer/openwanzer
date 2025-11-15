@@ -1,4 +1,4 @@
-#include "Constants.h"
+#include "Constants.hpp"
 
 // Default configuration values
 const int DEFAULT_SCREEN_WIDTH = 1920;

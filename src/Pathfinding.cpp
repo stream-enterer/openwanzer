@@ -1,5 +1,5 @@
-#include "GameLogic.h"
-#include "Constants.h"
+#include "GameLogic.hpp"
+#include "Constants.hpp"
 #include <algorithm>
 #include <string>
 
