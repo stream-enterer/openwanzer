@@ -139,25 +139,33 @@ void GameState::addUnit(UnitClass uClass, int side, int row, int col) {
   unit->side = side;
   unit->position = {row, col};
 
-  // Set unit name and movement method based on class
+  // Set weight class based on unit class
+  Unit::WeightClass wClass = Unit::WeightClass::MEDIUM;  // Default to medium
   switch (uClass) {
   case UnitClass::LIGHT:
+    wClass = Unit::WeightClass::LIGHT;
     unit->name = "Light Mech";
     unit->movMethod = MovMethod::LEG;
     break;
   case UnitClass::MEDIUM:
+    wClass = Unit::WeightClass::MEDIUM;
     unit->name = "Medium Mech";
     unit->movMethod = MovMethod::WHEELED;
     break;
   case UnitClass::HEAVY:
+    wClass = Unit::WeightClass::HEAVY;
     unit->name = "Heavy Mech";
     unit->movMethod = MovMethod::HALF_TRACKED;
     break;
   case UnitClass::ASSAULT:
+    wClass = Unit::WeightClass::ASSAULT;
     unit->name = "Assault Mech";
     unit->movMethod = MovMethod::TRACKED;
     break;
   }
+
+  // Initialize armor locations for this weight class
+  unit->initializeLocations(wClass);
 
   // Initialize unit facing based on side (using degrees: E=0°, S=90°, W=180°, N=270°)
   // Axis units (left side) face generally East (toward right/enemy)

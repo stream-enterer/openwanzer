@@ -178,9 +178,19 @@ void drawUnitInfoBox(GameState &game) {
   DrawText(unit->name.c_str(), x, y, titleSize, textColor);
   y += titleSize + 10;
 
-  std::string info = "Strength: " + std::to_string(unit->strength) + "/" +
-                     std::to_string(unit->maxStrength);
+  std::string info = "Health: " + std::to_string(unit->getOverallHealthPercent()) + "%";
   DrawText(info.c_str(), x, y, normalSize, textColor);
+  y += normalSize + 5;
+
+  const LocationStatus& ct = unit->locations.at(ArmorLocation::CENTER_TORSO);
+  info = "CT Armor: " + std::to_string(ct.currentArmor) + "/" +
+         std::to_string(ct.maxArmor);
+  DrawText(info.c_str(), x, y, normalSize - 2, textColor);
+  y += normalSize;
+
+  info = "CT Structure: " + std::to_string(ct.currentStructure) + "/" +
+         std::to_string(ct.maxStructure);
+  DrawText(info.c_str(), x, y, normalSize - 2, textColor);
   y += normalSize + 5;
 
   info = "Moves: " + std::to_string(unit->movesLeft) + "/" +
