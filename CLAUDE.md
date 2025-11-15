@@ -473,6 +473,60 @@ cmake --build .
 - **Build artifacts**: `build/` directory (git-ignored)
 - **Libraries**: `build/lib/` (if any)
 
+### 🔴 CRITICAL: Working Directories and Command Locations
+
+**IMPORTANT**: Different commands must be run from different directories. Always be aware of your current working directory.
+
+#### Project Root Directory (`/home/user/openwanzer`)
+
+**ALWAYS run these commands from the project root:**
+- **Git commands**: `git add`, `git commit`, `git push`, `git status`, etc.
+- **Make/Build commands**: `make`, `make clean`, `make format`, `make run`
+- **Clang-format on project files**: `clang-format -i src/File.cpp include/File.hpp`
+
+```bash
+# Example: Proper workflow from project root
+cd /home/user/openwanzer          # Ensure you're at project root
+make                               # Build the project
+clang-format -i src/MyFile.cpp     # Format changed files
+git add src/MyFile.cpp             # Stage changes
+git commit -m "Fix: description"   # Commit
+git push -u origin branch-name     # Push
+```
+
+#### Build Directory (`/home/user/openwanzer/build`)
+
+**Only run the binary from here** (if you want to):
+- **Running the game**: `./openwanzer` (but `make run` from root is easier)
+
+**DO NOT run git commands from the build directory** - they will fail with relative paths.
+
+#### Resource Path Handling
+
+The code now handles resources intelligently:
+- When run from **project root**: looks for `resources/styles`
+- When run from **build/**: looks for `../resources/styles`
+- Theme discovery code (StyleManager.cpp) automatically finds the correct path
+
+#### AI Assistant Guidelines
+
+**When working in this project:**
+1. **Always check your current directory** with `pwd` if unsure
+2. **For git operations**: Ensure you're in `/home/user/openwanzer` first
+3. **For building**: Can be in project root or build directory, but root is recommended
+4. **File paths in git commands**: Use paths relative to project root (e.g., `src/File.cpp`, not `../src/File.cpp`)
+5. **If you get path errors**: Check if you're in the wrong directory
+
+```bash
+# WRONG - git commands from build directory
+cd /home/user/openwanzer/build
+git add ../src/File.cpp          # ❌ Will fail
+
+# RIGHT - git commands from project root
+cd /home/user/openwanzer
+git add src/File.cpp             # ✅ Works correctly
+```
+
 ### Dependencies
 - CMake 3.15 or higher
 - raylib 5.5.0 (included in `lib/` and `include/`)
@@ -560,10 +614,16 @@ cmake --build .
   - Added example workflows for AI assistants
   - Emphasized formatting is as critical as fixing compiler warnings
   - Included commands for `make format` and individual file formatting
+- **ADDED WORKING DIRECTORY GUIDELINES**: Clarified where to run different commands
+  - Added "Working Directories and Command Locations" section to CLAUDE.md
+  - Documented that git/make/clang-format must be run from project root
+  - Explained resource path handling (project root vs build directory)
+  - Provided clear examples of correct vs incorrect command locations
+  - Added AI assistant guidelines to prevent directory confusion
 - **FILES MODIFIED**:
   - `src/StyleManager.cpp`: Enhanced path discovery and theme loading logic
   - `include/Config.hpp`: Added STYLES_PATH extern declaration
-  - `CLAUDE.md`: Added "Code Formatting Policy" section with detailed instructions
+  - `CLAUDE.md`: Added "Code Formatting Policy" and "Working Directories" sections
 - Build status: Clean build with zero warnings
 
 ### 2025-11-15: Naming Convention Updates and Header Refactoring (Phase 1)
