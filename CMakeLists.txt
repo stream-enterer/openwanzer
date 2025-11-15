@@ -39,6 +39,11 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
 set(CMAKE_CXX_FLAGS_RELEASE "-O2")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 
+# Suppress warnings from third-party headers (raylib/raymath)
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    add_compile_options(-Wno-missing-field-initializers -Wno-unused-parameter)
+endif()
+
 # ==============================================================================
 # Include Directories
 # ==============================================================================
