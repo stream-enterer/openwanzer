@@ -10,11 +10,16 @@ out/
 openwanzer
 
 # CMake
+build/
 CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
 Makefile.cmake
 *.cmake
+!CMakeLists.txt
+CTestTestfile.cmake
+_deps/
+install_manifest.txt
 
 # Compiled Dynamic libraries
 *.so

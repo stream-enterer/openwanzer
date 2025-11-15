@@ -1,59 +1,57 @@
 # ==============================================================================
-# Open Wanzer - Makefile
+# Open Wanzer - Makefile (CMake Wrapper)
+# ==============================================================================
+#
+# This Makefile provides convenient shortcuts to CMake commands.
+# All builds are performed in the build/ directory.
+#
 # ==============================================================================
 
-# Compiler and flags
-CXX = g++
-CXXFLAGS = -std=c++17 -O2 -Wall -Wextra -I./include -I./src
-CXXFLAGS_DEBUG = -std=c++17 -g -Wall -Wextra -I./include -I./src
-LDFLAGS = -L./lib -Wl,-rpath=./lib
-LIBS = -lraylib -lm -lpthread -ldl -lrt -lX11
+.PHONY: all configure build debug release clean run format install uninstall help check-deps
 
-# Directories
-SRC_DIR = src
+# Build directory
 BUILD_DIR = build
-TARGET = openwanzer
-
-# Source files
-SOURCES = $(shell find $(SRC_DIR) -name '*.cpp')
-OBJECTS = $(SOURCES:.cpp=.o)
-OBJECTS_DEBUG = $(SOURCES:.cpp=.debug.o)
-
-# ==============================================================================
-# Phony Targets
-# ==============================================================================
-
-.PHONY: all clean run check-deps debug format help install uninstall
 
 # ==============================================================================
 # Default Target
 # ==============================================================================
 
-all: check-deps $(TARGET)
+all: release
+
+# ==============================================================================
+# Configuration Targets
+# ==============================================================================
+
+configure:
+	@echo "Configuring Open Wanzer with CMake..."
+	@mkdir -p $(BUILD_DIR)
+	@cd $(BUILD_DIR) && cmake -DCMAKE_BUILD_TYPE=Release ..
+	@echo "✓ Configuration complete!"
+
+configure-debug:
+	@echo "Configuring Open Wanzer (Debug) with CMake..."
+	@mkdir -p $(BUILD_DIR)
+	@cd $(BUILD_DIR) && cmake -DCMAKE_BUILD_TYPE=Debug ..
+	@echo "✓ Debug configuration complete!"
 
 # ==============================================================================
 # Build Targets
 # ==============================================================================
 
-$(TARGET): $(OBJECTS)
-	@echo "Linking Open Wanzer (Release)..."
-	$(CXX) $(OBJECTS) -o $(TARGET) $(LDFLAGS) $(LIBS)
-	@echo "✓ Build complete! Run with: ./$(TARGET)"
+build: configure
+	@echo "Building Open Wanzer..."
+	@cmake --build $(BUILD_DIR)
+	@echo "✓ Build complete! Binary: $(BUILD_DIR)/openwanzer"
 
-debug: CXXFLAGS = $(CXXFLAGS_DEBUG)
-debug: $(OBJECTS_DEBUG)
-	@echo "Linking Open Wanzer (Debug)..."
-	$(CXX) $(OBJECTS_DEBUG) -o $(TARGET)-debug $(LDFLAGS) $(LIBS)
-	@echo "✓ Debug build complete! Run with: ./$(TARGET)-debug"
+release: configure
+	@echo "Building Open Wanzer (Release)..."
+	@cmake --build $(BUILD_DIR) --config Release
+	@echo "✓ Release build complete! Run with: ./$(BUILD_DIR)/openwanzer"
 
-# Pattern rules for compiling .cpp files
-%.o: %.cpp
-	@echo "Compiling $<..."
-	$(CXX) $(CXXFLAGS) -c $< -o $@
-
-%.debug.o: %.cpp
-	@echo "Compiling $< (debug)..."
-	$(CXX) $(CXXFLAGS_DEBUG) -c $< -o $@
+debug: configure-debug
+	@echo "Building Open Wanzer (Debug)..."
+	@cmake --build $(BUILD_DIR) --config Debug
+	@echo "✓ Debug build complete! Run with: ./$(BUILD_DIR)/openwanzer"
 
 # ==============================================================================
 # Utility Targets
@@ -61,14 +59,15 @@ debug: $(OBJECTS_DEBUG)
 
 clean:
 	@echo "Cleaning build artifacts..."
-	@find $(SRC_DIR) -name '*.o' -delete
-	@find $(SRC_DIR) -name '*.debug.o' -delete
-	@rm -f $(TARGET) $(TARGET)-debug
+	@rm -rf $(BUILD_DIR)
+	@find src -name '*.o' -delete 2>/dev/null || true
+	@find src -name '*.debug.o' -delete 2>/dev/null || true
+	@rm -f openwanzer openwanzer-debug 2>/dev/null || true
 	@echo "✓ Clean complete!"
 
-run: $(TARGET)
+run: build
 	@echo "Running Open Wanzer..."
-	@./$(TARGET)
+	@cd $(BUILD_DIR) && ./openwanzer
 
 check-deps:
 	@echo "Checking dependencies..."
@@ -79,28 +78,56 @@ check-deps:
 
 format:
 	@echo "Formatting code with clang-format..."
-	@find $(SRC_DIR) -name '*.cpp' -o -name '*.h' | xargs clang-format -i
+	@find src include -name '*.cpp' -o -name '*.h' | xargs clang-format -i 2>/dev/null || echo "clang-format not found, skipping..."
 	@echo "✓ Formatting complete!"
 
-help:
-	@echo "Open Wanzer - Makefile Targets"
-	@echo "================================"
-	@echo "  all          - Build release version (default)"
-	@echo "  debug        - Build debug version with symbols"
-	@echo "  clean        - Remove all build artifacts"
-	@echo "  run          - Build and run the game"
-	@echo "  check-deps   - Verify all dependencies are present"
-	@echo "  format       - Format code with clang-format"
-	@echo "  install      - Install to /usr/local (requires sudo)"
-	@echo "  uninstall    - Remove from /usr/local (requires sudo)"
-	@echo "  help         - Show this help message"
+# ==============================================================================
+# Installation Targets
+# ==============================================================================
 
-install: $(TARGET)
+install: release
 	@echo "Installing Open Wanzer to /usr/local/bin..."
-	@install -D -m 755 $(TARGET) /usr/local/bin/$(TARGET)
+	@sudo install -D -m 755 $(BUILD_DIR)/openwanzer /usr/local/bin/openwanzer
 	@echo "✓ Installation complete!"
 
 uninstall:
 	@echo "Uninstalling Open Wanzer from /usr/local/bin..."
-	@rm -f /usr/local/bin/$(TARGET)
+	@sudo rm -f /usr/local/bin/openwanzer
 	@echo "✓ Uninstallation complete!"
+
+# ==============================================================================
+# Help Target
+# ==============================================================================
+
+help:
+	@echo "Open Wanzer - CMake Build System"
+	@echo "=================================="
+	@echo ""
+	@echo "Build Targets:"
+	@echo "  all          - Build release version (default)"
+	@echo "  release      - Build release version"
+	@echo "  debug        - Build debug version with symbols"
+	@echo "  build        - Build with current configuration"
+	@echo ""
+	@echo "Configuration:"
+	@echo "  configure       - Configure CMake (Release)"
+	@echo "  configure-debug - Configure CMake (Debug)"
+	@echo ""
+	@echo "Utilities:"
+	@echo "  clean        - Remove all build artifacts"
+	@echo "  run          - Build and run the game"
+	@echo "  check-deps   - Verify all dependencies are present"
+	@echo "  format       - Format code with clang-format"
+	@echo ""
+	@echo "Installation:"
+	@echo "  install      - Install to /usr/local (requires sudo)"
+	@echo "  uninstall    - Remove from /usr/local (requires sudo)"
+	@echo ""
+	@echo "Help:"
+	@echo "  help         - Show this help message"
+	@echo ""
+	@echo "Advanced (CMake):"
+	@echo "  Use CMake directly for more options:"
+	@echo "    mkdir build && cd build"
+	@echo "    cmake .."
+	@echo "    cmake --build ."
