@@ -391,10 +391,6 @@ cmake --build .
 3. Include header in relevant files: `#include "NewFile.hpp"`
 4. No need to update Makefile (uses automatic detection)
 5. Follow naming conventions: PascalCase for files, methods; camelCase for variables
-1. Create `NewFile.cpp` in `src/` and `NewFile.h` in `include/`
-2. Use header guard: `#ifndef OPENWANZER_NEWFILE_H`
-3. Include header in relevant files: `#include "NewFile.h"`
-4. No need to update CMakeLists.txt (uses automatic file globbing)
 
 ### Adding a New Feature
 
@@ -421,9 +417,15 @@ cmake --build .
 ## Code Patterns and Idioms
 
 ### Namespaces
-- `GameLogic::` - All game logic functions
-- `Rendering::` - All rendering functions
-- `Config::` - Configuration functions
+- `gamelogic::` - All game logic functions
+- `rendering::` - All rendering functions
+- `config::` - Configuration functions
+- `combatarcs::` - Combat arc calculations
+- `damagesystem::` - Damage system functions
+- `hittables::` - Hit location tables
+- `input::` - Input handling
+- `paperdollui::` - Paperdoll UI rendering
+- `uipanel::` - UI panel management
 - No namespace for core structures (GameState, Unit, etc.)
 
 ### Memory Management
@@ -472,10 +474,34 @@ cmake --build .
   - Build verification commands
   - Forceful instructions for AI assistants
 
-**NOTE**: Phase 2 (code-level refactoring to new naming conventions) is pending. This phase will refactor all method names, variables, constants, etc. to match the new standards. This is a massive undertaking that will touch virtually every line of code.
+### 2025-11-15: Namespace and Constant Refactoring (Phase 2a)
+- **REFACTORED ALL NAMESPACES** to lowercase
+  - GameLogic → gamelogic
+  - Rendering → rendering
+  - Config → config
+  - CombatArcs → combatarcs
+  - DamageSystem → damagesystem
+  - HitTables → hittables
+  - Input → input
+  - PaperdollUI → paperdollui
+  - UIPanel → uipanel
+  - Updated all namespace declarations and usages across all files
+- **REFACTORED ALL CONST CONSTANTS** to kCamelCase format
+  - DEFAULT_SCREEN_WIDTH → kDefaultScreenWidth
+  - DEFAULT_SCREEN_HEIGHT → kDefaultScreenHeight
+  - DEFAULT_HEX_SIZE → kDefaultHexSize
+  - DEFAULT_MAP_ROWS → kDefaultMapRows
+  - DEFAULT_MAP_COLS → kDefaultMapCols
+  - COLOR_BACKGROUND → kColorBackground
+  - COLOR_GRID → kColorGrid
+  - COLOR_FPS → kColorFps
+  - MOV_TABLE_DRY → kMovTableDry
+  - Mutable globals kept as SCREAMING_SNAKE_CASE (SCREEN_WIDTH, HEX_SIZE, etc.)
+- Build status: Clean build with zero warnings
+
+**NOTE**: Phase 2b (method names and variable refactoring) is pending. This will refactor all method names to PascalCase, all parameters/locals to camelCase, and all private members to camelCase_. This is a massive undertaking touching thousands of lines of code across all 39 files.
 
 ### 2025-11-15: Major Codebase Refactoring (Earlier Session)
-### 2025-11-15: CMake Build System Migration
 - **Migrated build system** from GNU Make to CMake
 - **Created CMakeLists.txt** with comprehensive configuration
   - C++17 standard enforcement
