@@ -4,6 +4,7 @@
 #include "ArmorLocation.hpp"
 #include "Constants.hpp"
 #include "GameLogic.hpp"
+#include "UIPanels.hpp"
 #include "rl/raygui.h"
 #include "rl/raylib.h"
 #include "rl/raymath.h"
@@ -523,11 +524,15 @@ void handlePaperdollPanelDrag(GameState& game) {
 	if (game.targetPanel.isDragging) {
 		game.targetPanel.bounds.x = mousePos.x - game.targetPanel.dragOffset.x;
 		game.targetPanel.bounds.y = mousePos.y - game.targetPanel.dragOffset.y;
+		// Recalculate paperdoll regions so they move with the panel
+		uipanel::calculatePaperdollRegions(game.targetPanel);
 	}
 
 	if (game.playerPanel.isDragging) {
 		game.playerPanel.bounds.x = mousePos.x - game.playerPanel.dragOffset.x;
 		game.playerPanel.bounds.y = mousePos.y - game.playerPanel.dragOffset.y;
+		// Recalculate paperdoll regions so they move with the panel
+		uipanel::calculatePaperdollRegions(game.playerPanel);
 	}
 }
 

@@ -141,7 +141,7 @@ void drawMap(GameState &game) {
 			// Draw hex outline
 			drawHexagon(corners, kColorGrid, false);
 
-			// Draw movement/attack selection highlights
+			// Draw movement selection highlights
 			if (hex.isMoveSel) {
 				std::vector<Point> innerCorners;
 				Point center = HexToPixel(layout, cubeHex);
@@ -153,17 +153,7 @@ void drawMap(GameState &game) {
 				}
 				drawHexagon(innerCorners, Color {0, 255, 0, 100}, true);
 			}
-			if (hex.isAttackSel) {
-				std::vector<Point> innerCorners;
-				Point center = HexToPixel(layout, cubeHex);
-				for (int i = 0; i < 6; i++) {
-					Point offset = HexCornerOffset(layout, i);
-					float scale = 0.85f;
-					innerCorners.push_back(Point(center.x + offset.x * scale,
-					                             center.y + offset.y * scale));
-				}
-				drawHexagon(innerCorners, Color {255, 0, 0, 100}, true);
-			}
+			// Note: Red targeting box removed - using targeting lines only
 		}
 	}
 
