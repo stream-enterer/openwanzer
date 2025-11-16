@@ -253,8 +253,8 @@ void drawUI(GameState &game) {
 		DrawText(hoverText, 580, 10, 20, Color {255, 255, 150, 255}); // Light yellow
 	}
 
-	// Reset UI button
-	if (GuiButton(Rectangle {game.layout.statusBar.width - 240, 5, 120, 30},
+	// Reset UI button (moved further left to make room)
+	if (GuiButton(Rectangle {game.layout.statusBar.width - 370, 5, 120, 30},
 	              "RESET UI")) {
 		// Reset camera to center and 100% zoom
 		game.camera.zoom = 1.0f;
@@ -267,6 +267,12 @@ void drawUI(GameState &game) {
 
 		// Reset paperdoll panel positions
 		uipanel::resetPanelPositions(game);
+	}
+
+	// Mechbay button
+	if (GuiButton(Rectangle {game.layout.statusBar.width - 240, 5, 120, 30},
+	              "MECHBAY")) {
+		game.showMechbayScreen = !game.showMechbayScreen;
 	}
 
 	// Options button
