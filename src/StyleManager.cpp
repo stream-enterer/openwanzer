@@ -16,14 +16,33 @@ std::string STYLES_PATH; // Path where styles were found
 // Function to discover available styles
 void discoverStyles() {
 	AVAILABLE_STYLES.clear();
-	const char* stylesPath = "resources/styles";
 
-	DIR* dir = opendir(stylesPath);
+	// Try multiple possible paths for the styles directory
+	// This handles running from both project root and build directory
+	const char* possiblePaths[] = {
+	    "resources/styles",   // Running from project root
+	    "../resources/styles" // Running from build directory
+	};
+
+	const char* stylesPath = nullptr;
+	DIR* dir = nullptr;
+
+	// Try each path until we find one that works
+	for (const char* path : possiblePaths) {
+		dir = opendir(path);
+		if (dir != nullptr) {
+			stylesPath = path;
+			STYLES_PATH = path; // Store the successful path for later use
+			break;
+		}
+	}
+
 	if (dir == nullptr) {
-		TraceLog(LOG_WARNING, "Failed to open styles directory");
+		TraceLog(LOG_WARNING, "Failed to open styles directory (tried multiple paths)");
 		// Add default style as fallback
 		AVAILABLE_STYLES.push_back("default");
 		STYLE_LABELS_STRING = "default";
+		STYLES_PATH = "resources/styles"; // Fallback path
 		return;
 	}
 
@@ -58,7 +77,7 @@ void discoverStyles() {
 		STYLE_LABELS_STRING += AVAILABLE_STYLES[i];
 	}
 
-	TraceLog(LOG_INFO, TextFormat("Found %d styles", (int)AVAILABLE_STYLES.size()));
+	TraceLog(LOG_INFO, TextFormat("Found %d styles in %s", (int)AVAILABLE_STYLES.size(), stylesPath));
 }
 
 // Get index of a style by name
@@ -73,7 +92,9 @@ int getStyleIndex(const std::string& styleName) {
 
 // Load style theme
 void loadStyleTheme(const std::string& themeName) {
-	std::string stylePath = "resources/styles/" + themeName + "/style_" + themeName + ".rgs";
+	// Use the path that was discovered during discoverStyles()
+	// This ensures we use the correct path regardless of working directory
+	std::string stylePath = STYLES_PATH + "/" + themeName + "/style_" + themeName + ".rgs";
 
 	// Check if file exists
 	std::ifstream styleFile(stylePath);
