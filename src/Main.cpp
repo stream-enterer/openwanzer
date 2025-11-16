@@ -21,6 +21,7 @@
 #include "GameLogic.hpp"
 #include "GameState.hpp"
 #include "Input.hpp"
+#include "MechBayUI.hpp"
 #include "PaperdollUI.hpp"
 #include "Rendering.hpp"
 #include "UIPanels.hpp"
@@ -98,8 +99,8 @@ int main() {
 	bool needsRestart = false;
 
 	while (!WindowShouldClose()) {
-		// Input handling (only when menu is closed)
-		if (!game.showOptionsMenu) {
+		// Input handling (only when menus are closed)
+		if (!game.showOptionsMenu && !game.showMechbayScreen) {
 			// Handle paperdoll panel dragging (must be before selection)
 			paperdollui::handlePaperdollPanelDrag(game);
 
@@ -358,6 +359,11 @@ int main() {
 				game.camera.offsetY -= panSpeed;
 			if (IsKeyDown(KEY_DOWN) || IsKeyDown(KEY_S))
 				game.camera.offsetY += panSpeed;
+		} else if (game.showMechbayScreen) {
+			// MechBay screen input
+			if (IsKeyPressed(KEY_ESCAPE)) {
+				game.showMechbayScreen = false;
+			}
 		} else {
 			// Options menu input
 			if (IsKeyPressed(KEY_ESCAPE)) {
@@ -382,6 +388,11 @@ int main() {
 		// Draw paperdoll panels
 		paperdollui::renderTargetPanel(game);
 		paperdollui::renderPlayerPanel(game);
+
+		// Draw modal screens (on top of everything)
+		if (game.showMechbayScreen) {
+			mechbayui::RenderMechBayScreen(game);
+		}
 
 		if (game.showOptionsMenu) {
 			rendering::drawOptionsMenu(game, needsRestart);
