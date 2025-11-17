@@ -177,143 +177,151 @@ int main() {
 			// Left-click handling
 			if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && !game.combatLog.isDragging && !game.unitInfoBox.isDragging) {
 				Vector2 mousePos = GetMousePosition();
-				Layout layout = rendering::createHexLayout(HEX_SIZE, game.camera.offsetX,
-				                                           game.camera.offsetY, game.camera.zoom);
-				Point mousePoint(mousePos.x, mousePos.y);
-				FractionalHex fracHex = PixelToHex(layout, mousePoint);
-				::Hex cubeHex = HexRound(fracHex);
-				OffsetCoord offset = CubeToOffset(cubeHex);
-				HexCoord clickedHex = rendering::offsetToGameCoord(offset);
 
-				if (clickedHex.row >= 0 && clickedHex.row < MAP_ROWS && clickedHex.col >= 0 && clickedHex.col < MAP_COLS) {
-					Unit *clickedUnit = game.getUnitAt(clickedHex);
+				// Skip hex grid processing if clicking inside visible panels (fixes lock button closing window)
+				bool clickInTargetPanel = game.targetPanel.isVisible && CheckCollisionPointRec(mousePos, game.targetPanel.bounds);
+				bool clickInPlayerPanel = game.playerPanel.isVisible && CheckCollisionPointRec(mousePos, game.playerPanel.bounds);
 
-					// Phase 2: confirming facing
-					if (game.selectedUnit && game.movementSel.isFacingSelection) {
-						game.selectedUnit->facing = game.movementSel.selectedFacing;
+				if (!clickInTargetPanel && !clickInPlayerPanel) {
+					// Only process hex grid clicks when NOT clicking inside panels
+					Layout layout = rendering::createHexLayout(HEX_SIZE, game.camera.offsetX,
+					                                           game.camera.offsetY, game.camera.zoom);
+					Point mousePoint(mousePos.x, mousePos.y);
+					FractionalHex fracHex = PixelToHex(layout, mousePoint);
+					::Hex cubeHex = HexRound(fracHex);
+					OffsetCoord offset = CubeToOffset(cubeHex);
+					HexCoord clickedHex = rendering::offsetToGameCoord(offset);
 
-						// Now that movement is confirmed, update spotting (clear old, set new)
-						gamelogic::setSpotRangeAtPosition(game, game.selectedUnit->side,
-						                                  game.selectedUnit->spotRange,
-						                                  game.movementSel.oldPosition, false);
-						gamelogic::setUnitSpotRange(game, game.selectedUnit, true);
+					if (clickedHex.row >= 0 && clickedHex.row < MAP_ROWS && clickedHex.col >= 0 && clickedHex.col < MAP_COLS) {
+						Unit *clickedUnit = game.getUnitAt(clickedHex);
 
-						game.movementSel.reset();
-						rendering::clearSelectionHighlights(game);
-						if (!game.selectedUnit->hasFired) {
-							gamelogic::highlightAttackRange(game, game.selectedUnit);
-						}
+						// Phase 2: confirming facing
+						if (game.selectedUnit && game.movementSel.isFacingSelection) {
+							game.selectedUnit->facing = game.movementSel.selectedFacing;
 
-						// Keep attack lines visible after confirming facing
-						gamelogic::updateAttackLines(game);
-						game.showAttackLines = true;
-					}
-					// Phase 1: movement or attack
-					else if (game.selectedUnit && !game.movementSel.isFacingSelection) {
-						if (game.map[clickedHex.row][clickedHex.col].isMoveSel && !game.selectedUnit->hasMoved) {
-							std::vector<HexCoord> path = gamelogic::findPath(game, game.selectedUnit,
-							                                                 game.selectedUnit->position,
-							                                                 clickedHex);
-							if (!path.empty()) {
-								game.movementSel.oldPosition = game.selectedUnit->position;
-								game.movementSel.oldMovesLeft = game.selectedUnit->movesLeft;
-								game.movementSel.oldHasMoved = game.selectedUnit->hasMoved;
+							// Now that movement is confirmed, update spotting (clear old, set new)
+							gamelogic::setSpotRangeAtPosition(game, game.selectedUnit->side,
+							                                  game.selectedUnit->spotRange,
+							                                  game.movementSel.oldPosition, false);
+							gamelogic::setUnitSpotRange(game, game.selectedUnit, true);
 
-								// Move without updating spotting (defer until facing confirmation)
-								gamelogic::moveUnit(game, game.selectedUnit, clickedHex, false);
-								rendering::clearSelectionHighlights(game);
-								game.movementSel.isFacingSelection = true;
-								game.movementSel.selectedFacing = game.selectedUnit->facing;
-							}
-						} else if (game.map[clickedHex.row][clickedHex.col].isAttackSel) {
-							if (clickedUnit) {
-								gamelogic::performAttack(game, game.selectedUnit, clickedUnit);
-								rendering::clearSelectionHighlights(game);
-								game.selectedUnit = nullptr;
-								game.movementSel.reset();
-								game.showAttackLines = false;
-								// Hide panels after attack
-								uipanel::hideTargetPanel(game);
-								uipanel::hidePlayerPanel(game);
-							}
-						} else if (clickedUnit) {
-							game.selectedUnit = clickedUnit;
 							game.movementSel.reset();
 							rendering::clearSelectionHighlights(game);
-
-							// Only show movement/attack highlights and targeting lines for friendly units
-							if (clickedUnit->side == game.currentPlayer) {
-								if (!clickedUnit->hasMoved) {
-									gamelogic::highlightMovementRange(game, game.selectedUnit);
-								}
+							if (!game.selectedUnit->hasFired) {
 								gamelogic::highlightAttackRange(game, game.selectedUnit);
-
-								// Update attack lines for selected unit
-								gamelogic::updateAttackLines(game);
-								game.showAttackLines = true;
-
-								// Show player panel for friendly unit
-								uipanel::showPlayerPanel(game, clickedUnit);
-								uipanel::hideTargetPanel(game);
-							} else {
-								// Enemy unit selected - show target panel
-								// Calculate attack arc from current selected unit to this enemy
-								if (game.selectedUnit) {
-									Layout layout = rendering::createHexLayout(HEX_SIZE, game.camera.offsetX,
-									                                           game.camera.offsetY, game.camera.zoom);
-									OffsetCoord attackerOffset = rendering::gameCoordToOffset(game.selectedUnit->position);
-									OffsetCoord defenderOffset = rendering::gameCoordToOffset(clickedUnit->position);
-									::Hex attackerCube = OffsetToCube(attackerOffset);
-									::Hex defenderCube = OffsetToCube(defenderOffset);
-									Point attackerPixel = HexToPixel(layout, attackerCube);
-									Point defenderPixel = HexToPixel(layout, defenderCube);
-									Vector2 attackerPos = {(float)attackerPixel.x, (float)attackerPixel.y};
-									Vector2 defenderPos = {(float)defenderPixel.x, (float)defenderPixel.y};
-									combatarcs::AttackArc arc = combatarcs::getAttackArc(attackerPos, defenderPos, clickedUnit->facing);
-									uipanel::showTargetPanel(game, clickedUnit, arc);
-								}
-								game.showAttackLines = false;
-								uipanel::hidePlayerPanel(game);
 							}
-						} else {
-							// Clicked empty hex - hide panels
-							uipanel::hideTargetPanel(game);
-							uipanel::hidePlayerPanel(game);
+
+							// Keep attack lines visible after confirming facing
+							gamelogic::updateAttackLines(game);
+							game.showAttackLines = true;
 						}
-					} else if (!game.selectedUnit) {
-						if (clickedUnit) {
-							game.selectedUnit = clickedUnit;
-							game.movementSel.reset();
+						// Phase 1: movement or attack
+						else if (game.selectedUnit && !game.movementSel.isFacingSelection) {
+							if (game.map[clickedHex.row][clickedHex.col].isMoveSel && !game.selectedUnit->hasMoved) {
+								std::vector<HexCoord> path = gamelogic::findPath(game, game.selectedUnit,
+								                                                 game.selectedUnit->position,
+								                                                 clickedHex);
+								if (!path.empty()) {
+									game.movementSel.oldPosition = game.selectedUnit->position;
+									game.movementSel.oldMovesLeft = game.selectedUnit->movesLeft;
+									game.movementSel.oldHasMoved = game.selectedUnit->hasMoved;
 
-							// Only show movement/attack highlights and targeting lines for friendly units
-							if (clickedUnit->side == game.currentPlayer) {
-								if (!clickedUnit->hasMoved) {
-									gamelogic::highlightMovementRange(game, game.selectedUnit);
+									// Move without updating spotting (defer until facing confirmation)
+									gamelogic::moveUnit(game, game.selectedUnit, clickedHex, false);
+									rendering::clearSelectionHighlights(game);
+									game.movementSel.isFacingSelection = true;
+									game.movementSel.selectedFacing = game.selectedUnit->facing;
 								}
-								gamelogic::highlightAttackRange(game, game.selectedUnit);
+							} else if (game.map[clickedHex.row][clickedHex.col].isAttackSel) {
+								if (clickedUnit) {
+									gamelogic::performAttack(game, game.selectedUnit, clickedUnit);
+									rendering::clearSelectionHighlights(game);
+									game.selectedUnit = nullptr;
+									game.movementSel.reset();
+									game.showAttackLines = false;
+									// Hide panels after attack
+									uipanel::hideTargetPanel(game);
+									uipanel::hidePlayerPanel(game);
+								}
+							} else if (clickedUnit) {
+								game.selectedUnit = clickedUnit;
+								game.movementSel.reset();
+								rendering::clearSelectionHighlights(game);
 
-								// Update attack lines for selected unit
-								gamelogic::updateAttackLines(game);
-								game.showAttackLines = true;
+								// Only show movement/attack highlights and targeting lines for friendly units
+								if (clickedUnit->side == game.currentPlayer) {
+									if (!clickedUnit->hasMoved) {
+										gamelogic::highlightMovementRange(game, game.selectedUnit);
+									}
+									gamelogic::highlightAttackRange(game, game.selectedUnit);
 
-								// Show player panel for friendly unit
-								uipanel::showPlayerPanel(game, clickedUnit);
-								uipanel::hideTargetPanel(game);
+									// Update attack lines for selected unit
+									gamelogic::updateAttackLines(game);
+									game.showAttackLines = true;
+
+									// Show player panel for friendly unit
+									uipanel::showPlayerPanel(game, clickedUnit);
+									uipanel::hideTargetPanel(game);
+								} else {
+									// Enemy unit selected - show target panel
+									// Calculate attack arc from current selected unit to this enemy
+									if (game.selectedUnit) {
+										Layout layout = rendering::createHexLayout(HEX_SIZE, game.camera.offsetX,
+										                                           game.camera.offsetY, game.camera.zoom);
+										OffsetCoord attackerOffset = rendering::gameCoordToOffset(game.selectedUnit->position);
+										OffsetCoord defenderOffset = rendering::gameCoordToOffset(clickedUnit->position);
+										::Hex attackerCube = OffsetToCube(attackerOffset);
+										::Hex defenderCube = OffsetToCube(defenderOffset);
+										Point attackerPixel = HexToPixel(layout, attackerCube);
+										Point defenderPixel = HexToPixel(layout, defenderCube);
+										Vector2 attackerPos = {(float)attackerPixel.x, (float)attackerPixel.y};
+										Vector2 defenderPos = {(float)defenderPixel.x, (float)defenderPixel.y};
+										combatarcs::AttackArc arc = combatarcs::getAttackArc(attackerPos, defenderPos, clickedUnit->facing);
+										uipanel::showTargetPanel(game, clickedUnit, arc);
+									}
+									game.showAttackLines = false;
+									uipanel::hidePlayerPanel(game);
+								}
 							} else {
-								// Enemy unit selected - show target panel
-								// Default to FRONT arc when no attacker selected
-								combatarcs::AttackArc arc = combatarcs::AttackArc::FRONT;
-								uipanel::showTargetPanel(game, clickedUnit, arc);
-								game.showAttackLines = false;
+								// Clicked empty hex - hide panels
+								uipanel::hideTargetPanel(game);
 								uipanel::hidePlayerPanel(game);
 							}
-						} else {
-							// Clicked empty hex - hide panels
-							uipanel::hideTargetPanel(game);
-							uipanel::hidePlayerPanel(game);
+						} else if (!game.selectedUnit) {
+							if (clickedUnit) {
+								game.selectedUnit = clickedUnit;
+								game.movementSel.reset();
+
+								// Only show movement/attack highlights and targeting lines for friendly units
+								if (clickedUnit->side == game.currentPlayer) {
+									if (!clickedUnit->hasMoved) {
+										gamelogic::highlightMovementRange(game, game.selectedUnit);
+									}
+									gamelogic::highlightAttackRange(game, game.selectedUnit);
+
+									// Update attack lines for selected unit
+									gamelogic::updateAttackLines(game);
+									game.showAttackLines = true;
+
+									// Show player panel for friendly unit
+									uipanel::showPlayerPanel(game, clickedUnit);
+									uipanel::hideTargetPanel(game);
+								} else {
+									// Enemy unit selected - show target panel
+									// Default to FRONT arc when no attacker selected
+									combatarcs::AttackArc arc = combatarcs::AttackArc::FRONT;
+									uipanel::showTargetPanel(game, clickedUnit, arc);
+									game.showAttackLines = false;
+									uipanel::hidePlayerPanel(game);
+								}
+							} else {
+								// Clicked empty hex - hide panels
+								uipanel::hideTargetPanel(game);
+								uipanel::hidePlayerPanel(game);
+							}
 						}
 					}
-				}
+				} // End of if (!clickInTargetPanel && !clickInPlayerPanel)
 			}
 
 			// Keyboard zoom

@@ -14,7 +14,13 @@ Vector3 HexToWorld3D(HexCoord coord, const Layout &layout) {
 }
 
 // TrackballCamera implementation
-void TrackballCamera::Update(Rectangle viewport) {
+void TrackballCamera::Update(Rectangle viewport, bool panelIsDragging) {
+	// Don't activate trackball rotation if the panel itself is being dragged
+	if (panelIsDragging) {
+		isDragging = false;
+		return;
+	}
+
 	if (isDragging) {
 		Vector2 mousePos = GetMousePosition();
 		if (CheckCollisionPointRec(mousePos, viewport)) {

@@ -432,18 +432,32 @@ void handlePaperdollPanelDrag(GameState& game) {
 
 	// Start dragging on left click
 	if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-		// Check target panel
+		// Check target panel - but EXCLUDE polyViewport and netViewport areas
 		if (game.targetPanel.isVisible && CheckCollisionPointRec(mousePos, game.targetPanel.bounds)) {
-			game.targetPanel.isDragging = true;
-			game.targetPanel.dragOffset.x = mousePos.x - game.targetPanel.bounds.x;
-			game.targetPanel.dragOffset.y = mousePos.y - game.targetPanel.bounds.y;
+			// Don't start panel drag if clicking inside the 3D view or net view
+			bool inPolyViewport = CheckCollisionPointRec(mousePos, game.targetPanel.polyViewport);
+			bool inNetViewport = CheckCollisionPointRec(mousePos, game.targetPanel.netViewport);
+			bool inLockButton = CheckCollisionPointRec(mousePos, game.targetPanel.lockToggleBounds);
+
+			if (!inPolyViewport && !inNetViewport && !inLockButton) {
+				game.targetPanel.isDragging = true;
+				game.targetPanel.dragOffset.x = mousePos.x - game.targetPanel.bounds.x;
+				game.targetPanel.dragOffset.y = mousePos.y - game.targetPanel.bounds.y;
+			}
 		}
 
-		// Check player panel
+		// Check player panel - but EXCLUDE polyViewport and netViewport areas
 		if (game.playerPanel.isVisible && CheckCollisionPointRec(mousePos, game.playerPanel.bounds)) {
-			game.playerPanel.isDragging = true;
-			game.playerPanel.dragOffset.x = mousePos.x - game.playerPanel.bounds.x;
-			game.playerPanel.dragOffset.y = mousePos.y - game.playerPanel.bounds.y;
+			// Don't start panel drag if clicking inside the 3D view or net view
+			bool inPolyViewport = CheckCollisionPointRec(mousePos, game.playerPanel.polyViewport);
+			bool inNetViewport = CheckCollisionPointRec(mousePos, game.playerPanel.netViewport);
+			bool inLockButton = CheckCollisionPointRec(mousePos, game.playerPanel.lockToggleBounds);
+
+			if (!inPolyViewport && !inNetViewport && !inLockButton) {
+				game.playerPanel.isDragging = true;
+				game.playerPanel.dragOffset.x = mousePos.x - game.playerPanel.bounds.x;
+				game.playerPanel.dragOffset.y = mousePos.y - game.playerPanel.bounds.y;
+			}
 		}
 	}
 

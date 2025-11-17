@@ -15,7 +15,7 @@ struct TrackballCamera {
 	float friction;          // Decay factor (0.9 = 10% decay per frame)
 	bool isDragging;
 
-	void Update(Rectangle viewport);
+	void Update(Rectangle viewport, bool panelIsDragging = false);
 	void Rotate(Vector2 delta); // Convert mouse delta to rotation
 };
 
