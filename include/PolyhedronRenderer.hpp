@@ -8,6 +8,29 @@
 #include "rl/raylib.h"
 #include "rl/raymath.h"
 
+// 2D face representation for net view
+struct FacePosition2D {
+	std::vector<Vector2> vertices;
+};
+
+// Edge in 3D space
+struct Edge3D {
+	Vector3 v1, v2;
+};
+
+// Complete net layout
+struct NetLayout {
+	std::vector<FacePosition2D> positions;
+	Rectangle boundingBox;
+};
+
+// Net layout with optimal rotation
+struct NetLayoutWithRotation {
+	NetLayout net;
+	float rotation;    // Degrees
+	float scaleFactor; // Uniform scale
+};
+
 struct TrackballCamera {
 	Camera3D camera;
 	Vector2 previousMousePos;
@@ -54,5 +77,16 @@ void HighlightVisibleFaces(const PolyhedronData &attacker, const PolyhedronData 
 std::vector<int> CalculateHittableFaces(const PolyhedronData &attackerPoly, const PolyhedronData &defenderPoly,
                                         HexCoord attackerPos, HexCoord defenderPos, int attackerFacing,
                                         int defenderFacing);
+
+// Net view helper functions
+bool FacesShareEdge(const PolyFace &f1, const PolyFace &f2);
+Edge3D FindSharedEdge(const PolyFace &f1, const PolyFace &f2);
+FacePosition2D ProjectFaceToPlane(const PolyFace &face);
+Vector2 RotatePoint(Vector2 point, float angleRad);
+Vector2 FindVertex2D(const FacePosition2D &face2D, const PolyFace &face3D, Vector3 vertex3D);
+float CalculateAlignmentAngle(Vector2 edgeStart1, Vector2 edgeEnd1, Vector2 edgeStart2, Vector2 edgeEnd2);
+NetLayout GenerateContiguousNet(const PolyhedronData &poly);
+NetLayoutWithRotation OptimizeNetOrientation(const NetLayout &net, Rectangle viewport);
+bool PointInPolygon(Vector2 point, const std::vector<Vector2> &polygon);
 
 #endif // OPENWANZER_POLYHEDRON_RENDERER_HPP
