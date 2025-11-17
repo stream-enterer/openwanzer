@@ -1,9 +1,10 @@
 #ifndef OPENWANZER_POLYHEDRON_RENDERER_HPP
 #define OPENWANZER_POLYHEDRON_RENDERER_HPP
 
-#include "GameState.hpp"
-#include "Polyhedron.hpp"
+#include <vector>
 #include "Hex.hpp"
+#include "HexCoord.hpp"
+#include "Polyhedron.hpp"
 #include "rl/raylib.h"
 #include "rl/raymath.h"
 

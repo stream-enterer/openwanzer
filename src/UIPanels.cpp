@@ -1,5 +1,6 @@
 #include "UIPanels.hpp"
 #include "Constants.hpp"
+#include "PolyhedronRenderer.hpp"
 
 namespace uipanel {
 
@@ -31,27 +32,31 @@ void initializeTargetPanel(GameState& game) {
 	    (float)targetPanelY};
 	game.targetPanel.isVisible = false;
 
+	// Allocate polyView and netView
+	game.targetPanel.polyView = std::make_unique<PolyhedronView>();
+	game.targetPanel.netView = std::make_unique<NetView>();
+
 	// Initialize 3D view (left side)
-	game.targetPanel.polyView.trackball.camera = Camera3D {
+	game.targetPanel.polyView->trackball.camera = Camera3D {
 	    .position = Vector3 {3.0f, 3.0f, 3.0f},
 	    .target = Vector3 {0, 0, 0},
 	    .up = Vector3 {0, 1, 0},
 	    .fovy = 45.0f,
 	    .projection = CAMERA_PERSPECTIVE};
-	game.targetPanel.polyView.trackball.friction = 0.92f;
-	game.targetPanel.polyView.trackball.isDragging = false;
-	game.targetPanel.polyView.trackball.angularVelocity = {0, 0};
-	game.targetPanel.polyView.trackball.previousMousePos = {0, 0};
-	game.targetPanel.polyView.lockedToGridView = false;
+	game.targetPanel.polyView->trackball.friction = 0.92f;
+	game.targetPanel.polyView->trackball.isDragging = false;
+	game.targetPanel.polyView->trackball.angularVelocity = {0, 0};
+	game.targetPanel.polyView->trackball.previousMousePos = {0, 0};
+	game.targetPanel.polyView->lockedToGridView = false;
 
 	// Initialize net view (right side)
-	game.targetPanel.netView.hoveredFaceIndex = -1;
+	game.targetPanel.netView->hoveredFaceIndex = -1;
 
 	// Create render textures
 	int viewWidth = TARGET_PANEL_WIDTH / 2 - 30;
 	int viewHeight = TARGET_PANEL_HEIGHT - 80;
-	game.targetPanel.polyView.Initialize(viewWidth, viewHeight);
-	game.targetPanel.netView.Initialize(viewWidth, viewHeight);
+	game.targetPanel.polyView->Initialize(viewWidth, viewHeight);
+	game.targetPanel.netView->Initialize(viewWidth, viewHeight);
 
 	// Calculate viewports (will be updated in calculatePaperdollRegions)
 	calculatePaperdollRegions(game.targetPanel);
@@ -71,27 +76,31 @@ void initializePlayerPanel(GameState& game) {
 	    (float)playerPanelY};
 	game.playerPanel.isVisible = false;
 
+	// Allocate polyView and netView
+	game.playerPanel.polyView = std::make_unique<PolyhedronView>();
+	game.playerPanel.netView = std::make_unique<NetView>();
+
 	// Initialize 3D view (left side)
-	game.playerPanel.polyView.trackball.camera = Camera3D {
+	game.playerPanel.polyView->trackball.camera = Camera3D {
 	    .position = Vector3 {3.0f, 3.0f, 3.0f},
 	    .target = Vector3 {0, 0, 0},
 	    .up = Vector3 {0, 1, 0},
 	    .fovy = 45.0f,
 	    .projection = CAMERA_PERSPECTIVE};
-	game.playerPanel.polyView.trackball.friction = 0.92f;
-	game.playerPanel.polyView.trackball.isDragging = false;
-	game.playerPanel.polyView.trackball.angularVelocity = {0, 0};
-	game.playerPanel.polyView.trackball.previousMousePos = {0, 0};
-	game.playerPanel.polyView.lockedToGridView = false;
+	game.playerPanel.polyView->trackball.friction = 0.92f;
+	game.playerPanel.polyView->trackball.isDragging = false;
+	game.playerPanel.polyView->trackball.angularVelocity = {0, 0};
+	game.playerPanel.polyView->trackball.previousMousePos = {0, 0};
+	game.playerPanel.polyView->lockedToGridView = false;
 
 	// Initialize net view (right side)
-	game.playerPanel.netView.hoveredFaceIndex = -1;
+	game.playerPanel.netView->hoveredFaceIndex = -1;
 
 	// Create render textures
 	int viewWidth = PLAYER_PANEL_WIDTH / 2 - 30;
 	int viewHeight = PLAYER_PANEL_HEIGHT - 80;
-	game.playerPanel.polyView.Initialize(viewWidth, viewHeight);
-	game.playerPanel.netView.Initialize(viewWidth, viewHeight);
+	game.playerPanel.polyView->Initialize(viewWidth, viewHeight);
+	game.playerPanel.netView->Initialize(viewWidth, viewHeight);
 
 	// Calculate viewports (will be updated in calculatePaperdollRegions)
 	calculatePaperdollRegions(game.playerPanel);
