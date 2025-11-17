@@ -25,23 +25,30 @@ void renderTargetPanel(const GameState &game) {
 	// Update trackball camera (pass panel dragging state to prevent rotation while dragging window)
 	mutableGame.targetPanel.polyView->trackball.Update(mutableGame.targetPanel.polyViewport, mutableGame.targetPanel.isDragging);
 
-	// Handle lock toggle
+	// Handle lock toggle - check if this is a drag or a click
+	Vector2 currentMousePos = GetMousePosition();
+	float dragDistance = Vector2Distance(mutableGame.targetPanel.polyView->trackball.dragStartPos, currentMousePos);
+	bool wasDragging = dragDistance > 5.0f; // More than 5 pixels = drag, not click
+
 	if (GuiButton(mutableGame.targetPanel.lockToggleBounds,
 	              mutableGame.targetPanel.polyView->lockedToGridView ? "Unlock" : "Lock to Grid")) {
-		mutableGame.targetPanel.polyView->lockedToGridView = !mutableGame.targetPanel.polyView->lockedToGridView;
+		// Only toggle if we didn't just finish dragging the 3D view
+		if (!wasDragging) {
+			mutableGame.targetPanel.polyView->lockedToGridView = !mutableGame.targetPanel.polyView->lockedToGridView;
 
-		if (mutableGame.targetPanel.polyView->lockedToGridView) {
-			// Match grid view camera angle
-			// Set camera to top-down view matching unit facing
-			float facing = mutableGame.targetPanel.targetUnit->facing * DEG2RAD;
-			float distance = 5.0f;
-			float height = 4.0f;
+			if (mutableGame.targetPanel.polyView->lockedToGridView) {
+				// Match grid view camera angle
+				// Set camera to top-down view matching unit facing
+				float facing = mutableGame.targetPanel.targetUnit->facing * DEG2RAD;
+				float distance = 5.0f;
+				float height = 4.0f;
 
-			mutableGame.targetPanel.polyView->trackball.camera.position =
-			    Vector3 {distance * sinf(facing), height, distance * cosf(facing)};
-			mutableGame.targetPanel.polyView->trackball.camera.target = Vector3 {0, 0, 0};
-			mutableGame.targetPanel.polyView->trackball.camera.up = Vector3 {0, 1, 0};
-			mutableGame.targetPanel.polyView->trackball.angularVelocity = {0, 0};
+				mutableGame.targetPanel.polyView->trackball.camera.position =
+				    Vector3 {distance * sinf(facing), height, distance * cosf(facing)};
+				mutableGame.targetPanel.polyView->trackball.camera.target = Vector3 {0, 0, 0};
+				mutableGame.targetPanel.polyView->trackball.camera.up = Vector3 {0, 1, 0};
+				mutableGame.targetPanel.polyView->trackball.angularVelocity = {0, 0};
+			}
 		}
 	}
 
@@ -99,22 +106,29 @@ void renderPlayerPanel(const GameState &game) {
 	// Update trackball camera (pass panel dragging state to prevent rotation while dragging window)
 	mutableGame.playerPanel.polyView->trackball.Update(mutableGame.playerPanel.polyViewport, mutableGame.playerPanel.isDragging);
 
-	// Handle lock toggle
+	// Handle lock toggle - check if this is a drag or a click
+	Vector2 playerCurrentMousePos = GetMousePosition();
+	float playerDragDistance = Vector2Distance(mutableGame.playerPanel.polyView->trackball.dragStartPos, playerCurrentMousePos);
+	bool playerWasDragging = playerDragDistance > 5.0f; // More than 5 pixels = drag, not click
+
 	if (GuiButton(mutableGame.playerPanel.lockToggleBounds,
 	              mutableGame.playerPanel.polyView->lockedToGridView ? "Unlock" : "Lock to Grid")) {
-		mutableGame.playerPanel.polyView->lockedToGridView = !mutableGame.playerPanel.polyView->lockedToGridView;
+		// Only toggle if we didn't just finish dragging the 3D view
+		if (!playerWasDragging) {
+			mutableGame.playerPanel.polyView->lockedToGridView = !mutableGame.playerPanel.polyView->lockedToGridView;
 
-		if (mutableGame.playerPanel.polyView->lockedToGridView) {
-			// Match grid view camera angle
-			float facing = mutableGame.playerPanel.playerUnit->facing * DEG2RAD;
-			float distance = 5.0f;
-			float height = 4.0f;
+			if (mutableGame.playerPanel.polyView->lockedToGridView) {
+				// Match grid view camera angle
+				float facing = mutableGame.playerPanel.playerUnit->facing * DEG2RAD;
+				float distance = 5.0f;
+				float height = 4.0f;
 
-			mutableGame.playerPanel.polyView->trackball.camera.position =
-			    Vector3 {distance * sinf(facing), height, distance * cosf(facing)};
-			mutableGame.playerPanel.polyView->trackball.camera.target = Vector3 {0, 0, 0};
-			mutableGame.playerPanel.polyView->trackball.camera.up = Vector3 {0, 1, 0};
-			mutableGame.playerPanel.polyView->trackball.angularVelocity = {0, 0};
+				mutableGame.playerPanel.polyView->trackball.camera.position =
+				    Vector3 {distance * sinf(facing), height, distance * cosf(facing)};
+				mutableGame.playerPanel.polyView->trackball.camera.target = Vector3 {0, 0, 0};
+				mutableGame.playerPanel.polyView->trackball.camera.up = Vector3 {0, 1, 0};
+				mutableGame.playerPanel.polyView->trackball.angularVelocity = {0, 0};
+			}
 		}
 	}
 

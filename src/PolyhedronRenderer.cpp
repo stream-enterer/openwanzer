@@ -23,27 +23,31 @@ void TrackballCamera::Update(Rectangle viewport, bool panelIsDragging) {
 		return;
 	}
 
-	if (isDragging) {
-		Vector2 mousePos = GetMousePosition();
-		if (CheckCollisionPointRec(mousePos, viewport)) {
-			Vector2 delta = Vector2Subtract(mousePos, previousMousePos);
-			Rotate(delta);
-		}
-		previousMousePos = mousePos;
-
-		if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) {
-			isDragging = false;
-		}
-	} else if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+	// Start dragging on mouse press INSIDE viewport
+	if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
 		Vector2 mousePos = GetMousePosition();
 		if (CheckCollisionPointRec(mousePos, viewport)) {
 			isDragging = true;
 			previousMousePos = mousePos;
+			dragStartPos = mousePos; // Store where drag started
 			angularVelocity = {0, 0};
 		}
 	}
 
-	// Apply momentum and friction
+	// Continue dragging ANYWHERE while button is held
+	if (isDragging) {
+		if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
+			Vector2 mousePos = GetMousePosition();
+			Vector2 delta = Vector2Subtract(mousePos, previousMousePos);
+			Rotate(delta);
+			previousMousePos = mousePos;
+		} else {
+			// Mouse released - end drag
+			isDragging = false;
+		}
+	}
+
+	// Apply momentum and friction (only when not dragging)
 	if (!isDragging && (fabs(angularVelocity.x) > 0.001f || fabs(angularVelocity.y) > 0.001f)) {
 		// Rotate camera based on velocity
 		float dt = GetFrameTime();
@@ -68,7 +72,7 @@ void TrackballCamera::Update(Rectangle viewport, bool panelIsDragging) {
 }
 
 void TrackballCamera::Rotate(Vector2 delta) {
-	float sensitivity = 0.003f; // Radians per pixel
+	float sensitivity = 0.012f; // Radians per pixel (increased 4x for better responsiveness)
 
 	// Update angular velocity (for momentum)
 	float dt = GetFrameTime();
@@ -359,7 +363,8 @@ NetLayoutWithRotation OptimizeNetOrientation(const NetLayout &net, Rectangle vie
 	float bestScale = 0.0f;
 	float bestRotation = 0.0f;
 
-	float padding = 20.0f;
+	// INCREASED PADDING: 20.0f → 40.0f to prevent overlap
+	float padding = 40.0f;
 	float availableWidth = viewport.width - 2 * padding;
 	float availableHeight = viewport.height - 2 * padding;
 
@@ -402,6 +407,9 @@ NetLayoutWithRotation OptimizeNetOrientation(const NetLayout &net, Rectangle vie
 			bestRotation = angle;
 		}
 	}
+
+	// APPLY SAFETY FACTOR: Reduce scale by 20% to ensure no overlap
+	bestScale *= 0.8f;
 
 	return NetLayoutWithRotation {net, bestRotation, bestScale};
 }
@@ -487,13 +495,37 @@ void NetView::Render(const PolyhedronData &poly, Rectangle viewport) {
 		}
 
 		// Fill face with color
-		Color faceColor = GetFaceColor(poly.faces[i]);
+		const PolyFace &face = poly.faces[i];
+		Color faceColor = GetFaceColor(face);
 		faceColor.a = 255; // Opaque for net view
 
 		// Triangulate and draw (fan triangulation)
 		if (screenVerts.size() >= 3) {
 			for (size_t t = 1; t < screenVerts.size() - 1; t++) {
 				DrawTriangle(screenVerts[0], screenVerts[t], screenVerts[t + 1], faceColor);
+			}
+		}
+
+		// Draw black diagonal stripes for structure faces
+		if (face.isStructure && !face.isDestroyed) {
+			// Calculate bounding box of face
+			float minX = screenVerts[0].x, minY = screenVerts[0].y;
+			float maxX = screenVerts[0].x, maxY = screenVerts[0].y;
+			for (const auto &v : screenVerts) {
+				minX = fmin(minX, v.x);
+				minY = fmin(minY, v.y);
+				maxX = fmax(maxX, v.x);
+				maxY = fmax(maxY, v.y);
+			}
+
+			// Draw diagonal stripes
+			float stripeSpacing = 6.0f;
+			for (float offset = -(maxY - minY); offset < (maxX - minX); offset += stripeSpacing) {
+				Vector2 start = {minX + offset, minY};
+				Vector2 end = {minX + offset + (maxY - minY), maxY};
+
+				// Draw the stripe (will be clipped by polygon bounds visually)
+				DrawLineEx(start, end, 2.0f, BLACK);
 			}
 		}
 
@@ -509,14 +541,32 @@ void NetView::Render(const PolyhedronData &poly, Rectangle viewport) {
 		const PolyFace &face = poly.faces[hoveredFaceIndex];
 		Vector2 mousePos = GetMousePosition();
 
-		const char *text = face.isStructure ? TextFormat("Structure: %d", face.currentHP)
-		                                    : TextFormat("Armor: %d", face.currentHP);
+		const char *text;
+		if (face.isDestroyed) {
+			text = "DESTROYED";
+		} else if (face.isStructure) {
+			text = TextFormat("Structure: %d", face.currentHP);
+		} else {
+			text = TextFormat("Armor: %d", face.currentHP);
+		}
 
-		// Draw tooltip box
+		// Draw tooltip box near mouse with offset
 		int fontSize = 12;
 		int textWidth = MeasureText(text, fontSize);
-		DrawRectangle(mousePos.x + 5, mousePos.y + 5, textWidth + 10, 22, Color {0, 0, 0, 220});
-		DrawText(text, mousePos.x + 10, mousePos.y + 10, fontSize, WHITE);
+		int tooltipX = mousePos.x + 10;
+		int tooltipY = mousePos.y + 10;
+
+		// Keep tooltip on screen
+		if (tooltipX + textWidth + 10 > viewport.width) {
+			tooltipX = mousePos.x - textWidth - 20;
+		}
+		if (tooltipY + 22 > viewport.height) {
+			tooltipY = mousePos.y - 32;
+		}
+
+		DrawRectangle(tooltipX, tooltipY, textWidth + 10, 22, Color {0, 0, 0, 220});
+		DrawRectangleLines(tooltipX, tooltipY, textWidth + 10, 22, WHITE);
+		DrawText(text, tooltipX + 5, tooltipY + 5, fontSize, WHITE);
 	}
 
 	EndTextureMode();

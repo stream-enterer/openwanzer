@@ -34,6 +34,7 @@ struct NetLayoutWithRotation {
 struct TrackballCamera {
 	Camera3D camera;
 	Vector2 previousMousePos;
+	Vector2 dragStartPos;    // Where the drag started (for detecting drag vs click)
 	Vector2 angularVelocity; // Radians per second
 	float friction;          // Decay factor (0.9 = 10% decay per frame)
 	bool isDragging;
