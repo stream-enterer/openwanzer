@@ -182,7 +182,7 @@ void GameState::addUnit(UnitClass uClass, int side, int row, int col) {
 	unit->initializeWeapons();
 
 	// Initialize 3D polyhedron armor system with random shape
-	PolyhedronShape shape = static_cast<PolyhedronShape>(GetRandomValue(0, 7));
+	PolyhedronShape shape = static_cast<PolyhedronShape>(GetRandomValue(0, 9));
 	unit->initializePolyhedron(wClass, shape);
 
 	// Initialize unit facing based on side (using degrees: E=0°, S=90°, W=180°, N=270°)
