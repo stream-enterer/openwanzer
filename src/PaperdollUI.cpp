@@ -380,78 +380,11 @@ void renderLocationTooltip(const PaperdollPanel& panel, const Unit* unit) {
 }
 
 // ============================================================================
-// MAIN PANEL RENDERING
+// MAIN PANEL RENDERING - OLD 2D IMPLEMENTATION
 // ============================================================================
-
-void renderTargetPanel(const GameState& game) {
-	if (!game.targetPanel.isVisible || !game.targetPanel.targetUnit)
-		return;
-
-	const TargetPanel& panel = game.targetPanel;
-	Unit* unit = panel.targetUnit;
-
-	// 1. Draw panel background
-	Color backgroundColor = GetColor(GuiGetStyle(DROPDOWNBOX, BASE_COLOR_NORMAL));
-	Color borderColor = GetColor(GuiGetStyle(DROPDOWNBOX, BORDER_COLOR_NORMAL));
-
-	DrawRectangleRec(panel.bounds, backgroundColor);
-	DrawRectangleLinesEx(panel.bounds, 2, borderColor);
-
-	// 2. Draw header section
-	renderPanelHeader(panel, unit, true);
-
-	// 3. Draw front paperdoll
-	renderFrontPaperdoll(panel, unit);
-
-	// 4. Draw rear paperdoll
-	renderRearPaperdoll(panel, unit);
-
-	// 5. Draw attack arc indicators (red lines)
-	renderAttackArcIndicators(panel, panel.currentArc);
-
-	// 6. Draw "FRONT" and "REAR" labels
-	renderPaperdollLabels(panel);
-
-	// 7. Draw weapon loadout list
-	renderWeaponLoadout(panel, unit);
-
-	// 8. Draw tooltip if hovering over body part
-	if (panel.showTooltip) {
-		renderLocationTooltip(panel, unit);
-	}
-}
-
-void renderPlayerPanel(const GameState& game) {
-	if (!game.playerPanel.isVisible || !game.playerPanel.playerUnit)
-		return;
-
-	const PlayerPanel& panel = game.playerPanel;
-	Unit* unit = panel.playerUnit;
-
-	// 1. Draw panel background
-	Color backgroundColor = GetColor(GuiGetStyle(DROPDOWNBOX, BASE_COLOR_NORMAL));
-	Color borderColor = GetColor(GuiGetStyle(DROPDOWNBOX, BORDER_COLOR_NORMAL));
-
-	DrawRectangleRec(panel.bounds, backgroundColor);
-	DrawRectangleLinesEx(panel.bounds, 2, borderColor);
-
-	// 2. Draw header section (simplified for player panel)
-	renderPanelHeader(panel, unit, false);
-
-	// 3. Draw front paperdoll
-	renderFrontPaperdoll(panel, unit);
-
-	// 4. Draw rear paperdoll
-	renderRearPaperdoll(panel, unit);
-
-	// 5. Draw "FRONT" and "REAR" labels
-	renderPaperdollLabels(panel);
-
-	// 6. Draw tooltip if hovering over body part
-	if (panel.showTooltip) {
-		renderLocationTooltip(panel, unit);
-	}
-}
+// NOTE: renderTargetPanel and renderPlayerPanel have been moved to PolyhedronUI.cpp
+// for the new 3D polyhedron-based armor display. The functions below remain for
+// tooltip handling and panel drag functionality.
 
 // ============================================================================
 // INPUT HANDLING

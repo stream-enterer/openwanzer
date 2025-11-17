@@ -1,5 +1,6 @@
 #include "GameState.hpp"
 #include "Constants.hpp"
+#include "PolyhedronRenderer.hpp"
 #include "rl/raylib.h"
 
 // Resolution options
@@ -80,6 +81,22 @@ void MovementSelection::reset() {
 	oldHasMoved = false;
 	selectedFacing = 0.0f;
 }
+
+// PaperdollPanel implementation
+PaperdollPanel::PaperdollPanel()
+    : isVisible(false), isDragging(false), hoveredLocation(ArmorLocation::NONE), showTooltip(false) {
+	bounds = {0, 0, 0, 0};
+	dragOffset = {0, 0};
+	defaultPosition = {0, 0};
+	frontHead = frontCT = frontLT = frontRT = {0, 0, 0, 0};
+	frontLA = frontRA = frontLL = frontRL = {0, 0, 0, 0};
+	rearCT = rearLT = rearRT = rearLA = rearRA = {0, 0, 0, 0};
+	tooltipPos = {0, 0};
+	polyViewport = netViewport = lockToggleBounds = {0, 0, 0, 0};
+	// Note: polyView and netView are initialized to nullptr by unique_ptr default constructor
+}
+
+PaperdollPanel::~PaperdollPanel() = default; // Defined here where complete types are available
 
 // GameState implementation
 GameState::GameState()
@@ -163,6 +180,10 @@ void GameState::addUnit(UnitClass uClass, int side, int row, int col) {
 
 	// Initialize weapons for this weight class
 	unit->initializeWeapons();
+
+	// Initialize 3D polyhedron armor system with random shape
+	PolyhedronShape shape = static_cast<PolyhedronShape>(GetRandomValue(0, 7));
+	unit->initializePolyhedron(wClass, shape);
 
 	// Initialize unit facing based on side (using degrees: E=0°, S=90°, W=180°, N=270°)
 	// Axis units (left side) face generally East (toward right/enemy)

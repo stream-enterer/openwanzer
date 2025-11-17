@@ -7,9 +7,12 @@
 #include "CombatArcs.hpp"
 #include "GameHex.hpp"
 #include "HexCoord.hpp"
-#include "PolyhedronRenderer.hpp"
 #include "Unit.hpp"
 #include "rl/raylib.h"
+
+// Forward declarations to break circular dependency
+struct PolyhedronView;
+struct NetView;
 
 // Forward declaration for calculateCenteredCameraOffset
 struct CameraState;
@@ -177,24 +180,15 @@ struct PaperdollPanel {
 	bool showTooltip;
 	Vector2 tooltipPos;
 
-	// NEW: 3D Polyhedron views
-	PolyhedronView polyView;
-	NetView netView;
+	// NEW: 3D Polyhedron views (using pointers to break circular dependency)
+	std::unique_ptr<PolyhedronView> polyView;
+	std::unique_ptr<NetView> netView;
 	Rectangle polyViewport;
 	Rectangle netViewport;
 	Rectangle lockToggleBounds;
 
-	PaperdollPanel()
-	    : isVisible(false), isDragging(false), hoveredLocation(ArmorLocation::NONE), showTooltip(false) {
-		bounds = {0, 0, 0, 0};
-		dragOffset = {0, 0};
-		defaultPosition = {0, 0};
-		frontHead = frontCT = frontLT = frontRT = {0, 0, 0, 0};
-		frontLA = frontRA = frontLL = frontRL = {0, 0, 0, 0};
-		rearCT = rearLT = rearRT = rearLA = rearRA = {0, 0, 0, 0};
-		tooltipPos = {0, 0};
-		polyViewport = netViewport = lockToggleBounds = {0, 0, 0, 0};
-	}
+	PaperdollPanel();
+	~PaperdollPanel(); // Destructor defined in .cpp for unique_ptr with incomplete type
 };
 
 struct TargetPanel : public PaperdollPanel {

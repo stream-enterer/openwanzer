@@ -1,13 +1,13 @@
 #include "PolyhedronRenderer.hpp"
 #include <algorithm>
 #include <cmath>
-#include "Rendering.hpp"
 #include "Hex.hpp"
+#include "Rendering.hpp"
 #include "rl/raygui.h"
 
 // Convert hex coordinate to 3D world position
 Vector3 HexToWorld3D(HexCoord coord, const Layout &layout) {
-	OffsetCoord offset = gameCoordToOffset(coord);
+	OffsetCoord offset = rendering::gameCoordToOffset(coord);
 	::Hex cubeHex = OffsetToCube(offset);
 	Point center = HexToPixel(layout, cubeHex);
 	return Vector3 {(float)center.x, 0, (float)center.y};

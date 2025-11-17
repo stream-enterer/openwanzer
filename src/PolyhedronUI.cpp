@@ -23,47 +23,47 @@ void renderTargetPanel(const GameState &game) {
 	DrawText(title, mutableGame.targetPanel.bounds.x + 10, mutableGame.targetPanel.bounds.y + 10, fontSize, WHITE);
 
 	// Update trackball camera
-	mutableGame.targetPanel.polyView.trackball.Update(mutableGame.targetPanel.polyViewport);
+	mutableGame.targetPanel.polyView->trackball.Update(mutableGame.targetPanel.polyViewport);
 
 	// Handle lock toggle
 	if (GuiButton(mutableGame.targetPanel.lockToggleBounds,
-	              mutableGame.targetPanel.polyView.lockedToGridView ? "Unlock" : "Lock to Grid")) {
-		mutableGame.targetPanel.polyView.lockedToGridView = !mutableGame.targetPanel.polyView.lockedToGridView;
+	              mutableGame.targetPanel.polyView->lockedToGridView ? "Unlock" : "Lock to Grid")) {
+		mutableGame.targetPanel.polyView->lockedToGridView = !mutableGame.targetPanel.polyView->lockedToGridView;
 
-		if (mutableGame.targetPanel.polyView.lockedToGridView) {
+		if (mutableGame.targetPanel.polyView->lockedToGridView) {
 			// Match grid view camera angle
 			// Set camera to top-down view matching unit facing
 			float facing = mutableGame.targetPanel.targetUnit->facing * DEG2RAD;
 			float distance = 5.0f;
 			float height = 4.0f;
 
-			mutableGame.targetPanel.polyView.trackball.camera.position =
+			mutableGame.targetPanel.polyView->trackball.camera.position =
 			    Vector3 {distance * sinf(facing), height, distance * cosf(facing)};
-			mutableGame.targetPanel.polyView.trackball.camera.target = Vector3 {0, 0, 0};
-			mutableGame.targetPanel.polyView.trackball.camera.up = Vector3 {0, 1, 0};
-			mutableGame.targetPanel.polyView.trackball.angularVelocity = {0, 0};
+			mutableGame.targetPanel.polyView->trackball.camera.target = Vector3 {0, 0, 0};
+			mutableGame.targetPanel.polyView->trackball.camera.up = Vector3 {0, 1, 0};
+			mutableGame.targetPanel.polyView->trackball.angularVelocity = {0, 0};
 		}
 	}
 
 	// Render 3D view
-	mutableGame.targetPanel.polyView.Render(mutableGame.targetPanel.targetUnit->polyhedron, mutableGame.targetPanel.polyViewport, true);
+	mutableGame.targetPanel.polyView->Render(mutableGame.targetPanel.targetUnit->polyhedron, mutableGame.targetPanel.polyViewport, true);
 
 	// Draw 3D view texture
-	DrawTexturePro(mutableGame.targetPanel.polyView.renderTarget.texture,
-	               Rectangle {0, 0, (float)mutableGame.targetPanel.polyView.renderTarget.texture.width,
-	                          -(float)mutableGame.targetPanel.polyView.renderTarget.texture.height}, // Flip Y
+	DrawTexturePro(mutableGame.targetPanel.polyView->renderTarget.texture,
+	               Rectangle {0, 0, (float)mutableGame.targetPanel.polyView->renderTarget.texture.width,
+	                          -(float)mutableGame.targetPanel.polyView->renderTarget.texture.height}, // Flip Y
 	               mutableGame.targetPanel.polyViewport, Vector2 {0, 0}, 0.0f, WHITE);
 
 	// Draw 3D viewport border
 	DrawRectangleLinesEx(mutableGame.targetPanel.polyViewport, 1.0f, Color {60, 60, 60, 255});
 
 	// Render net view
-	mutableGame.targetPanel.netView.Render(mutableGame.targetPanel.targetUnit->polyhedron, mutableGame.targetPanel.netViewport);
+	mutableGame.targetPanel.netView->Render(mutableGame.targetPanel.targetUnit->polyhedron, mutableGame.targetPanel.netViewport);
 
 	// Draw net view texture
-	DrawTexturePro(mutableGame.targetPanel.netView.renderTarget.texture,
-	               Rectangle {0, 0, (float)mutableGame.targetPanel.netView.renderTarget.texture.width,
-	                          -(float)mutableGame.targetPanel.netView.renderTarget.texture.height},
+	DrawTexturePro(mutableGame.targetPanel.netView->renderTarget.texture,
+	               Rectangle {0, 0, (float)mutableGame.targetPanel.netView->renderTarget.texture.width,
+	                          -(float)mutableGame.targetPanel.netView->renderTarget.texture.height},
 	               mutableGame.targetPanel.netViewport, Vector2 {0, 0}, 0.0f, WHITE);
 
 	// Draw net viewport border
@@ -72,11 +72,11 @@ void renderTargetPanel(const GameState &game) {
 	// Handle net view hover
 	Vector2 mousePos = GetMousePosition();
 	if (CheckCollisionPointRec(mousePos, mutableGame.targetPanel.netViewport)) {
-		mutableGame.targetPanel.netView.hoveredFaceIndex =
-		    mutableGame.targetPanel.netView.DetectHoveredFace(mutableGame.targetPanel.targetUnit->polyhedron, mousePos,
-		                                                      mutableGame.targetPanel.netViewport);
+		mutableGame.targetPanel.netView->hoveredFaceIndex =
+		    mutableGame.targetPanel.netView->DetectHoveredFace(mutableGame.targetPanel.targetUnit->polyhedron, mousePos,
+		                                                       mutableGame.targetPanel.netViewport);
 	} else {
-		mutableGame.targetPanel.netView.hoveredFaceIndex = -1;
+		mutableGame.targetPanel.netView->hoveredFaceIndex = -1;
 	}
 }
 
@@ -97,46 +97,46 @@ void renderPlayerPanel(const GameState &game) {
 	DrawText(title, mutableGame.playerPanel.bounds.x + 10, mutableGame.playerPanel.bounds.y + 10, fontSize, WHITE);
 
 	// Update trackball camera
-	mutableGame.playerPanel.polyView.trackball.Update(mutableGame.playerPanel.polyViewport);
+	mutableGame.playerPanel.polyView->trackball.Update(mutableGame.playerPanel.polyViewport);
 
 	// Handle lock toggle
 	if (GuiButton(mutableGame.playerPanel.lockToggleBounds,
-	              mutableGame.playerPanel.polyView.lockedToGridView ? "Unlock" : "Lock to Grid")) {
-		mutableGame.playerPanel.polyView.lockedToGridView = !mutableGame.playerPanel.polyView.lockedToGridView;
+	              mutableGame.playerPanel.polyView->lockedToGridView ? "Unlock" : "Lock to Grid")) {
+		mutableGame.playerPanel.polyView->lockedToGridView = !mutableGame.playerPanel.polyView->lockedToGridView;
 
-		if (mutableGame.playerPanel.polyView.lockedToGridView) {
+		if (mutableGame.playerPanel.polyView->lockedToGridView) {
 			// Match grid view camera angle
 			float facing = mutableGame.playerPanel.playerUnit->facing * DEG2RAD;
 			float distance = 5.0f;
 			float height = 4.0f;
 
-			mutableGame.playerPanel.polyView.trackball.camera.position =
+			mutableGame.playerPanel.polyView->trackball.camera.position =
 			    Vector3 {distance * sinf(facing), height, distance * cosf(facing)};
-			mutableGame.playerPanel.polyView.trackball.camera.target = Vector3 {0, 0, 0};
-			mutableGame.playerPanel.polyView.trackball.camera.up = Vector3 {0, 1, 0};
-			mutableGame.playerPanel.polyView.trackball.angularVelocity = {0, 0};
+			mutableGame.playerPanel.polyView->trackball.camera.target = Vector3 {0, 0, 0};
+			mutableGame.playerPanel.polyView->trackball.camera.up = Vector3 {0, 1, 0};
+			mutableGame.playerPanel.polyView->trackball.angularVelocity = {0, 0};
 		}
 	}
 
 	// Render 3D view
-	mutableGame.playerPanel.polyView.Render(mutableGame.playerPanel.playerUnit->polyhedron, mutableGame.playerPanel.polyViewport, true);
+	mutableGame.playerPanel.polyView->Render(mutableGame.playerPanel.playerUnit->polyhedron, mutableGame.playerPanel.polyViewport, true);
 
 	// Draw 3D view texture
-	DrawTexturePro(mutableGame.playerPanel.polyView.renderTarget.texture,
-	               Rectangle {0, 0, (float)mutableGame.playerPanel.polyView.renderTarget.texture.width,
-	                          -(float)mutableGame.playerPanel.polyView.renderTarget.texture.height}, // Flip Y
+	DrawTexturePro(mutableGame.playerPanel.polyView->renderTarget.texture,
+	               Rectangle {0, 0, (float)mutableGame.playerPanel.polyView->renderTarget.texture.width,
+	                          -(float)mutableGame.playerPanel.polyView->renderTarget.texture.height}, // Flip Y
 	               mutableGame.playerPanel.polyViewport, Vector2 {0, 0}, 0.0f, WHITE);
 
 	// Draw 3D viewport border
 	DrawRectangleLinesEx(mutableGame.playerPanel.polyViewport, 1.0f, Color {60, 60, 60, 255});
 
 	// Render net view
-	mutableGame.playerPanel.netView.Render(mutableGame.playerPanel.playerUnit->polyhedron, mutableGame.playerPanel.netViewport);
+	mutableGame.playerPanel.netView->Render(mutableGame.playerPanel.playerUnit->polyhedron, mutableGame.playerPanel.netViewport);
 
 	// Draw net view texture
-	DrawTexturePro(mutableGame.playerPanel.netView.renderTarget.texture,
-	               Rectangle {0, 0, (float)mutableGame.playerPanel.netView.renderTarget.texture.width,
-	                          -(float)mutableGame.playerPanel.netView.renderTarget.texture.height},
+	DrawTexturePro(mutableGame.playerPanel.netView->renderTarget.texture,
+	               Rectangle {0, 0, (float)mutableGame.playerPanel.netView->renderTarget.texture.width,
+	                          -(float)mutableGame.playerPanel.netView->renderTarget.texture.height},
 	               mutableGame.playerPanel.netViewport, Vector2 {0, 0}, 0.0f, WHITE);
 
 	// Draw net viewport border
@@ -145,10 +145,10 @@ void renderPlayerPanel(const GameState &game) {
 	// Handle net view hover
 	Vector2 mousePos = GetMousePosition();
 	if (CheckCollisionPointRec(mousePos, mutableGame.playerPanel.netViewport)) {
-		mutableGame.playerPanel.netView.hoveredFaceIndex = mutableGame.playerPanel.netView.DetectHoveredFace(
+		mutableGame.playerPanel.netView->hoveredFaceIndex = mutableGame.playerPanel.netView->DetectHoveredFace(
 		    mutableGame.playerPanel.playerUnit->polyhedron, mousePos, mutableGame.playerPanel.netViewport);
 	} else {
-		mutableGame.playerPanel.netView.hoveredFaceIndex = -1;
+		mutableGame.playerPanel.netView->hoveredFaceIndex = -1;
 	}
 }
 
