@@ -7,6 +7,7 @@
 #include "CombatArcs.hpp"
 #include "GameHex.hpp"
 #include "HexCoord.hpp"
+#include "PolyhedronRenderer.hpp"
 #include "Unit.hpp"
 #include "rl/raylib.h"
 
@@ -162,7 +163,7 @@ struct PaperdollPanel {
 	Vector2 dragOffset;
 	Vector2 defaultPosition; // For reset functionality
 
-	// Paperdoll regions (for hover detection)
+	// OLD: 2D Paperdoll regions (kept for backward compatibility)
 	Rectangle frontHead;
 	Rectangle frontCT, frontLT, frontRT;
 	Rectangle frontLA, frontRA;
@@ -176,6 +177,13 @@ struct PaperdollPanel {
 	bool showTooltip;
 	Vector2 tooltipPos;
 
+	// NEW: 3D Polyhedron views
+	PolyhedronView polyView;
+	NetView netView;
+	Rectangle polyViewport;
+	Rectangle netViewport;
+	Rectangle lockToggleBounds;
+
 	PaperdollPanel()
 	    : isVisible(false), isDragging(false), hoveredLocation(ArmorLocation::NONE), showTooltip(false) {
 		bounds = {0, 0, 0, 0};
@@ -185,6 +193,7 @@ struct PaperdollPanel {
 		frontLA = frontRA = frontLL = frontRL = {0, 0, 0, 0};
 		rearCT = rearLT = rearRT = rearLA = rearRA = {0, 0, 0, 0};
 		tooltipPos = {0, 0};
+		polyViewport = netViewport = lockToggleBounds = {0, 0, 0, 0};
 	}
 };
 
@@ -225,6 +234,7 @@ struct GameState {
 	bool showAttackLines;                // Whether to show attack lines
 	TargetPanel targetPanel;             // HBS-style target mech panel
 	PlayerPanel playerPanel;             // HBS-style player mech panel
+	bool debugMode;                      // Toggle with 'D' key for debug visualization
 
 	GameState();
 
