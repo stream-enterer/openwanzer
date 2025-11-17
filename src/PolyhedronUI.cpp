@@ -22,8 +22,8 @@ void renderTargetPanel(const GameState &game) {
 	const char *title = TextFormat("TARGET: %s", mutableGame.targetPanel.targetUnit->name.c_str());
 	DrawText(title, mutableGame.targetPanel.bounds.x + 10, mutableGame.targetPanel.bounds.y + 10, fontSize, WHITE);
 
-	// Update trackball camera
-	mutableGame.targetPanel.polyView->trackball.Update(mutableGame.targetPanel.polyViewport);
+	// Update trackball camera (pass panel dragging state to prevent rotation while dragging window)
+	mutableGame.targetPanel.polyView->trackball.Update(mutableGame.targetPanel.polyViewport, mutableGame.targetPanel.isDragging);
 
 	// Handle lock toggle
 	if (GuiButton(mutableGame.targetPanel.lockToggleBounds,
@@ -96,8 +96,8 @@ void renderPlayerPanel(const GameState &game) {
 	const char *title = TextFormat("PLAYER: %s", mutableGame.playerPanel.playerUnit->name.c_str());
 	DrawText(title, mutableGame.playerPanel.bounds.x + 10, mutableGame.playerPanel.bounds.y + 10, fontSize, WHITE);
 
-	// Update trackball camera
-	mutableGame.playerPanel.polyView->trackball.Update(mutableGame.playerPanel.polyViewport);
+	// Update trackball camera (pass panel dragging state to prevent rotation while dragging window)
+	mutableGame.playerPanel.polyView->trackball.Update(mutableGame.playerPanel.polyViewport, mutableGame.playerPanel.isDragging);
 
 	// Handle lock toggle
 	if (GuiButton(mutableGame.playerPanel.lockToggleBounds,

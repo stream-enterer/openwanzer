@@ -16,14 +16,23 @@ PolyFace CreateFace(const std::vector<Vector3> &vertices, int baseHP) {
 	return face;
 }
 
-// Calculate face normal (assumes counterclockwise winding)
+// Calculate face normal using Newell's method (robust for non-planar faces)
 Vector3 CalculateFaceNormal(const std::vector<Vector3> &vertices) {
 	if (vertices.size() < 3)
 		return Vector3 {0, 1, 0};
 
-	Vector3 v1 = Vector3Subtract(vertices[1], vertices[0]);
-	Vector3 v2 = Vector3Subtract(vertices[2], vertices[0]);
-	Vector3 normal = Vector3CrossProduct(v1, v2);
+	// Use Newell's method for robust normal calculation
+	Vector3 normal = {0, 0, 0};
+
+	for (size_t i = 0; i < vertices.size(); i++) {
+		Vector3 v1 = vertices[i];
+		Vector3 v2 = vertices[(i + 1) % vertices.size()];
+
+		normal.x += (v1.y - v2.y) * (v1.z + v2.z);
+		normal.y += (v1.z - v2.z) * (v1.x + v2.x);
+		normal.z += (v1.x - v2.x) * (v1.y + v2.y);
+	}
+
 	return Vector3Normalize(normal);
 }
 
@@ -59,8 +68,20 @@ Color GetFaceColor(const PolyFace &face) {
 	return Color {50, 50, 50, 243};
 }
 
-// Add triangle to mesh
+// Add triangle to mesh with winding verification
 void AddTriangleToMesh(Mesh &mesh, int &idx, Vector3 v0, Vector3 v1, Vector3 v2, Vector3 normal, Color color) {
+	// Verify triangle winding matches normal direction
+	Vector3 edge1 = Vector3Subtract(v1, v0);
+	Vector3 edge2 = Vector3Subtract(v2, v0);
+	Vector3 computedNormal = Vector3Normalize(Vector3CrossProduct(edge1, edge2));
+
+	// If computed normal points opposite direction, swap v1 and v2
+	if (Vector3DotProduct(computedNormal, normal) < 0) {
+		Vector3 temp = v1;
+		v1 = v2;
+		v2 = temp;
+	}
+
 	// Vertex 0
 	mesh.vertices[idx * 3 + 0] = v0.x;
 	mesh.vertices[idx * 3 + 1] = v0.y;
@@ -355,7 +376,41 @@ PolyhedronData CreatePolyhedron(PolyhedronShape shape, int weightClass) {
 }
 
 // Generate mesh from faces
+// Verify all face normals point outward from polyhedron center
+void PolyhedronData::VerifyNormals() {
+	// Calculate polyhedron center
+	Vector3 center = {0, 0, 0};
+	int vertexCount = 0;
+
+	for (const auto &face : faces) {
+		for (const auto &vertex : face.vertices) {
+			center = Vector3Add(center, vertex);
+			vertexCount++;
+		}
+	}
+
+	if (vertexCount > 0) {
+		center = Vector3Scale(center, 1.0f / vertexCount);
+	}
+
+	// Check each face normal points away from center
+	for (auto &face : faces) {
+		Vector3 faceToCenter = Vector3Subtract(center, face.center);
+		float dot = Vector3DotProduct(face.normal, faceToCenter);
+
+		// If dot product is positive, normal points inward - flip it
+		if (dot > 0) {
+			face.normal = Vector3Negate(face.normal);
+			// Also reverse vertex winding order
+			std::reverse(face.vertices.begin(), face.vertices.end());
+		}
+	}
+}
+
 void PolyhedronData::GenerateMesh() {
+	// Verify normals before generating mesh
+	VerifyNormals();
+
 	// Count total vertices (triangulate all faces)
 	int totalVertices = 0;
 	for (const auto &face : faces) {
