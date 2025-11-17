@@ -36,6 +36,7 @@ struct PolyhedronData {
 	void GenerateMesh();                     // Create mesh from face data
 	void UpdateFaceColors();                 // Update mesh colors based on HP
 	Vector2 ProjectFaceToNet(int faceIndex); // Get 2D net position
+	void VerifyNormals();                    // Ensure all normals point outward
 };
 
 // Forward declaration for weight class
