@@ -132,3 +132,12 @@ void Unit::initializeWeapons() {
 			break;
 	}
 }
+
+void Unit::initializePolyhedron(WeightClass wClass, PolyhedronShape shape) {
+	weightClass = wClass;
+	polyShape = shape;
+
+	// Convert WeightClass to int for CreatePolyhedron
+	int weightClassInt = static_cast<int>(wClass);
+	polyhedron = CreatePolyhedron(shape, weightClassInt);
+}
