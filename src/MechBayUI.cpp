@@ -286,8 +286,6 @@ void RenderMechBayScreen(GameState& game) {
 	if (gScrollbar.maxScrollOffset > 0) {
 		// Draw scrollbar track
 		DrawRectangleRec(scrollbarBounds, Color {40, 40, 40, 255});
-		// Draw scrollbar border (top, bottom, left, right)
-		DrawRectangleLinesEx(scrollbarBounds, 2.0f, Color {60, 60, 60, 255});
 
 		// Calculate scrollbar thumb size and position
 		float viewportRatio = (float)rightSectionHeight / (float)totalContentHeight;
@@ -337,6 +335,9 @@ void RenderMechBayScreen(GameState& game) {
 			thumbColor = Color {100, 100, 100, 255}; // Hover
 		}
 		DrawRectangleRec(thumbBounds, thumbColor);
+
+		// Draw scrollbar border (on top of everything to ensure visibility)
+		DrawRectangleLinesEx(scrollbarBounds, 1.0f, Color {80, 80, 80, 255});
 	}
 
 	// Begin scissor mode for scrollable content
@@ -428,8 +429,8 @@ void RenderMechBayScreen(GameState& game) {
 			} else {
 				// Draw empty slot
 				Rectangle emptySlot = {(float)colX, (float)sectionY, (float)(colWidth - 4), (float)(lineHeight - 2)};
-				// Draw with same background as panel, with 1px border
-				DrawRectangleRec(emptySlot, Color {50, 50, 50, 255});
+				// Draw with panel body background color (darker grey)
+				DrawRectangleRec(emptySlot, Color {40, 40, 40, 255});
 				DrawRectangleLinesEx(emptySlot, 1.0f, Color {80, 80, 80, 150});
 
 				sectionY += lineHeight;
@@ -450,13 +451,9 @@ void RenderMechBayScreen(GameState& game) {
 
 			// Handle drop
 			if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) {
-				// Calculate which slot cell was clicked
-				int mouseSlotY = GetMouseY() - slotsStartY;
-				int dropSlotIndex = mouseSlotY / lineHeight;
-				if (dropSlotIndex < 0)
-					dropSlotIndex = 0;
-				if (dropSlotIndex >= bodyPart->maxSlots)
-					dropSlotIndex = bodyPart->maxSlots - 1;
+				// Place at first available slot (index 0)
+				// The PlaceEquipment/MoveEquipment logic will handle finding the right position
+				int dropSlotIndex = 0;
 
 				// Attempt to place equipment
 				bool success = false;
