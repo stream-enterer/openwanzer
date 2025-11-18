@@ -8,10 +8,10 @@ const Resolution RESOLUTIONS[] = {
 const int RESOLUTION_COUNT = 9;
 
 const int FPS_VALUES[] = {30, 60, 75, 120, 144, 240, 0};
-const char *FPS_LABELS = "30;60;75;120;144;240;Unlimited";
+const char* FPS_LABELS = "30;60;75;120;144;240;Unlimited";
 
 const float GUI_SCALE_VALUES[] = {1.0f, 1.5f, 2.0f};
-const char *GUI_SCALE_LABELS = "1.00;1.50;2.00";
+const char* GUI_SCALE_LABELS = "1.00;1.50;2.00";
 const int GUI_SCALE_COUNT = 3;
 
 // GameLayout implementation
@@ -85,6 +85,61 @@ void MovementSelection::reset() {
 GameState::GameState()
     : selectedUnit(nullptr), currentTurn(1), currentPlayer(0), maxTurns(20), showOptionsMenu(false), showMechbayScreen(false), showAttackLines(false) {
 	initializeMap();
+	initializeMechBay();
+}
+
+void GameState::initializeMechBay() {
+	using namespace equipment;
+	using namespace mechloadout;
+
+	// Create MechLoadout instance
+	mechLoadout = std::make_unique<MechLoadout>();
+
+	// Load Blackjack BJ-1 chassis
+	mechLoadout->LoadMockChassis("Blackjack BJ-1", 45.0f);
+
+	// Create mock equipment items
+	// Medium Laser (5x)
+	Equipment* mediumLaser = Equipment::CreateMockEquipment("Weapon_Laser_BinaryLaserMedium_0-STOCK", "MEDIUM LASER", 1, 1.0f, EquipmentCategory::WEAPON);
+	mediumLaser->SetDamage(25);
+	mediumLaser->SetHeat(3);
+	mechLoadout->RegisterEquipment(mediumLaser);
+	mechLoadout->AddToInventory(mediumLaser->GetComponentDefID(), 5);
+
+	// LRM-20 (3x)
+	Equipment* lrm20 = Equipment::CreateMockEquipment("Weapon_LRM_LRM20_0-STOCK", "LRM 20", 5, 10.0f, EquipmentCategory::WEAPON);
+	lrm20->SetDamage(4);
+	lrm20->SetHeat(6);
+	mechLoadout->RegisterEquipment(lrm20);
+	mechLoadout->AddToInventory(lrm20->GetComponentDefID(), 3);
+
+	// Heat Sink (10x)
+	Equipment* heatSink = Equipment::CreateMockEquipment("Gear_HeatSink_Generic_Standard", "HEAT SINK", 1, 1.0f, EquipmentCategory::HEAT_SINK);
+	mechLoadout->RegisterEquipment(heatSink);
+	mechLoadout->AddToInventory(heatSink->GetComponentDefID(), 10);
+
+	// Guardian ECM (2x)
+	Equipment* guardianECM = Equipment::CreateMockEquipment("Gear_Guardian_ECM", "GUARDIAN ECM", 1, 1.5f, EquipmentCategory::UPGRADE);
+	mechLoadout->RegisterEquipment(guardianECM);
+	mechLoadout->AddToInventory(guardianECM->GetComponentDefID(), 2);
+
+	// Jump Jet (unlimited for testing)
+	Equipment* jumpJet = Equipment::CreateMockEquipment("Gear_JumpJet_Generic_Standard", "JUMP JET", 1, 0.5f, EquipmentCategory::JUMP_JET);
+	mechLoadout->RegisterEquipment(jumpJet);
+	mechLoadout->AddToInventory(jumpJet->GetComponentDefID(), -1); // -1 = unlimited
+
+	// AC/20 Ammo (unlimited for testing)
+	Equipment* ac20Ammo = Equipment::CreateMockEquipment("Ammo_AmmunitionBox_AC20", "AC/20 AMMO", 1, 1.0f, EquipmentCategory::AMMO);
+	mechLoadout->RegisterEquipment(ac20Ammo);
+	mechLoadout->AddToInventory(ac20Ammo->GetComponentDefID(), -1); // -1 = unlimited
+
+	// LRM Ammo (unlimited for testing)
+	Equipment* lrmAmmo = Equipment::CreateMockEquipment("Ammo_AmmunitionBox_LRM", "LRM AMMO", 1, 1.0f, EquipmentCategory::AMMO);
+	mechLoadout->RegisterEquipment(lrmAmmo);
+	mechLoadout->AddToInventory(lrmAmmo->GetComponentDefID(), -1); // -1 = unlimited
+
+	// Save initial state for Apply/Cancel functionality
+	mechLoadout->SaveState();
 }
 
 void GameState::initializeMap() {
@@ -118,8 +173,8 @@ void GameState::initializeMap() {
 	}
 }
 
-Unit *GameState::getUnitAt(const HexCoord &coord) {
-	for (auto &unit : units) {
+Unit* GameState::getUnitAt(const HexCoord& coord) {
+	for (auto& unit : units) {
 		if (unit->position == coord) {
 			return unit.get();
 		}

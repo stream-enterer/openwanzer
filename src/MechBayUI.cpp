@@ -2,177 +2,64 @@
 #include <cstdio>
 #include "Config.hpp"
 #include "Constants.hpp"
+#include "MechLoadout.hpp"
 #include "rl/raygui.h"
 
 namespace mechbayui {
 
-MechBayData InitializeMockMechBayData() {
-	MechBayData data;
+// Static drag state (persists across frames)
+static DragState gDragState;
 
-	// Mech info
-	data.mechName = "ANNIHILATOR ANH-3A";
-	data.tonnage = 99.98f;
-	data.maxTonnage = 100.0f;
+// Helper function implementations
+Color GetEquipmentColor(equipment::EquipmentCategory category, bool isLocked) {
+	if (isLocked) {
+		return Color {100, 100, 100, 255}; // Gray for locked items
+	}
 
-	// Stats
-	data.stats = {
-	    {"ARMOR", "572"},
-	    {"STRUCTURE", "264"},
-	    {"ALPHA DAMAGE", "156"},
-	    {"WEAPON HEAT/s", "12.4"},
-	    {"WEAPON DPS", "82.6"},
-	    {"HEAT EFFICIENCY", "85%"},
-	    {"TOP SPEED", "48.6 km/h"},
-	    {"MAX RANGE", "900m"},
-	};
+	switch (category) {
+		case equipment::EquipmentCategory::WEAPON:
+			return Color {255, 140, 60, 255}; // Orange
+		case equipment::EquipmentCategory::HEAT_SINK:
+			return Color {100, 200, 220, 255}; // Cyan
+		case equipment::EquipmentCategory::UPGRADE:
+			return Color {200, 180, 60, 255}; // Yellow
+		case equipment::EquipmentCategory::AMMO:
+			return Color {160, 120, 200, 255}; // Purple
+		case equipment::EquipmentCategory::JUMP_JET:
+			return Color {255, 140, 60, 255}; // Orange
+		case equipment::EquipmentCategory::ENGINE:
+			return Color {255, 80, 80, 255}; // Red
+		case equipment::EquipmentCategory::GYRO:
+			return Color {255, 140, 60, 255}; // Orange
+		case equipment::EquipmentCategory::COCKPIT:
+			return Color {80, 180, 100, 255}; // Green
+		case equipment::EquipmentCategory::ARMOR:
+			return Color {80, 120, 200, 255}; // Blue
+		case equipment::EquipmentCategory::STRUCTURE:
+			return Color {80, 180, 100, 255}; // Green
+		case equipment::EquipmentCategory::ACTUATOR:
+			return Color {80, 180, 100, 255}; // Green
+		default:
+			return Color {120, 120, 120, 255}; // Gray
+	}
+}
 
-	// Weapon inventory (mock data with infinity symbol for unlimited qty)
-	data.inventory = {
-	    {-1, "AC/20 AMMO", "S", 1.0f, 100, 12, 270, Color {160, 120, 200, 255}}, // Purple - STD
-	    {-1, "LRM 20 AMMO", "S", 1.0f, 4, 240, 1000, Color {160, 120, 200, 255}},
-	    {-1, "MACHINE GUN AMMO", "S", 0.5f, 2, 600, 200, Color {100, 200, 220, 255}}, // Cyan - Light
-	    {-1, "MEDIUM LASER", "M", 1.0f, 25, 150, 500, Color {255, 140, 60, 255}},     // Orange - XL
-	    {-1, "AC/20", "L", 14.0f, 100, 12, 270, Color {255, 80, 80, 255}},            // Red - XXL
-	    {-1, "LRM 20", "L", 10.0f, 4, 240, 1000, Color {255, 80, 80, 255}},
-	    {-1, "HEAT SINK", "S", 1.0f, 0, 0, 0, Color {100, 200, 220, 255}},
-	    {-1, "JUMP JET", "M", 2.0f, 0, 0, 0, Color {255, 140, 60, 255}},
-	};
-
-	// Body sections with equipment slots
-	// Colors for different equipment types
-	Color greenSlot = Color {80, 180, 100, 255};  // Easy/standard
-	Color blueSlot = Color {80, 120, 200, 255};   // Lasers
-	Color orangeSlot = Color {255, 140, 60, 255}; // Heat/XL
-	Color redSlot = Color {200, 80, 80, 255};     // Hardened/XXL
-	Color yellowSlot = Color {200, 180, 60, 255}; // Assault
-
-	// HEAD
-	BodySection head;
-	head.name = "HEAD";
-	head.armorFront = 42;
-	head.armorRear = -1; // No rear armor for head
-	head.structure = 20;
-	head.slots = {
-	    {"SENSORS", greenSlot, false},
-	    {"LIFE SUPPORT", greenSlot, false},
-	    {"COCKPIT", greenSlot, false},
-	};
-	data.bodySections.push_back(head);
-
-	// CENTER TORSO
-	BodySection centerTorso;
-	centerTorso.name = "CENTER TORSO";
-	centerTorso.armorFront = 92;
-	centerTorso.armorRear = 35;
-	centerTorso.structure = 42;
-	centerTorso.slots = {
-	    {"ENGINE", redSlot, false},
-	    {"ENGINE", redSlot, false},
-	    {"ENGINE", redSlot, false},
-	    {"GYRO", orangeSlot, false},
-	    {"ARMOR: LIGHT FERRO A", blueSlot, false},
-	    {"TC: MODULAR", yellowSlot, false},
-	};
-	data.bodySections.push_back(centerTorso);
-
-	// RIGHT TORSO
-	BodySection rightTorso;
-	rightTorso.name = "RIGHT TORSO";
-	rightTorso.armorFront = 68;
-	rightTorso.armorRear = 30;
-	rightTorso.structure = 32;
-	rightTorso.slots = {
-	    {"AC/20", redSlot, false},
-	    {"AC/20", redSlot, false},
-	    {"AC/20 AMMO", yellowSlot, false},
-	    {"LRM 20", orangeSlot, false},
-	    {"LRM 20 AMMO", greenSlot, false},
-	    {"HEAT SINK", blueSlot, false},
-	};
-	data.bodySections.push_back(rightTorso);
-
-	// LEFT TORSO
-	BodySection leftTorso;
-	leftTorso.name = "LEFT TORSO";
-	leftTorso.armorFront = 68;
-	leftTorso.armorRear = 30;
-	leftTorso.structure = 32;
-	leftTorso.slots = {
-	    {"AC/20", redSlot, false},
-	    {"AC/20", redSlot, false},
-	    {"AC/20 AMMO", yellowSlot, false},
-	    {"LRM 20", orangeSlot, false},
-	    {"LRM 20 AMMO", greenSlot, false},
-	    {"HEAT SINK", blueSlot, false},
-	};
-	data.bodySections.push_back(leftTorso);
-
-	// RIGHT ARM
-	BodySection rightArm;
-	rightArm.name = "RIGHT ARM";
-	rightArm.armorFront = 52;
-	rightArm.armorRear = -1;
-	rightArm.structure = 28;
-	rightArm.slots = {
-	    {"SHOULDER", greenSlot, false},
-	    {"UPPER ARM", greenSlot, false},
-	    {"LOWER ARM", greenSlot, false},
-	    {"HAND", greenSlot, false},
-	    {"MEDIUM LASER", orangeSlot, false},
-	    {"MEDIUM LASER", orangeSlot, false},
-	};
-	data.bodySections.push_back(rightArm);
-
-	// LEFT ARM
-	BodySection leftArm;
-	leftArm.name = "LEFT ARM";
-	leftArm.armorFront = 52;
-	leftArm.armorRear = -1;
-	leftArm.structure = 28;
-	leftArm.slots = {
-	    {"SHOULDER", greenSlot, false},
-	    {"UPPER ARM", greenSlot, false},
-	    {"LOWER ARM", greenSlot, false},
-	    {"HAND", greenSlot, false},
-	    {"MEDIUM LASER", orangeSlot, false},
-	    {"MEDIUM LASER", orangeSlot, false},
-	};
-	data.bodySections.push_back(leftArm);
-
-	// RIGHT LEG
-	BodySection rightLeg;
-	rightLeg.name = "RIGHT LEG";
-	rightLeg.armorFront = 62;
-	rightLeg.armorRear = -1;
-	rightLeg.structure = 35;
-	rightLeg.slots = {
-	    {"HIP", greenSlot, false},
-	    {"UPPER LEG", greenSlot, false},
-	    {"LOWER LEG", greenSlot, false},
-	    {"FOOT", greenSlot, false},
-	    {"JUMP JET", orangeSlot, false},
-	};
-	data.bodySections.push_back(rightLeg);
-
-	// LEFT LEG
-	BodySection leftLeg;
-	leftLeg.name = "LEFT LEG";
-	leftLeg.armorFront = 62;
-	leftLeg.armorRear = -1;
-	leftLeg.structure = 35;
-	leftLeg.slots = {
-	    {"HIP", greenSlot, false},
-	    {"UPPER LEG", greenSlot, false},
-	    {"LOWER LEG", greenSlot, false},
-	    {"FOOT", greenSlot, false},
-	    {"JUMP JET", orangeSlot, false},
-	};
-	data.bodySections.push_back(leftLeg);
-
-	return data;
+std::string GetSizeString(int inventorySize) {
+	if (inventorySize <= 1)
+		return "S";
+	else if (inventorySize <= 3)
+		return "M";
+	else
+		return "L";
 }
 
 void RenderMechBayScreen(GameState& game) {
+	if (!game.mechLoadout) {
+		return; // No loadout initialized
+	}
+
+	mechloadout::MechLoadout* loadout = game.mechLoadout.get();
+
 	// Calculate screen dimensions
 	int screenWidth = SCREEN_WIDTH;
 	int screenHeight = SCREEN_HEIGHT;
@@ -188,9 +75,6 @@ void RenderMechBayScreen(GameState& game) {
 
 	// Draw main panel background
 	GuiPanel(Rectangle {(float)modalX, (float)modalY, (float)modalWidth, (float)modalHeight}, "MECHBAY");
-
-	// Get mock data
-	MechBayData data = InitializeMockMechBayData();
 
 	// Layout constants
 	const int padding = 12;
@@ -212,46 +96,26 @@ void RenderMechBayScreen(GameState& game) {
 	// Mech name header
 	int yPos = leftPanelY;
 	char mechHeader[128];
-	snprintf(mechHeader, sizeof(mechHeader), "%s", data.mechName.c_str());
+	snprintf(mechHeader, sizeof(mechHeader), "%s", loadout->GetChassisName().c_str());
 	GuiLabel(Rectangle {(float)leftPanelX, (float)yPos, (float)leftPanelWidth, 24}, mechHeader);
 	yPos += 26;
 
 	// Tonnage
+	float currentTonnage = loadout->GetCurrentTonnage();
+	float maxTonnage = loadout->GetMaxTonnage();
 	char tonnageText[64];
-	snprintf(tonnageText, sizeof(tonnageText), "%.2f / %.2f TONS", data.tonnage, data.maxTonnage);
-	GuiLabel(Rectangle {(float)leftPanelX, (float)yPos, (float)leftPanelWidth, 20}, tonnageText);
+	snprintf(tonnageText, sizeof(tonnageText), "%.2f / %.2f TONS", currentTonnage, maxTonnage);
+
+	// Color based on tonnage (green if under, red if over)
+	Color tonnageColor = (currentTonnage <= maxTonnage) ? Color {80, 255, 80, 255} : Color {255, 80, 80, 255};
+	DrawText(tonnageText, leftPanelX, yPos, fontSize + 2, tonnageColor);
 	yPos += 30;
-
-	// Stats section
-	GuiLabel(Rectangle {(float)leftPanelX, (float)yPos, (float)leftPanelWidth, 20}, "STATS");
-	yPos += 22;
-
-	// Draw stats in 2-column grid
-	int statLabelWidth = leftPanelWidth * 0.60f;
-	int statValueWidth = leftPanelWidth * 0.35f;
-	for (const auto& stat : data.stats) {
-		char labelText[64];
-		snprintf(labelText, sizeof(labelText), "%s:", stat.label.c_str());
-		GuiLabel(Rectangle {(float)leftPanelX, (float)yPos, (float)statLabelWidth, (float)lineHeight}, labelText);
-		GuiLabel(Rectangle {(float)(leftPanelX + statLabelWidth), (float)yPos, (float)statValueWidth, (float)lineHeight}, stat.value.c_str());
-		yPos += lineHeight;
-	}
-
-	yPos += 10;
 
 	// Inventory section
 	GuiLabel(Rectangle {(float)leftPanelX, (float)yPos, (float)leftPanelWidth, 20}, "INVENTORY");
 	yPos += 22;
 
-	// Filter buttons (icons placeholder)
-	const char* filterLabels[] = {"ALL", "W", "M", "E", "B", "EQ"};
-	int buttonWidth = (leftPanelWidth - 5 * 4) / 6; // 6 buttons with 4px spacing
-	for (int i = 0; i < 6; i++) {
-		GuiButton(Rectangle {(float)(leftPanelX + i * (buttonWidth + 4)), (float)yPos, (float)buttonWidth, 24}, filterLabels[i]);
-	}
-	yPos += 28;
-
-	// Weapon list header
+	// Inventory list header
 	GuiLabel(Rectangle {(float)leftPanelX, (float)yPos, 30, (float)lineHeight}, "QTY");
 	GuiLabel(Rectangle {(float)(leftPanelX + 35), (float)yPos, (float)(leftPanelWidth * 0.40f), (float)lineHeight}, "NAME");
 	GuiLabel(Rectangle {(float)(leftPanelX + leftPanelWidth * 0.45f), (float)yPos, 40, (float)lineHeight}, "SIZE");
@@ -259,38 +123,76 @@ void RenderMechBayScreen(GameState& game) {
 	GuiLabel(Rectangle {(float)(leftPanelX + leftPanelWidth * 0.75f), (float)yPos, 40, (float)lineHeight}, "DMG");
 	yPos += lineHeight;
 
-	// Weapon entries
-	int maxWeaponsToShow = 6;
-	for (int i = 0; i < (int)data.inventory.size() && i < maxWeaponsToShow; i++) {
-		const auto& weapon = data.inventory[i];
+	// Render inventory items
+	const auto& inventory = loadout->GetInventory();
+	int inventoryYStart = yPos;
+	for (const auto& pair : inventory) {
+		const std::string& componentDefID = pair.first;
+		int quantity = pair.second;
 
-		// Draw background color
-		DrawRectangle(leftPanelX, yPos, leftPanelWidth, lineHeight - 2, weapon.backgroundColor);
+		// Get equipment from database
+		equipment::Equipment* eq = loadout->GetEquipmentByID(componentDefID);
+		if (!eq)
+			continue;
 
-		// Quantity (infinity symbol if -1)
-		char qtyText[16];
-		if (weapon.quantity < 0) {
-			snprintf(qtyText, sizeof(qtyText), "∞");
-		} else {
-			snprintf(qtyText, sizeof(qtyText), "%d", weapon.quantity);
+		// Skip locked/structural items in inventory display
+		if (eq->IsLocked())
+			continue;
+
+		Rectangle itemBounds = {(float)leftPanelX, (float)yPos, (float)leftPanelWidth, (float)(lineHeight - 2)};
+
+		// Check if this item is being dragged
+		bool isBeingDragged = (gDragState.isDragging && gDragState.draggedEquipment == eq && gDragState.sourceLocation == "inventory");
+
+		if (!isBeingDragged) {
+			// Draw background color
+			Color bgColor = GetEquipmentColor(eq->GetCategory(), false);
+			DrawRectangleRec(itemBounds, bgColor);
+
+			// Handle mouse interaction (start drag)
+			if (CheckCollisionPointRec(GetMousePosition(), itemBounds)) {
+				// Highlight on hover
+				DrawRectangleLines((int)itemBounds.x, (int)itemBounds.y, (int)itemBounds.width, (int)itemBounds.height, WHITE);
+
+				// Start drag on mouse button down
+				if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+					gDragState.isDragging = true;
+					gDragState.draggedEquipment = eq;
+					gDragState.sourceLocation = "inventory";
+					gDragState.sourceIndex = -1;
+					gDragState.dragOffset = {GetMouseX() - itemBounds.x, GetMouseY() - itemBounds.y};
+					gDragState.dragBounds = itemBounds;
+				}
+			}
+
+			// Quantity (infinity symbol if -1)
+			char qtyText[16];
+			if (quantity < 0) {
+				snprintf(qtyText, sizeof(qtyText), "∞");
+			} else {
+				snprintf(qtyText, sizeof(qtyText), "%d", quantity);
+			}
+			DrawText(qtyText, leftPanelX + 5, yPos + 2, fontSize, WHITE);
+
+			// Name
+			DrawText(eq->GetUIName().c_str(), leftPanelX + 35, yPos + 2, fontSize, WHITE);
+
+			// Size
+			std::string sizeStr = GetSizeString(eq->GetInventorySize());
+			DrawText(sizeStr.c_str(), leftPanelX + leftPanelWidth * 0.45f, yPos + 2, fontSize, WHITE);
+
+			// Tonnage
+			char tonsText[16];
+			snprintf(tonsText, sizeof(tonsText), "%.1f", eq->GetTonnage());
+			DrawText(tonsText, leftPanelX + leftPanelWidth * 0.60f, yPos + 2, fontSize, WHITE);
+
+			// Damage (for weapons only)
+			if (eq->GetCategory() == equipment::EquipmentCategory::WEAPON) {
+				char dmgText[16];
+				snprintf(dmgText, sizeof(dmgText), "%d", eq->GetDamage());
+				DrawText(dmgText, leftPanelX + leftPanelWidth * 0.75f, yPos + 2, fontSize, WHITE);
+			}
 		}
-		DrawText(qtyText, leftPanelX + 5, yPos + 2, fontSize, WHITE);
-
-		// Name
-		DrawText(weapon.name.c_str(), leftPanelX + 35, yPos + 2, fontSize, WHITE);
-
-		// Size
-		DrawText(weapon.size.c_str(), leftPanelX + leftPanelWidth * 0.45f, yPos + 2, fontSize, WHITE);
-
-		// Tonnage
-		char tonsText[16];
-		snprintf(tonsText, sizeof(tonsText), "%.1f", weapon.tonnage);
-		DrawText(tonsText, leftPanelX + leftPanelWidth * 0.60f, yPos + 2, fontSize, WHITE);
-
-		// Damage
-		char dmgText[16];
-		snprintf(dmgText, sizeof(dmgText), "%d", weapon.damage);
-		DrawText(dmgText, leftPanelX + leftPanelWidth * 0.75f, yPos + 2, fontSize, WHITE);
 
 		yPos += lineHeight;
 	}
@@ -301,49 +203,116 @@ void RenderMechBayScreen(GameState& game) {
 	int columnWidth = rightSectionWidth / 3;
 	int rowHeight = contentHeight / 3;
 
-	// Helper function to render a body section
-	auto renderBodySection = [&](const BodySection& section, int colX, int colY, int colWidth, int maxHeight) {
+	// Helper lambda to render a body section
+	auto renderBodySection = [&](const std::string& location, int colX, int colY, int colWidth, int maxHeight) {
+		mechloadout::BodyPartSlot* bodyPart = loadout->GetBodyPart(location);
+		if (!bodyPart)
+			return colY;
+
 		int sectionY = colY;
 
 		// Section name header
-		GuiLabel(Rectangle {(float)colX, (float)sectionY, (float)colWidth, 20}, section.name.c_str());
+		GuiLabel(Rectangle {(float)colX, (float)sectionY, (float)colWidth, 20}, bodyPart->location.c_str());
 		sectionY += 22;
 
-		// Armor section
-		char armorFrontText[64];
-		snprintf(armorFrontText, sizeof(armorFrontText), "FRONT: %d", section.armorFront);
-		GuiLabel(Rectangle {(float)colX, (float)sectionY, (float)colWidth, 18}, armorFrontText);
+		// Armor/Structure info (mock data for now)
+		char armorText[64];
+		snprintf(armorText, sizeof(armorText), "ARMOR: 50");
+		GuiLabel(Rectangle {(float)colX, (float)sectionY, (float)colWidth, 18}, armorText);
 		sectionY += 18;
 
-		if (section.armorRear >= 0) {
-			char armorRearText[64];
-			snprintf(armorRearText, sizeof(armorRearText), "REAR: %d", section.armorRear);
-			GuiLabel(Rectangle {(float)colX, (float)sectionY, (float)colWidth, 18}, armorRearText);
-			sectionY += 18;
-		}
-
-		// Structure
 		char structText[64];
-		snprintf(structText, sizeof(structText), "STRUCT: %d", section.structure);
+		snprintf(structText, sizeof(structText), "STRUCT: 25");
 		GuiLabel(Rectangle {(float)colX, (float)sectionY, (float)colWidth, 18}, structText);
 		sectionY += 22;
 
 		// Equipment slots
-		for (const auto& slot : section.slots) {
-			// Draw colored background
-			DrawRectangle(colX, sectionY, colWidth - 4, lineHeight - 2, slot.backgroundColor);
+		int slotIndex = 0;
+		for (equipment::Equipment* eq : bodyPart->equipment) {
+			if (!eq)
+				continue;
 
-			// Draw slot label
-			DrawText(slot.label.c_str(), colX + 4, sectionY + 2, fontSize - 1, WHITE);
+			// Calculate slot height based on inventory size
+			int slotHeight = lineHeight * eq->GetInventorySize();
 
-			sectionY += lineHeight;
+			Rectangle slotBounds = {(float)colX, (float)sectionY, (float)(colWidth - 4), (float)(slotHeight - 2)};
+
+			// Check if this item is being dragged
+			bool isBeingDragged = (gDragState.isDragging && gDragState.draggedEquipment == eq && gDragState.sourceLocation == location);
+
+			if (!isBeingDragged) {
+				// Draw colored background
+				Color bgColor = GetEquipmentColor(eq->GetCategory(), eq->IsLocked());
+				DrawRectangleRec(slotBounds, bgColor);
+
+				// Handle mouse interaction (start drag if not locked)
+				if (!eq->IsLocked() && CheckCollisionPointRec(GetMousePosition(), slotBounds)) {
+					// Highlight on hover
+					DrawRectangleLines((int)slotBounds.x, (int)slotBounds.y, (int)slotBounds.width, (int)slotBounds.height, WHITE);
+
+					// Start drag on mouse button down
+					if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+						gDragState.isDragging = true;
+						gDragState.draggedEquipment = eq;
+						gDragState.sourceLocation = location;
+						gDragState.sourceIndex = slotIndex;
+						gDragState.dragOffset = {GetMouseX() - slotBounds.x, GetMouseY() - slotBounds.y};
+						gDragState.dragBounds = slotBounds;
+					}
+				}
+
+				// Draw slot label
+				DrawText(eq->GetUIName().c_str(), colX + 4, sectionY + 2, fontSize - 1, WHITE);
+			}
+
+			sectionY += slotHeight;
+			slotIndex++;
+		}
+
+		// Draw empty slots (for drop zones)
+		int freeSlots = bodyPart->GetFreeSlots();
+		if (freeSlots > 0 && !gDragState.isDragging) {
+			// Draw a visual indicator for free space
+			int emptySlotHeight = lineHeight;
+			DrawRectangle(colX, sectionY, colWidth - 4, emptySlotHeight - 2, Color {40, 40, 40, 128});
+			char freeText[32];
+			snprintf(freeText, sizeof(freeText), "(%d free)", freeSlots);
+			DrawText(freeText, colX + 4, sectionY + 2, fontSize - 2, Color {150, 150, 150, 255});
+		}
+
+		// Handle drop on entire body section area
+		if (gDragState.isDragging && CheckCollisionPointRec(GetMousePosition(), Rectangle {(float)colX, (float)colY, (float)colWidth, (float)maxHeight})) {
+			// Highlight drop zone
+			DrawRectangle(colX, colY, colWidth, maxHeight, Color {255, 255, 0, 50});
+
+			// Handle drop
+			if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) {
+				// Calculate drop slot index based on Y position
+				int dropSlotIndex = (GetMouseY() - (colY + 22 + 18 + 18 + 22)) / lineHeight;
+				if (dropSlotIndex < 0)
+					dropSlotIndex = 0;
+
+				// Attempt to place equipment
+				bool success = false;
+				if (gDragState.sourceLocation == "inventory") {
+					// From inventory to body part
+					success = loadout->PlaceEquipment(gDragState.draggedEquipment, location, dropSlotIndex);
+					if (success) {
+						loadout->RemoveFromInventory(gDragState.draggedEquipment->GetComponentDefID());
+					}
+				} else {
+					// From body part to body part (or same body part)
+					success = loadout->MoveEquipment(gDragState.sourceLocation, gDragState.sourceIndex, location, dropSlotIndex);
+				}
+
+				gDragState.Reset();
+			}
 		}
 
 		return sectionY;
 	};
 
 	// 3x3 Grid layout
-	// Calculate grid positions
 	int col1X = rightSectionX;
 	int col2X = rightSectionX + columnWidth;
 	int col3X = rightSectionX + columnWidth * 2;
@@ -352,50 +321,103 @@ void RenderMechBayScreen(GameState& game) {
 	int row2Y = contentY + rowHeight;
 	int row3Y = contentY + rowHeight * 2;
 
+	using namespace mechloadout;
+
 	// Row 1 - Torso section
-	// LEFT: RIGHT TORSO (index 2)
-	if (data.bodySections.size() > 2) {
-		renderBodySection(data.bodySections[2], col1X, row1Y, columnWidth - 8, rowHeight);
-	}
+	// LEFT: RIGHT TORSO
+	renderBodySection(LOC_RIGHT_TORSO, col1X, row1Y, columnWidth - 8, rowHeight);
 
-	// CENTER: HEAD (index 0) stacked on top of CENTER TORSO (index 1)
+	// CENTER: HEAD stacked on top of CENTER TORSO
 	int centerY = row1Y;
-	if (data.bodySections.size() > 0) {
-		centerY = renderBodySection(data.bodySections[0], col2X, centerY, columnWidth - 8, rowHeight / 2) + 10;
-	}
-	if (data.bodySections.size() > 1) {
-		renderBodySection(data.bodySections[1], col2X, centerY, columnWidth - 8, rowHeight / 2);
-	}
+	centerY = renderBodySection(LOC_HEAD, col2X, centerY, columnWidth - 8, rowHeight / 2) + 10;
+	renderBodySection(LOC_CENTER_TORSO, col2X, centerY, columnWidth - 8, rowHeight / 2);
 
-	// RIGHT: LEFT TORSO (index 3)
-	if (data.bodySections.size() > 3) {
-		renderBodySection(data.bodySections[3], col3X, row1Y, columnWidth - 8, rowHeight);
-	}
+	// RIGHT: LEFT TORSO
+	renderBodySection(LOC_LEFT_TORSO, col3X, row1Y, columnWidth - 8, rowHeight);
 
 	// Row 2 - Arms section
-	// LEFT: RIGHT ARM (index 4)
-	if (data.bodySections.size() > 4) {
-		renderBodySection(data.bodySections[4], col1X, row2Y, columnWidth - 8, rowHeight);
-	}
+	// LEFT: RIGHT ARM
+	renderBodySection(LOC_RIGHT_ARM, col1X, row2Y, columnWidth - 8, rowHeight);
 
-	// CENTER: Empty (intentionally left blank)
+	// CENTER: Empty (intentionally left blank for tonnage display)
+	// Draw tonnage in the center
+	int tonnageDisplayY = row2Y + rowHeight / 2;
+	DrawText("TONNAGE", col2X + columnWidth / 2 - 40, tonnageDisplayY - 20, fontSize + 2, WHITE);
+	DrawText(tonnageText, col2X + columnWidth / 2 - 50, tonnageDisplayY, fontSize + 4, tonnageColor);
 
-	// RIGHT: LEFT ARM (index 5)
-	if (data.bodySections.size() > 5) {
-		renderBodySection(data.bodySections[5], col3X, row2Y, columnWidth - 8, rowHeight);
-	}
+	// RIGHT: LEFT ARM
+	renderBodySection(LOC_LEFT_ARM, col3X, row2Y, columnWidth - 8, rowHeight);
 
 	// Row 3 - Legs section
-	// LEFT: RIGHT LEG (index 6)
-	if (data.bodySections.size() > 6) {
-		renderBodySection(data.bodySections[6], col1X, row3Y, columnWidth - 8, rowHeight);
-	}
+	// LEFT: RIGHT LEG
+	renderBodySection(LOC_RIGHT_LEG, col1X, row3Y, columnWidth - 8, rowHeight);
 
 	// CENTER: Empty (intentionally left blank)
 
-	// RIGHT: LEFT LEG (index 7)
-	if (data.bodySections.size() > 7) {
-		renderBodySection(data.bodySections[7], col3X, row3Y, columnWidth - 8, rowHeight);
+	// RIGHT: LEFT LEG
+	renderBodySection(LOC_LEFT_LEG, col3X, row3Y, columnWidth - 8, rowHeight);
+
+	// ===== DRAGGED ITEM RENDERING (on top of everything) =====
+	if (gDragState.isDragging) {
+		Vector2 mousePos = GetMousePosition();
+		float dragX = mousePos.x - gDragState.dragOffset.x;
+		float dragY = mousePos.y - gDragState.dragOffset.y;
+
+		equipment::Equipment* eq = gDragState.draggedEquipment;
+		if (eq) {
+			int dragHeight = lineHeight * eq->GetInventorySize();
+			Rectangle dragRect = {dragX, dragY, gDragState.dragBounds.width, (float)dragHeight};
+
+			// Draw dragged item (fully opaque, matching body part appearance)
+			Color bgColor = GetEquipmentColor(eq->GetCategory(), false);
+			DrawRectangleRec(dragRect, bgColor);
+			DrawRectangleLines((int)dragRect.x, (int)dragRect.y, (int)dragRect.width, (int)dragRect.height, WHITE);
+			DrawText(eq->GetUIName().c_str(), (int)dragX + 4, (int)dragY + 2, fontSize - 1, WHITE);
+		}
+
+		// Handle drop on inventory (return to inventory)
+		Rectangle inventoryArea = {(float)leftPanelX, (float)inventoryYStart, (float)leftPanelWidth, (float)(yPos - inventoryYStart)};
+		if (CheckCollisionPointRec(mousePos, inventoryArea)) {
+			// Highlight inventory as drop zone
+			DrawRectangle(leftPanelX, inventoryYStart, leftPanelWidth, yPos - inventoryYStart, Color {255, 255, 0, 50});
+
+			if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) {
+				// Return to inventory
+				if (gDragState.sourceLocation != "inventory") {
+					// Remove from body part
+					loadout->RemoveEquipment(gDragState.sourceLocation, gDragState.sourceIndex);
+					// RemoveEquipment already adds back to inventory
+				}
+				gDragState.Reset();
+			}
+		}
+
+		// Cancel drag on right-click or ESC
+		if (IsMouseButtonPressed(MOUSE_RIGHT_BUTTON) || IsKeyPressed(KEY_ESCAPE)) {
+			gDragState.Reset();
+		}
+
+		// Note: Drop handling is done in renderBodySection lambda above
+		// If mouse is released without hitting inventory or body section, drag will auto-cancel
+	}
+
+	// ===== APPLY/CANCEL BUTTONS =====
+	int buttonWidth = 100;
+	int buttonHeight = 30;
+	int buttonY = modalY + modalHeight - buttonHeight - 10;
+	int cancelButtonX = modalX + modalWidth - buttonWidth - 120;
+	int applyButtonX = modalX + modalWidth - buttonWidth - 10;
+
+	if (GuiButton(Rectangle {(float)cancelButtonX, (float)buttonY, (float)buttonWidth, (float)buttonHeight}, "CANCEL")) {
+		// Restore saved state
+		loadout->RestoreState();
+		game.showMechbayScreen = false;
+	}
+
+	if (GuiButton(Rectangle {(float)applyButtonX, (float)buttonY, (float)buttonWidth, (float)buttonHeight}, "APPLY")) {
+		// Save current state
+		loadout->SaveState();
+		game.showMechbayScreen = false;
 	}
 
 	// ===== CLOSE BUTTON (X in top-right corner) =====
@@ -403,6 +425,8 @@ void RenderMechBayScreen(GameState& game) {
 	int closeButtonX = modalX + modalWidth - closeButtonSize - 8;
 	int closeButtonY = modalY + 8;
 	if (GuiButton(Rectangle {(float)closeButtonX, (float)closeButtonY, (float)closeButtonSize, (float)closeButtonSize}, "X")) {
+		// Cancel (restore saved state)
+		loadout->RestoreState();
 		game.showMechbayScreen = false;
 	}
 }
