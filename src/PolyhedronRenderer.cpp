@@ -266,6 +266,258 @@ float CalculateAlignmentAngle(Vector2 edgeStart1, Vector2 edgeEnd1, Vector2 edge
 	return angle2 - angle1 + PI;
 }
 
+// ============================================================================
+// PRE-COMPUTED NET TEMPLATES
+// ============================================================================
+
+// Get pre-computed net template for a shape
+NetTemplate GetNetTemplate(PolyhedronShape shape) {
+	NetTemplate netTemplate;
+
+	switch (shape) {
+		case PolyhedronShape::CUBE: {
+			// Classic cross pattern
+			float spacing = 1.2f;
+			netTemplate.faceLayouts = {
+			    {{0, -spacing}, 0.0f},          // 0: Front (center)
+			    {{spacing, -spacing}, 0.0f},    // 1: Right
+			    {{-spacing, -spacing}, 0.0f},   // 2: Left
+			    {{0, -spacing * 2}, 0.0f},      // 3: Top
+			    {{0, 0}, 0.0f},                 // 4: Bottom
+			    {{spacing * 2, -spacing}, 0.0f} // 5: Back
+			};
+			netTemplate.defaultScale = 1.0f;
+			break;
+		}
+
+		case PolyhedronShape::PYRAMID: {
+			// Square base with 4 triangles radiating out
+			float spacing = 1.3f;
+			netTemplate.faceLayouts = {
+			    {{0, 0}, 0.0f},         // 0: Base (center)
+			    {{0, -spacing}, 0.0f},  // 1: Side 1 (top)
+			    {{spacing, 0}, -90.0f}, // 2: Side 2 (right)
+			    {{0, spacing}, 180.0f}, // 3: Side 3 (bottom)
+			    {{-spacing, 0}, 90.0f}  // 4: Side 4 (left)
+			};
+			netTemplate.defaultScale = 1.0f;
+			break;
+		}
+
+		case PolyhedronShape::OCTAHEDRON: {
+			// Strip of 8 triangles
+			float spacing = 1.1f;
+			netTemplate.faceLayouts = {
+			    {{0, 0}, 0.0f},
+			    {{spacing, 0}, 180.0f},
+			    {{spacing * 2, 0}, 0.0f},
+			    {{spacing * 3, 0}, 180.0f},
+			    {{spacing * 4, 0}, 0.0f},
+			    {{spacing * 5, 0}, 180.0f},
+			    {{spacing * 6, 0}, 0.0f},
+			    {{spacing * 7, 0}, 180.0f}};
+			netTemplate.defaultScale = 0.8f;
+			break;
+		}
+
+		case PolyhedronShape::DODECAHEDRON: {
+			// Central pentagon with 5 pentagons around, then outer ring
+			float spacing = 1.3f;
+			float angle = 72.0f; // 360/5
+			netTemplate.faceLayouts = {
+			    {{0, 0}, 0.0f},                                    // 0: Center
+			    {{0, -spacing}, 0.0f},                             // 1: Top
+			    {{spacing * 0.95f, -spacing * 0.31f}, angle},      // 2
+			    {{spacing * 0.59f, spacing * 0.81f}, angle * 2},   // 3
+			    {{-spacing * 0.59f, spacing * 0.81f}, angle * 3},  // 4
+			    {{-spacing * 0.95f, -spacing * 0.31f}, angle * 4}, // 5
+			    {{0, -spacing * 2.3f}, 0.0f},                      // 6: Outer ring
+			    {{spacing * 2.0f, -spacing * 0.6f}, angle},        // 7
+			    {{spacing * 1.3f, spacing * 1.8f}, angle * 2},     // 8
+			    {{-spacing * 1.3f, spacing * 1.8f}, angle * 3},    // 9
+			    {{-spacing * 2.0f, -spacing * 0.6f}, angle * 4},   // 10
+			    {{0, -spacing * 3.5f}, 0.0f}                       // 11: Top outer
+			};
+			netTemplate.defaultScale = 0.6f;
+			break;
+		}
+
+		case PolyhedronShape::TRIANGULAR_PRISM: {
+			// 2 triangles with 3 rectangles between
+			float spacing = 1.2f;
+			netTemplate.faceLayouts = {
+			    {{-spacing, 0}, 90.0f}, // 0: Top triangle
+			    {{spacing, 0}, -90.0f}, // 1: Bottom triangle
+			    {{0, 0}, 0.0f},         // 2: Side 1 (center)
+			    {{0, -spacing}, 0.0f},  // 3: Side 2
+			    {{0, spacing}, 0.0f}    // 4: Side 3
+			};
+			netTemplate.defaultScale = 1.0f;
+			break;
+		}
+
+		case PolyhedronShape::PENTAGONAL_PRISM: {
+			// 2 pentagons with 5 rectangles between
+			float spacing = 1.3f;
+			netTemplate.faceLayouts = {
+			    {{-spacing * 1.5f, 0}, 90.0f}, // 0: Top pentagon
+			    {{spacing * 1.5f, 0}, -90.0f}, // 1: Bottom pentagon
+			    {{0, -spacing * 2}, 0.0f},     // 2: Side 1
+			    {{0, -spacing}, 0.0f},         // 3: Side 2
+			    {{0, 0}, 0.0f},                // 4: Side 3 (center)
+			    {{0, spacing}, 0.0f},          // 5: Side 4
+			    {{0, spacing * 2}, 0.0f}       // 6: Side 5
+			};
+			netTemplate.defaultScale = 0.9f;
+			break;
+		}
+
+		case PolyhedronShape::HEXAGONAL_PRISM: {
+			// 2 hexagons with 6 rectangles between
+			float spacing = 1.2f;
+			netTemplate.faceLayouts = {
+			    {{-spacing * 1.8f, 0}, 90.0f}, // 0: Top hexagon
+			    {{spacing * 1.8f, 0}, -90.0f}, // 1: Bottom hexagon
+			    {{0, -spacing * 2.5f}, 0.0f},  // 2: Side 1
+			    {{0, -spacing * 1.5f}, 0.0f},  // 3: Side 2
+			    {{0, -spacing * 0.5f}, 0.0f},  // 4: Side 3
+			    {{0, spacing * 0.5f}, 0.0f},   // 5: Side 4 (center)
+			    {{0, spacing * 1.5f}, 0.0f},   // 6: Side 5
+			    {{0, spacing * 2.5f}, 0.0f}    // 7: Side 6
+			};
+			netTemplate.defaultScale = 0.7f;
+			break;
+		}
+
+		case PolyhedronShape::OCTAGONAL_PRISM: {
+			// 2 octagons with 8 rectangles between
+			float spacing = 1.1f;
+			netTemplate.faceLayouts = {
+			    {{-spacing * 2.0f, 0}, 90.0f}, // 0: Top octagon
+			    {{spacing * 2.0f, 0}, -90.0f}, // 1: Bottom octagon
+			    {{0, -spacing * 3.5f}, 0.0f},  // 2: Side 1
+			    {{0, -spacing * 2.5f}, 0.0f},  // 3: Side 2
+			    {{0, -spacing * 1.5f}, 0.0f},  // 4: Side 3
+			    {{0, -spacing * 0.5f}, 0.0f},  // 5: Side 4
+			    {{0, spacing * 0.5f}, 0.0f},   // 6: Side 5 (center)
+			    {{0, spacing * 1.5f}, 0.0f},   // 7: Side 6
+			    {{0, spacing * 2.5f}, 0.0f},   // 8: Side 7
+			    {{0, spacing * 3.5f}, 0.0f}    // 9: Side 8
+			};
+			netTemplate.defaultScale = 0.6f;
+			break;
+		}
+
+		case PolyhedronShape::ICOSAHEDRON: {
+			// Strip of 20 triangles in zigzag pattern
+			float spacing = 1.0f;
+			netTemplate.faceLayouts = {
+			    {{0, 0}, 0.0f},
+			    {{spacing, 0}, 180.0f},
+			    {{spacing * 2, 0}, 0.0f},
+			    {{spacing * 3, 0}, 180.0f},
+			    {{spacing * 4, 0}, 0.0f},
+			    {{spacing * 5, 0}, 180.0f},
+			    {{spacing * 6, 0}, 0.0f},
+			    {{spacing * 7, 0}, 180.0f},
+			    {{spacing * 8, 0}, 0.0f},
+			    {{spacing * 9, 0}, 180.0f},
+			    {{spacing * 10, 0}, 0.0f},
+			    {{spacing * 11, 0}, 180.0f},
+			    {{spacing * 12, 0}, 0.0f},
+			    {{spacing * 13, 0}, 180.0f},
+			    {{spacing * 14, 0}, 0.0f},
+			    {{spacing * 15, 0}, 180.0f},
+			    {{spacing * 16, 0}, 0.0f},
+			    {{spacing * 17, 0}, 180.0f},
+			    {{spacing * 18, 0}, 0.0f},
+			    {{spacing * 19, 0}, 180.0f}};
+			netTemplate.defaultScale = 0.5f;
+			break;
+		}
+
+		case PolyhedronShape::TRUNCATED_PYRAMID: {
+			// Square base with 4 trapezoids radiating out, top square above
+			float spacing = 1.3f;
+			netTemplate.faceLayouts = {
+			    {{0, 0}, 0.0f},               // 0: Base (center)
+			    {{0, -spacing * 1.5f}, 0.0f}, // 1: Top (above)
+			    {{0, -spacing}, 0.0f},        // 2: Side 1 (top)
+			    {{spacing, 0}, -90.0f},       // 3: Side 2 (right)
+			    {{0, spacing}, 180.0f},       // 4: Side 3 (bottom)
+			    {{-spacing, 0}, 90.0f}        // 5: Side 4 (left)
+			};
+			netTemplate.defaultScale = 1.0f;
+			break;
+		}
+	}
+
+	return netTemplate;
+}
+
+// Generate net layout from template
+NetLayout GenerateNetFromTemplate(const PolyhedronData &poly) {
+	NetLayout layout;
+	NetTemplate netTemplate = GetNetTemplate(poly.shape);
+
+	// Create 2D face positions for each face
+	for (size_t i = 0; i < poly.faces.size(); i++) {
+		const PolyFace &face = poly.faces[i];
+		NetFaceTemplate faceTemplate = netTemplate.faceLayouts[i];
+
+		// Convert 3D face vertices to 2D net space
+		Face2D face2D;
+
+		// Calculate face centroid for proper rotation
+		Vector3 centroid = {0, 0, 0};
+		for (const auto &v : face.vertices) {
+			centroid = Vector3Add(centroid, v);
+		}
+		centroid = Vector3Scale(centroid, 1.0f / face.vertices.size());
+
+		// Project face to 2D plane (use XZ plane)
+		for (const auto &vertex : face.vertices) {
+			Vector2 v2d = {vertex.x - centroid.x, vertex.z - centroid.z};
+
+			// Apply template rotation
+			if (faceTemplate.rotation != 0.0f) {
+				float angleRad = faceTemplate.rotation * DEG2RAD;
+				float cos_a = cosf(angleRad);
+				float sin_a = sinf(angleRad);
+				Vector2 rotated = {
+				    v2d.x * cos_a - v2d.y * sin_a,
+				    v2d.x * sin_a + v2d.y * cos_a};
+				v2d = rotated;
+			}
+
+			// Apply template position offset
+			v2d.x += faceTemplate.position.x * 50.0f; // Scale to screen units
+			v2d.y += faceTemplate.position.y * 50.0f;
+
+			face2D.vertices.push_back(v2d);
+		}
+
+		layout.positions.push_back(face2D);
+	}
+
+	// Calculate bounding box
+	float minX = FLT_MAX, minY = FLT_MAX;
+	float maxX = -FLT_MAX, maxY = -FLT_MAX;
+
+	for (const auto &facePos : layout.positions) {
+		for (const auto &vertex : facePos.vertices) {
+			minX = fmin(minX, vertex.x);
+			minY = fmin(minY, vertex.y);
+			maxX = fmax(maxX, vertex.x);
+			maxY = fmax(maxY, vertex.y);
+		}
+	}
+
+	layout.boundingBox = Rectangle {minX, minY, maxX - minX, maxY - minY};
+
+	return layout;
+}
+
 // Generate contiguous net using BFS
 NetLayout GenerateContiguousNet(const PolyhedronData &poly) {
 	NetLayout layout;
@@ -462,8 +714,8 @@ void NetView::Render(const PolyhedronData &poly, Rectangle viewport) {
 	BeginTextureMode(renderTarget);
 	ClearBackground(Color {40, 40, 40, 255});
 
-	// Generate contiguous net
-	NetLayout net = GenerateContiguousNet(poly);
+	// Generate net from pre-computed template
+	NetLayout net = GenerateNetFromTemplate(poly);
 
 	// Find optimal rotation and scale
 	NetLayoutWithRotation optimized = OptimizeNetOrientation(net, viewport);
@@ -576,8 +828,8 @@ int NetView::DetectHoveredFace(const PolyhedronData &poly, Vector2 mousePos, Rec
 	// Convert mouse position to render texture coordinates
 	Vector2 localPos = {mousePos.x - viewport.x, viewport.height - (mousePos.y - viewport.y)};
 
-	// Generate contiguous net with same transformations as Render()
-	NetLayout net = GenerateContiguousNet(poly);
+	// Generate net from pre-computed template with same transformations as Render()
+	NetLayout net = GenerateNetFromTemplate(poly);
 	NetLayoutWithRotation optimized = OptimizeNetOrientation(net, viewport);
 
 	Vector2 netCenter = Vector2 {net.boundingBox.x + net.boundingBox.width / 2, net.boundingBox.y + net.boundingBox.height / 2};

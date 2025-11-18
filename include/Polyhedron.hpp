@@ -6,14 +6,16 @@
 #include "rl/raymath.h"
 
 enum class PolyhedronShape {
-	PYRAMID,          // 5 faces (4 triangular + 1 square base)
-	CUBE,             // 6 faces
-	OCTAHEDRON,       // 8 faces
-	DODECAHEDRON,     // 12 faces
-	TRIANGULAR_PRISM, // 5 faces
-	PENTAGONAL_PRISM, // 7 faces
-	ICOSAHEDRON,      // 20 faces
-	TRUNCATED_PYRAMID // 5 faces
+	CUBE = 0,             // 6 faces
+	PYRAMID = 1,          // 5 faces (4 triangular + 1 square base)
+	OCTAHEDRON = 2,       // 8 faces
+	DODECAHEDRON = 3,     // 12 faces
+	TRIANGULAR_PRISM = 4, // 5 faces
+	PENTAGONAL_PRISM = 5, // 7 faces
+	HEXAGONAL_PRISM = 6,  // 8 faces (2 hexagonal, 6 rectangular)
+	OCTAGONAL_PRISM = 7,  // 10 faces (2 octagonal, 8 rectangular)
+	ICOSAHEDRON = 8,      // 20 faces
+	TRUNCATED_PYRAMID = 9 // 5 faces
 };
 
 struct PolyFace {
@@ -50,6 +52,8 @@ std::vector<Vector3> GetOctahedronVertices(float size);
 std::vector<Vector3> GetDodecahedronVertices(float size);
 std::vector<Vector3> GetTriangularPrismVertices(float size);
 std::vector<Vector3> GetPentagonalPrismVertices(float size);
+std::vector<Vector3> GetHexagonalPrismVertices(float size);
+std::vector<Vector3> GetOctagonalPrismVertices(float size);
 std::vector<Vector3> GetIcosahedronVertices(float size);
 std::vector<Vector3> GetTruncatedPyramidVertices(float size);
 

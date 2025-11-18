@@ -43,7 +43,7 @@ void initializeTargetPanel(GameState& game) {
 	    .up = Vector3 {0, 1, 0},
 	    .fovy = 45.0f,
 	    .projection = CAMERA_PERSPECTIVE};
-	game.targetPanel.polyView->trackball.friction = 0.92f;
+	game.targetPanel.polyView->trackball.friction = 0.85f;
 	game.targetPanel.polyView->trackball.isDragging = false;
 	game.targetPanel.polyView->trackball.angularVelocity = {0, 0};
 	game.targetPanel.polyView->trackball.previousMousePos = {0, 0};
@@ -87,7 +87,7 @@ void initializePlayerPanel(GameState& game) {
 	    .up = Vector3 {0, 1, 0},
 	    .fovy = 45.0f,
 	    .projection = CAMERA_PERSPECTIVE};
-	game.playerPanel.polyView->trackball.friction = 0.92f;
+	game.playerPanel.polyView->trackball.friction = 0.85f;
 	game.playerPanel.polyView->trackball.isDragging = false;
 	game.playerPanel.polyView->trackball.angularVelocity = {0, 0};
 	game.playerPanel.polyView->trackball.previousMousePos = {0, 0};

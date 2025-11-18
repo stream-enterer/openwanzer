@@ -13,6 +13,9 @@ struct FacePosition2D {
 	std::vector<Vector2> vertices;
 };
 
+// Alias for backward compatibility
+using Face2D = FacePosition2D;
+
 // Edge in 3D space
 struct Edge3D {
 	Vector3 v1, v2;
@@ -29,6 +32,18 @@ struct NetLayoutWithRotation {
 	NetLayout net;
 	float rotation;    // Degrees
 	float scaleFactor; // Uniform scale
+};
+
+// Pre-computed net template for a single face
+struct NetFaceTemplate {
+	Vector2 position; // Position in net coordinate space
+	float rotation;   // Rotation in degrees
+};
+
+// Pre-computed net template for a complete shape
+struct NetTemplate {
+	std::vector<NetFaceTemplate> faceLayouts;
+	float defaultScale; // Default scale factor for this shape
 };
 
 struct TrackballCamera {
@@ -89,5 +104,9 @@ float CalculateAlignmentAngle(Vector2 edgeStart1, Vector2 edgeEnd1, Vector2 edge
 NetLayout GenerateContiguousNet(const PolyhedronData &poly);
 NetLayoutWithRotation OptimizeNetOrientation(const NetLayout &net, Rectangle viewport);
 bool PointInPolygon(Vector2 point, const std::vector<Vector2> &polygon);
+
+// Pre-computed net template functions
+NetTemplate GetNetTemplate(PolyhedronShape shape);
+NetLayout GenerateNetFromTemplate(const PolyhedronData &poly);
 
 #endif // OPENWANZER_POLYHEDRON_RENDERER_HPP

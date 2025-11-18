@@ -200,6 +200,46 @@ std::vector<Vector3> GetPentagonalPrismVertices(float size) {
 	return vertices;
 }
 
+std::vector<Vector3> GetHexagonalPrismVertices(float size) {
+	float h = size / 2.0f;
+	float r = size * 0.5f;
+	std::vector<Vector3> vertices;
+
+	// Top hexagon (6 vertices)
+	for (int i = 0; i < 6; i++) {
+		float angle = i * (2.0f * PI / 6.0f) - PI / 2.0f;
+		vertices.push_back({r * cosf(angle), h, r * sinf(angle)});
+	}
+
+	// Bottom hexagon (6 vertices)
+	for (int i = 0; i < 6; i++) {
+		float angle = i * (2.0f * PI / 6.0f) - PI / 2.0f;
+		vertices.push_back({r * cosf(angle), -h, r * sinf(angle)});
+	}
+
+	return vertices;
+}
+
+std::vector<Vector3> GetOctagonalPrismVertices(float size) {
+	float h = size / 2.0f;
+	float r = size * 0.5f;
+	std::vector<Vector3> vertices;
+
+	// Top octagon (8 vertices)
+	for (int i = 0; i < 8; i++) {
+		float angle = i * (2.0f * PI / 8.0f) - PI / 2.0f;
+		vertices.push_back({r * cosf(angle), h, r * sinf(angle)});
+	}
+
+	// Bottom octagon (8 vertices)
+	for (int i = 0; i < 8; i++) {
+		float angle = i * (2.0f * PI / 8.0f) - PI / 2.0f;
+		vertices.push_back({r * cosf(angle), -h, r * sinf(angle)});
+	}
+
+	return vertices;
+}
+
 std::vector<Vector3> GetIcosahedronVertices(float size) {
 	const float phi = (1.0f + sqrtf(5.0f)) / 2.0f;
 	const float a = size / 2.0f;
@@ -328,6 +368,32 @@ PolyhedronData CreatePolyhedron(PolyhedronShape shape, int weightClass) {
 				int next = (i + 1) % 5;
 				poly.faces.push_back(CreateFace(
 				    {vertices[i], vertices[next], vertices[next + 5], vertices[i + 5]}, baseHP)); // Sides
+			}
+			break;
+		}
+
+		case PolyhedronShape::HEXAGONAL_PRISM: {
+			vertices = GetHexagonalPrismVertices(size);
+			// 8 faces (2 hexagonal, 6 rectangular)
+			poly.faces.push_back(CreateFace({vertices[0], vertices[1], vertices[2], vertices[3], vertices[4], vertices[5]}, baseHP));   // Top
+			poly.faces.push_back(CreateFace({vertices[6], vertices[11], vertices[10], vertices[9], vertices[8], vertices[7]}, baseHP)); // Bottom
+			for (int i = 0; i < 6; i++) {
+				int next = (i + 1) % 6;
+				poly.faces.push_back(CreateFace(
+				    {vertices[i], vertices[next], vertices[next + 6], vertices[i + 6]}, baseHP)); // Sides
+			}
+			break;
+		}
+
+		case PolyhedronShape::OCTAGONAL_PRISM: {
+			vertices = GetOctagonalPrismVertices(size);
+			// 10 faces (2 octagonal, 8 rectangular)
+			poly.faces.push_back(CreateFace({vertices[0], vertices[1], vertices[2], vertices[3], vertices[4], vertices[5], vertices[6], vertices[7]}, baseHP));       // Top
+			poly.faces.push_back(CreateFace({vertices[8], vertices[15], vertices[14], vertices[13], vertices[12], vertices[11], vertices[10], vertices[9]}, baseHP)); // Bottom
+			for (int i = 0; i < 8; i++) {
+				int next = (i + 1) % 8;
+				poly.faces.push_back(CreateFace(
+				    {vertices[i], vertices[next], vertices[next + 8], vertices[i + 8]}, baseHP)); // Sides
 			}
 			break;
 		}
