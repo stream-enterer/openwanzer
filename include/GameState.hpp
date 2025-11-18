@@ -7,6 +7,7 @@
 #include "CombatArcs.hpp"
 #include "GameHex.hpp"
 #include "HexCoord.hpp"
+#include "MechLoadout.hpp"
 #include "Unit.hpp"
 #include "rl/raylib.h"
 
@@ -230,9 +231,13 @@ struct GameState {
 	PlayerPanel playerPanel;             // HBS-style player mech panel
 	bool debugMode;                      // Toggle with 'D' key for debug visualization
 
+	// MechBay loadout management
+	std::unique_ptr<mechloadout::MechLoadout> mechLoadout;
+
 	GameState();
 
 	void initializeMap();
+	void initializeMechBay(); // Initialize MechBay with mock data
 
 	Unit *getUnitAt(const HexCoord &coord);
 
