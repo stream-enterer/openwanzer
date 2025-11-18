@@ -288,14 +288,16 @@ void RenderMechBayScreen(GameState& game) {
 		DrawRectangleRec(scrollbarBounds, Color {40, 40, 40, 255});
 
 		// Calculate scrollbar thumb size and position
+		const float thumbMargin = 2.0f; // Margin on all sides
 		float viewportRatio = (float)rightSectionHeight / (float)totalContentHeight;
-		float thumbHeight = std::max(30.0f, rightSectionHeight * viewportRatio);
-		float thumbY = contentY + (gScrollbar.scrollOffset / gScrollbar.maxScrollOffset) * (rightSectionHeight - thumbHeight);
+		float availableThumbSpace = rightSectionHeight - (thumbMargin * 2);
+		float thumbHeight = std::max(30.0f, availableThumbSpace * viewportRatio);
+		float thumbY = contentY + thumbMargin + (gScrollbar.scrollOffset / gScrollbar.maxScrollOffset) * (availableThumbSpace - thumbHeight);
 
 		Rectangle thumbBounds = {
-		    scrollbarBounds.x + 2,
+		    scrollbarBounds.x + thumbMargin,
 		    thumbY,
-		    scrollbarBounds.width - 4,
+		    scrollbarBounds.width - (thumbMargin * 2),
 		    thumbHeight};
 
 		// Handle scrollbar thumb dragging
@@ -393,7 +395,7 @@ void RenderMechBayScreen(GameState& game) {
 			if (eq) {
 				// Draw occupied slot(s)
 				int slotHeight = lineHeight * equipmentSlotSpan;
-				Rectangle slotBounds = {(float)colX, (float)sectionY, (float)(colWidth - 4), (float)(slotHeight - 2)};
+				Rectangle slotBounds = {(float)colX, (float)sectionY, (float)(colWidth - 6), (float)(slotHeight - 2)};
 
 				// Check if this item is being dragged
 				bool isBeingDragged = (gDragState.isDragging && gDragState.draggedEquipment == eq && gDragState.sourceLocation == location);
@@ -405,8 +407,9 @@ void RenderMechBayScreen(GameState& game) {
 
 					// Handle mouse interaction (start drag if not locked)
 					if (!eq->IsLocked() && CheckCollisionPointRec(GetMousePosition(), slotBounds)) {
-						// Highlight on hover
-						DrawRectangleLines((int)slotBounds.x, (int)slotBounds.y, (int)slotBounds.width, (int)slotBounds.height, WHITE);
+						// Highlight on hover (inset by 1px to prevent clipping)
+						DrawRectangle((int)slotBounds.x + 1, (int)slotBounds.y + 1, (int)slotBounds.width - 2, (int)slotBounds.height - 2, Color {255, 255, 255, 80});
+						DrawRectangleLinesEx(Rectangle {slotBounds.x + 1, slotBounds.y + 1, slotBounds.width - 2, slotBounds.height - 2}, 1.0f, WHITE);
 
 						// Start drag on mouse button down
 						if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
@@ -427,11 +430,11 @@ void RenderMechBayScreen(GameState& game) {
 				currentSlotIndex += equipmentSlotSpan;
 				slot += equipmentSlotSpan - 1; // Skip the slots this item occupies
 			} else {
-				// Draw empty slot
-				Rectangle emptySlot = {(float)colX, (float)sectionY, (float)(colWidth - 4), (float)(lineHeight - 2)};
-				// Draw with panel body background color (darker grey)
-				DrawRectangleRec(emptySlot, Color {40, 40, 40, 255});
-				DrawRectangleLinesEx(emptySlot, 1.0f, Color {80, 80, 80, 150});
+				// Draw empty slot (match occupied slot sizing)
+				Rectangle emptySlot = {(float)colX, (float)sectionY, (float)(colWidth - 6), (float)(lineHeight - 2)};
+				// Draw with dark background and visible grey border
+				DrawRectangleRec(emptySlot, Color {35, 35, 35, 255});
+				DrawRectangleLinesEx(emptySlot, 1.0f, Color {70, 70, 70, 255});
 
 				sectionY += lineHeight;
 				currentSlotIndex++;
@@ -468,7 +471,10 @@ void RenderMechBayScreen(GameState& game) {
 					success = loadout->MoveEquipment(gDragState.sourceLocation, gDragState.sourceIndex, location, dropSlotIndex);
 				}
 
-				gDragState.Reset();
+				// Only reset drag state if placement succeeded
+				if (success) {
+					gDragState.Reset();
+				}
 			}
 		}
 
