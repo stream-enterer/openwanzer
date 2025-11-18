@@ -3,60 +3,51 @@
 
 #include <string>
 #include <vector>
+#include "Equipment.hpp"
 #include "GameState.hpp"
 #include "rl/raylib.h"
 
 namespace mechbayui {
 
-// Weapon inventory entry
-struct WeaponEntry {
-	int quantity;          // Quantity available (use -1 for infinity symbol)
-	std::string name;      // Weapon name
-	std::string size;      // Size (e.g., "S", "M", "L")
-	float tonnage;         // Weight in tons
-	int damage;            // Damage value
-	int rpm;               // Rate of fire (rounds per minute)
-	int range;             // Range in meters
-	Color backgroundColor; // Background color for type indication
+// Drag state for equipment items
+struct DragState {
+	bool isDragging;
+	equipment::Equipment* draggedEquipment;
+	std::string sourceLocation; // "inventory" or body part name (e.g., "CenterTorso")
+	int sourceIndex;            // -1 for inventory, else index in body part
+	Vector2 dragOffset;         // Mouse offset from item top-left
+	Rectangle dragBounds;       // Current dragged item bounds (for rendering)
+
+	DragState()
+	    : isDragging(false),
+	      draggedEquipment(nullptr),
+	      sourceLocation(""),
+	      sourceIndex(-1),
+	      dragOffset {0, 0},
+	      dragBounds {0, 0, 0, 0} {
+	}
+
+	void Reset() {
+		isDragging = false;
+		draggedEquipment = nullptr;
+		sourceLocation = "";
+		sourceIndex = -1;
+		dragOffset = {0, 0};
+		dragBounds = {0, 0, 0, 0};
+	}
 };
 
-// Equipment slot entry
-struct EquipmentSlot {
-	std::string label;     // Equipment label (e.g., "ARMOR: LIGHT FERRO A")
-	Color backgroundColor; // Background color for slot type
-	bool isEmpty;          // Whether slot is empty
-};
+// Helper function to get color based on equipment category
+Color GetEquipmentColor(equipment::EquipmentCategory category, bool isLocked);
 
-// Body section (torso, arm, leg)
-struct BodySection {
-	std::string name;                 // Section name (e.g., "RIGHT TORSO", "HEAD")
-	int armorFront;                   // Front armor value
-	int armorRear;                    // Rear armor value (-1 if not applicable)
-	int structure;                    // Internal structure value
-	std::vector<EquipmentSlot> slots; // Equipment slots in this section
-};
+// Helper function to get size string based on inventory size
+std::string GetSizeString(int inventorySize);
 
-// Mech statistics entry
-struct MechStat {
-	std::string label; // Stat label
-	std::string value; // Stat value (as string for flexibility)
-};
-
-// Main MechBay data structure
-struct MechBayData {
-	std::string mechName;                  // Mech name (e.g., "ANNIHILATOR ANH-3A")
-	float tonnage;                         // Current tonnage
-	float maxTonnage;                      // Maximum tonnage
-	std::vector<MechStat> stats;           // Mech statistics
-	std::vector<WeaponEntry> inventory;    // Weapon inventory
-	std::vector<BodySection> bodySections; // Body sections (torsos, arms, legs, head)
-};
-
-// Initialize mock MechBay data
-MechBayData InitializeMockMechBayData();
-
-// Render the MechBay screen
+// Render the MechBay screen with drag-and-drop support
 void RenderMechBayScreen(GameState& game);
+
+// Handle input for drag-and-drop
+void HandleMechBayInput(GameState& game, DragState& dragState);
 
 } // namespace mechbayui
 
