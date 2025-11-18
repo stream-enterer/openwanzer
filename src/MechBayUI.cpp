@@ -400,7 +400,14 @@ void RenderMechBayScreen(GameState& game) {
 				// Check if this item is being dragged
 				bool isBeingDragged = (gDragState.isDragging && gDragState.draggedEquipment == eq && gDragState.sourceLocation == location);
 
-				if (!isBeingDragged) {
+				if (isBeingDragged) {
+					// Draw empty cell appearance when dragging from this slot
+					for (int i = 0; i < equipmentSlotSpan; i++) {
+						Rectangle emptySlot = {(float)colX, (float)(sectionY + i * lineHeight), (float)(colWidth - 6), (float)(lineHeight - 2)};
+						DrawRectangleRec(emptySlot, Color {60, 60, 60, 255});
+						DrawRectangleLinesEx(emptySlot, 1.0f, Color {70, 70, 70, 255});
+					}
+				} else {
 					// Draw colored background
 					Color bgColor = GetEquipmentColor(eq->GetCategory(), eq->IsLocked());
 					DrawRectangleRec(slotBounds, bgColor);
@@ -433,7 +440,7 @@ void RenderMechBayScreen(GameState& game) {
 				// Draw empty slot (match occupied slot sizing)
 				Rectangle emptySlot = {(float)colX, (float)sectionY, (float)(colWidth - 6), (float)(lineHeight - 2)};
 				// Draw with dark background and visible grey border
-				DrawRectangleRec(emptySlot, Color {35, 35, 35, 255});
+				DrawRectangleRec(emptySlot, Color {60, 60, 60, 255});
 				DrawRectangleLinesEx(emptySlot, 1.0f, Color {70, 70, 70, 255});
 
 				sectionY += lineHeight;
@@ -445,18 +452,17 @@ void RenderMechBayScreen(GameState& game) {
 		Rectangle dropZone = {
 		    (float)colX,
 		    (float)slotsStartY,
-		    (float)colWidth,
+		    (float)(colWidth - 6),
 		    (float)(sectionY - slotsStartY)};
 
 		if (gDragState.isDragging && CheckCollisionPointRec(GetMousePosition(), dropZone)) {
 			// Highlight drop zone
-			DrawRectangle(colX, slotsStartY, colWidth, sectionY - slotsStartY, Color {255, 255, 0, 50});
+			DrawRectangle(colX, slotsStartY, colWidth - 6, sectionY - slotsStartY, Color {255, 255, 0, 50});
 
 			// Handle drop
 			if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) {
-				// Place at first available slot (index 0)
-				// The PlaceEquipment/MoveEquipment logic will handle finding the right position
-				int dropSlotIndex = 0;
+				// Append at the end of the equipment list (after any locked items)
+				int dropSlotIndex = (int)bodyPart->equipment.size();
 
 				// Attempt to place equipment
 				bool success = false;
