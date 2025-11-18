@@ -286,6 +286,8 @@ void RenderMechBayScreen(GameState& game) {
 	if (gScrollbar.maxScrollOffset > 0) {
 		// Draw scrollbar track
 		DrawRectangleRec(scrollbarBounds, Color {40, 40, 40, 255});
+		// Draw scrollbar border (top, bottom, left, right)
+		DrawRectangleLinesEx(scrollbarBounds, 2.0f, Color {60, 60, 60, 255});
 
 		// Calculate scrollbar thumb size and position
 		float viewportRatio = (float)rightSectionHeight / (float)totalContentHeight;
@@ -426,8 +428,8 @@ void RenderMechBayScreen(GameState& game) {
 			} else {
 				// Draw empty slot
 				Rectangle emptySlot = {(float)colX, (float)sectionY, (float)(colWidth - 4), (float)(lineHeight - 2)};
-				// Draw transparent grey with 1px border
-				DrawRectangleRec(emptySlot, Color {30, 30, 30, 100});
+				// Draw with same background as panel, with 1px border
+				DrawRectangleRec(emptySlot, Color {50, 50, 50, 255});
 				DrawRectangleLinesEx(emptySlot, 1.0f, Color {80, 80, 80, 150});
 
 				sectionY += lineHeight;
@@ -539,13 +541,9 @@ void RenderMechBayScreen(GameState& game) {
 			DrawText(eq->GetUIName().c_str(), (int)dragX + 4, (int)dragY + 2, fontSize - 1, WHITE);
 		}
 
-		// Track if mouse is over a valid drop zone
-		bool overValidDropZone = false;
-
 		// Handle drop on inventory (return to inventory)
 		Rectangle inventoryArea = {(float)leftPanelX, (float)inventoryYStart, (float)leftPanelWidth, (float)(yPos - inventoryYStart)};
 		if (CheckCollisionPointRec(mousePos, inventoryArea)) {
-			overValidDropZone = true;
 			// Highlight inventory as drop zone
 			DrawRectangle(leftPanelX, inventoryYStart, leftPanelWidth, yPos - inventoryYStart, Color {255, 255, 0, 50});
 
@@ -560,19 +558,14 @@ void RenderMechBayScreen(GameState& game) {
 			}
 		}
 
-		// Check if over any body part area (scrollable viewport)
-		if (CheckCollisionPointRec(mousePos, scrollViewport)) {
-			overValidDropZone = true;
-			// Drop handling is done in renderBodySection lambda above
-		}
-
 		// Cancel drag on right-click or ESC
 		if (IsMouseButtonPressed(MOUSE_RIGHT_BUTTON) || IsKeyPressed(KEY_ESCAPE)) {
 			gDragState.Reset();
 		}
 
-		// Auto-release to inventory if dropped outside valid zones
-		if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON) && !overValidDropZone) {
+		// Auto-release to inventory if dropped outside valid zones and drag state still active
+		// (drop zones in renderBodySection will reset drag state if successful)
+		if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON) && gDragState.isDragging) {
 			// Return to inventory
 			if (gDragState.sourceLocation != "inventory") {
 				// Remove from body part
@@ -599,16 +592,6 @@ void RenderMechBayScreen(GameState& game) {
 	if (GuiButton(Rectangle {(float)applyButtonX, (float)buttonY, (float)buttonWidth, (float)buttonHeight}, "APPLY")) {
 		// Save current state
 		loadout->SaveState();
-		game.showMechbayScreen = false;
-	}
-
-	// ===== CLOSE BUTTON (X in top-right corner) =====
-	int closeButtonSize = 30;
-	int closeButtonX = modalX + modalWidth - closeButtonSize - 8;
-	int closeButtonY = modalY + 8;
-	if (GuiButton(Rectangle {(float)closeButtonX, (float)closeButtonY, (float)closeButtonSize, (float)closeButtonSize}, "X")) {
-		// Cancel (restore saved state)
-		loadout->RestoreState();
 		game.showMechbayScreen = false;
 	}
 }
