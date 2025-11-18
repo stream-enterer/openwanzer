@@ -1,4 +1,5 @@
 #include "MechBayUI.hpp"
+#include <algorithm>
 #include <cstdio>
 #include "Config.hpp"
 #include "Constants.hpp"
@@ -9,6 +10,21 @@ namespace mechbayui {
 
 // Static drag state (persists across frames)
 static DragState gDragState;
+
+// Scrollbar state for right section
+struct ScrollbarState {
+	float scrollOffset;    // Current scroll offset in pixels
+	float maxScrollOffset; // Maximum scroll offset
+	bool isDragging;       // Is scrollbar being dragged
+	float dragStartY;      // Y position where drag started
+	float dragStartOffset; // Scroll offset when drag started
+
+	ScrollbarState()
+	    : scrollOffset(0.0f), maxScrollOffset(0.0f), isDragging(false), dragStartY(0.0f), dragStartOffset(0.0f) {
+	}
+};
+
+static ScrollbarState gScrollbar;
 
 // Helper function implementations
 Color GetEquipmentColor(equipment::EquipmentCategory category, bool isLocked) {
@@ -86,7 +102,7 @@ void RenderMechBayScreen(GameState& game) {
 	int contentX = modalX + padding;
 	int contentY = modalY + headerHeight;
 	int contentWidth = modalWidth - padding * 2;
-	int contentHeight = modalHeight - headerHeight - padding;
+	int contentHeight = modalHeight - headerHeight - padding - 50; // Reserve space for buttons
 
 	// ===== LEFT PANEL (~30% width) =====
 	int leftPanelWidth = (int)(contentWidth * 0.30f);
@@ -197,14 +213,139 @@ void RenderMechBayScreen(GameState& game) {
 		yPos += lineHeight;
 	}
 
-	// ===== RIGHT SECTION (~65% width, 3x3 grid layout) =====
+	// ===== RIGHT SECTION (~65% width, 3x3 grid layout with scrollbar) =====
+	const int scrollbarWidth = 16;
 	int rightSectionX = contentX + leftPanelWidth + padding * 2;
-	int rightSectionWidth = contentWidth - leftPanelWidth - padding * 2;
-	int columnWidth = rightSectionWidth / 3;
-	int rowHeight = contentHeight / 3;
+	int rightSectionWidth = contentWidth - leftPanelWidth - padding * 2 - scrollbarWidth;
+	int rightSectionHeight = contentHeight;
 
-	// Helper lambda to render a body section
-	auto renderBodySection = [&](const std::string& location, int colX, int colY, int colWidth, int maxHeight) {
+	// Define scrollable area viewport
+	Rectangle scrollViewport = {
+	    (float)rightSectionX,
+	    (float)contentY,
+	    (float)rightSectionWidth,
+	    (float)rightSectionHeight};
+
+	// Calculate total content height (all body parts)
+	int columnWidth = rightSectionWidth / 3;
+	int totalContentHeight = 0;
+
+	// Helper lambda to calculate body section height
+	auto calculateBodySectionHeight = [&](const std::string& location) -> int {
+		mechloadout::BodyPartSlot* bodyPart = loadout->GetBodyPart(location);
+		if (!bodyPart)
+			return 0;
+
+		int height = 22;                           // Section name
+		height += 18;                              // Armor
+		height += 18;                              // Structure
+		height += 22;                              // Spacing
+		height += bodyPart->maxSlots * lineHeight; // All slots (occupied + empty)
+		return height;
+	};
+
+	using namespace mechloadout;
+
+	// Calculate max height for each row (3 columns) with spacing
+	const int rowSpacing = 20; // Spacing between rows
+
+	int row1MaxHeight = std::max({calculateBodySectionHeight(LOC_RIGHT_TORSO),
+	                              calculateBodySectionHeight(LOC_HEAD) + calculateBodySectionHeight(LOC_CENTER_TORSO) + 10,
+	                              calculateBodySectionHeight(LOC_LEFT_TORSO)});
+
+	int row2MaxHeight = std::max({calculateBodySectionHeight(LOC_RIGHT_ARM),
+	                              100, // Center tonnage display
+	                              calculateBodySectionHeight(LOC_LEFT_ARM)});
+
+	int row3MaxHeight = std::max({calculateBodySectionHeight(LOC_RIGHT_LEG),
+	                              0, // Center empty
+	                              calculateBodySectionHeight(LOC_LEFT_LEG)});
+
+	totalContentHeight = row1MaxHeight + rowSpacing + row2MaxHeight + rowSpacing + row3MaxHeight + rowSpacing;
+
+	// Update scrollbar max offset
+	gScrollbar.maxScrollOffset = std::max(0.0f, (float)(totalContentHeight - rightSectionHeight));
+
+	// Handle scrollbar interactions
+	Rectangle scrollbarBounds = {
+	    (float)(rightSectionX + rightSectionWidth),
+	    (float)contentY,
+	    (float)scrollbarWidth,
+	    (float)rightSectionHeight};
+
+	// Mouse wheel scrolling (when over scrollable area)
+	if (CheckCollisionPointRec(GetMousePosition(), scrollViewport) || CheckCollisionPointRec(GetMousePosition(), scrollbarBounds)) {
+		float mouseWheel = GetMouseWheelMove();
+		if (mouseWheel != 0) {
+			gScrollbar.scrollOffset -= mouseWheel * 30.0f; // 30 pixels per wheel tick
+			gScrollbar.scrollOffset = std::max(0.0f, std::min(gScrollbar.scrollOffset, gScrollbar.maxScrollOffset));
+		}
+	}
+
+	// Scrollbar rendering and interaction
+	if (gScrollbar.maxScrollOffset > 0) {
+		// Draw scrollbar track
+		DrawRectangleRec(scrollbarBounds, Color {40, 40, 40, 255});
+
+		// Calculate scrollbar thumb size and position
+		float viewportRatio = (float)rightSectionHeight / (float)totalContentHeight;
+		float thumbHeight = std::max(30.0f, rightSectionHeight * viewportRatio);
+		float thumbY = contentY + (gScrollbar.scrollOffset / gScrollbar.maxScrollOffset) * (rightSectionHeight - thumbHeight);
+
+		Rectangle thumbBounds = {
+		    scrollbarBounds.x + 2,
+		    thumbY,
+		    scrollbarBounds.width - 4,
+		    thumbHeight};
+
+		// Handle scrollbar thumb dragging
+		if (gScrollbar.isDragging) {
+			if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
+				float mouseDeltaY = GetMouseY() - gScrollbar.dragStartY;
+				float scrollDelta = mouseDeltaY / (rightSectionHeight - thumbHeight) * gScrollbar.maxScrollOffset;
+				gScrollbar.scrollOffset = gScrollbar.dragStartOffset + scrollDelta;
+				gScrollbar.scrollOffset = std::max(0.0f, std::min(gScrollbar.scrollOffset, gScrollbar.maxScrollOffset));
+			} else {
+				gScrollbar.isDragging = false;
+			}
+		} else {
+			// Start dragging thumb
+			if (CheckCollisionPointRec(GetMousePosition(), thumbBounds) && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+				gScrollbar.isDragging = true;
+				gScrollbar.dragStartY = GetMouseY();
+				gScrollbar.dragStartOffset = gScrollbar.scrollOffset;
+			}
+			// Click on track (above or below thumb)
+			else if (CheckCollisionPointRec(GetMousePosition(), scrollbarBounds) && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+				float mouseY = GetMouseY();
+				if (mouseY < thumbY) {
+					// Click above thumb - page up
+					gScrollbar.scrollOffset -= rightSectionHeight * 0.8f;
+				} else if (mouseY > thumbY + thumbHeight) {
+					// Click below thumb - page down
+					gScrollbar.scrollOffset += rightSectionHeight * 0.8f;
+				}
+				gScrollbar.scrollOffset = std::max(0.0f, std::min(gScrollbar.scrollOffset, gScrollbar.maxScrollOffset));
+			}
+		}
+
+		// Draw scrollbar thumb
+		Color thumbColor = gScrollbar.isDragging ? Color {120, 120, 120, 255} : Color {80, 80, 80, 255};
+		if (!gScrollbar.isDragging && CheckCollisionPointRec(GetMousePosition(), thumbBounds)) {
+			thumbColor = Color {100, 100, 100, 255}; // Hover
+		}
+		DrawRectangleRec(thumbBounds, thumbColor);
+	}
+
+	// Begin scissor mode for scrollable content
+	BeginScissorMode((int)scrollViewport.x, (int)scrollViewport.y, (int)scrollViewport.width, (int)scrollViewport.height);
+
+	// Apply scroll offset to rendering
+	int scrollOffsetInt = (int)gScrollbar.scrollOffset;
+	int renderStartY = contentY - scrollOffsetInt;
+
+	// Helper lambda to render a body section with all slots
+	auto renderBodySection = [&](const std::string& location, int colX, int colY, int colWidth) -> int {
 		mechloadout::BodyPartSlot* bodyPart = loadout->GetBodyPart(location);
 		if (!bodyPart)
 			return colY;
@@ -226,71 +367,94 @@ void RenderMechBayScreen(GameState& game) {
 		GuiLabel(Rectangle {(float)colX, (float)sectionY, (float)colWidth, 18}, structText);
 		sectionY += 22;
 
-		// Equipment slots
-		int slotIndex = 0;
-		for (equipment::Equipment* eq : bodyPart->equipment) {
-			if (!eq)
-				continue;
+		int slotsStartY = sectionY; // Track where slots start
 
-			// Calculate slot height based on inventory size
-			int slotHeight = lineHeight * eq->GetInventorySize();
+		// Render all slots (occupied + empty)
+		int currentSlotIndex = 0;
+		int equipmentIndex = 0;
 
-			Rectangle slotBounds = {(float)colX, (float)sectionY, (float)(colWidth - 4), (float)(slotHeight - 2)};
+		for (int slot = 0; slot < bodyPart->maxSlots; slot++) {
+			// Find equipment at this slot
+			equipment::Equipment* eq = nullptr;
+			int equipmentSlotSpan = 0;
 
-			// Check if this item is being dragged
-			bool isBeingDragged = (gDragState.isDragging && gDragState.draggedEquipment == eq && gDragState.sourceLocation == location);
-
-			if (!isBeingDragged) {
-				// Draw colored background
-				Color bgColor = GetEquipmentColor(eq->GetCategory(), eq->IsLocked());
-				DrawRectangleRec(slotBounds, bgColor);
-
-				// Handle mouse interaction (start drag if not locked)
-				if (!eq->IsLocked() && CheckCollisionPointRec(GetMousePosition(), slotBounds)) {
-					// Highlight on hover
-					DrawRectangleLines((int)slotBounds.x, (int)slotBounds.y, (int)slotBounds.width, (int)slotBounds.height, WHITE);
-
-					// Start drag on mouse button down
-					if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-						gDragState.isDragging = true;
-						gDragState.draggedEquipment = eq;
-						gDragState.sourceLocation = location;
-						gDragState.sourceIndex = slotIndex;
-						gDragState.dragOffset = {GetMouseX() - slotBounds.x, GetMouseY() - slotBounds.y};
-						gDragState.dragBounds = slotBounds;
-					}
+			if (equipmentIndex < (int)bodyPart->equipment.size()) {
+				equipment::Equipment* candidateEq = bodyPart->equipment[equipmentIndex];
+				if (candidateEq && currentSlotIndex == slot) {
+					eq = candidateEq;
+					equipmentSlotSpan = eq->GetInventorySize();
+					equipmentIndex++;
 				}
-
-				// Draw slot label
-				DrawText(eq->GetUIName().c_str(), colX + 4, sectionY + 2, fontSize - 1, WHITE);
 			}
 
-			sectionY += slotHeight;
-			slotIndex++;
+			if (eq) {
+				// Draw occupied slot(s)
+				int slotHeight = lineHeight * equipmentSlotSpan;
+				Rectangle slotBounds = {(float)colX, (float)sectionY, (float)(colWidth - 4), (float)(slotHeight - 2)};
+
+				// Check if this item is being dragged
+				bool isBeingDragged = (gDragState.isDragging && gDragState.draggedEquipment == eq && gDragState.sourceLocation == location);
+
+				if (!isBeingDragged) {
+					// Draw colored background
+					Color bgColor = GetEquipmentColor(eq->GetCategory(), eq->IsLocked());
+					DrawRectangleRec(slotBounds, bgColor);
+
+					// Handle mouse interaction (start drag if not locked)
+					if (!eq->IsLocked() && CheckCollisionPointRec(GetMousePosition(), slotBounds)) {
+						// Highlight on hover
+						DrawRectangleLines((int)slotBounds.x, (int)slotBounds.y, (int)slotBounds.width, (int)slotBounds.height, WHITE);
+
+						// Start drag on mouse button down
+						if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+							gDragState.isDragging = true;
+							gDragState.draggedEquipment = eq;
+							gDragState.sourceLocation = location;
+							gDragState.sourceIndex = equipmentIndex - 1;
+							gDragState.dragOffset = {GetMouseX() - slotBounds.x, GetMouseY() - slotBounds.y};
+							gDragState.dragBounds = slotBounds;
+						}
+					}
+
+					// Draw slot label
+					DrawText(eq->GetUIName().c_str(), colX + 4, sectionY + 2, fontSize - 1, WHITE);
+				}
+
+				sectionY += slotHeight;
+				currentSlotIndex += equipmentSlotSpan;
+				slot += equipmentSlotSpan - 1; // Skip the slots this item occupies
+			} else {
+				// Draw empty slot
+				Rectangle emptySlot = {(float)colX, (float)sectionY, (float)(colWidth - 4), (float)(lineHeight - 2)};
+				// Draw transparent grey with 1px border
+				DrawRectangleRec(emptySlot, Color {30, 30, 30, 100});
+				DrawRectangleLinesEx(emptySlot, 1.0f, Color {80, 80, 80, 150});
+
+				sectionY += lineHeight;
+				currentSlotIndex++;
+			}
 		}
 
-		// Draw empty slots (for drop zones)
-		int freeSlots = bodyPart->GetFreeSlots();
-		if (freeSlots > 0 && !gDragState.isDragging) {
-			// Draw a visual indicator for free space
-			int emptySlotHeight = lineHeight;
-			DrawRectangle(colX, sectionY, colWidth - 4, emptySlotHeight - 2, Color {40, 40, 40, 128});
-			char freeText[32];
-			snprintf(freeText, sizeof(freeText), "(%d free)", freeSlots);
-			DrawText(freeText, colX + 4, sectionY + 2, fontSize - 2, Color {150, 150, 150, 255});
-		}
+		// Handle drop on entire equipment area (not headers)
+		Rectangle dropZone = {
+		    (float)colX,
+		    (float)slotsStartY,
+		    (float)colWidth,
+		    (float)(sectionY - slotsStartY)};
 
-		// Handle drop on entire body section area
-		if (gDragState.isDragging && CheckCollisionPointRec(GetMousePosition(), Rectangle {(float)colX, (float)colY, (float)colWidth, (float)maxHeight})) {
+		if (gDragState.isDragging && CheckCollisionPointRec(GetMousePosition(), dropZone)) {
 			// Highlight drop zone
-			DrawRectangle(colX, colY, colWidth, maxHeight, Color {255, 255, 0, 50});
+			DrawRectangle(colX, slotsStartY, colWidth, sectionY - slotsStartY, Color {255, 255, 0, 50});
 
 			// Handle drop
 			if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) {
-				// Calculate drop slot index based on Y position
-				int dropSlotIndex = (GetMouseY() - (colY + 22 + 18 + 18 + 22)) / lineHeight;
+				// Calculate which slot cell was clicked
+				int mouseSlotY = GetMouseY() - slotsStartY;
+				int dropSlotIndex = mouseSlotY / lineHeight;
 				if (dropSlotIndex < 0)
 					dropSlotIndex = 0;
+				if (dropSlotIndex >= bodyPart->maxSlots)
+					dropSlotIndex = bodyPart->maxSlots - 1;
 
 				// Attempt to place equipment
 				bool success = false;
@@ -317,45 +481,45 @@ void RenderMechBayScreen(GameState& game) {
 	int col2X = rightSectionX + columnWidth;
 	int col3X = rightSectionX + columnWidth * 2;
 
-	int row1Y = contentY;
-	int row2Y = contentY + rowHeight;
-	int row3Y = contentY + rowHeight * 2;
-
-	using namespace mechloadout;
+	int row1Y = renderStartY;
+	int row2Y = renderStartY + row1MaxHeight + rowSpacing;
+	int row3Y = renderStartY + row1MaxHeight + rowSpacing + row2MaxHeight + rowSpacing;
 
 	// Row 1 - Torso section
 	// LEFT: RIGHT TORSO
-	renderBodySection(LOC_RIGHT_TORSO, col1X, row1Y, columnWidth - 8, rowHeight);
+	renderBodySection(LOC_RIGHT_TORSO, col1X, row1Y, columnWidth - 8);
 
 	// CENTER: HEAD stacked on top of CENTER TORSO
 	int centerY = row1Y;
-	centerY = renderBodySection(LOC_HEAD, col2X, centerY, columnWidth - 8, rowHeight / 2) + 10;
-	renderBodySection(LOC_CENTER_TORSO, col2X, centerY, columnWidth - 8, rowHeight / 2);
+	centerY = renderBodySection(LOC_HEAD, col2X, centerY, columnWidth - 8) + 10;
+	renderBodySection(LOC_CENTER_TORSO, col2X, centerY, columnWidth - 8);
 
 	// RIGHT: LEFT TORSO
-	renderBodySection(LOC_LEFT_TORSO, col3X, row1Y, columnWidth - 8, rowHeight);
+	renderBodySection(LOC_LEFT_TORSO, col3X, row1Y, columnWidth - 8);
 
 	// Row 2 - Arms section
 	// LEFT: RIGHT ARM
-	renderBodySection(LOC_RIGHT_ARM, col1X, row2Y, columnWidth - 8, rowHeight);
+	renderBodySection(LOC_RIGHT_ARM, col1X, row2Y, columnWidth - 8);
 
-	// CENTER: Empty (intentionally left blank for tonnage display)
-	// Draw tonnage in the center
-	int tonnageDisplayY = row2Y + rowHeight / 2;
+	// CENTER: Tonnage display (not draggable)
+	int tonnageDisplayY = row2Y + row2MaxHeight / 2;
 	DrawText("TONNAGE", col2X + columnWidth / 2 - 40, tonnageDisplayY - 20, fontSize + 2, WHITE);
 	DrawText(tonnageText, col2X + columnWidth / 2 - 50, tonnageDisplayY, fontSize + 4, tonnageColor);
 
 	// RIGHT: LEFT ARM
-	renderBodySection(LOC_LEFT_ARM, col3X, row2Y, columnWidth - 8, rowHeight);
+	renderBodySection(LOC_LEFT_ARM, col3X, row2Y, columnWidth - 8);
 
 	// Row 3 - Legs section
 	// LEFT: RIGHT LEG
-	renderBodySection(LOC_RIGHT_LEG, col1X, row3Y, columnWidth - 8, rowHeight);
+	renderBodySection(LOC_RIGHT_LEG, col1X, row3Y, columnWidth - 8);
 
 	// CENTER: Empty (intentionally left blank)
 
 	// RIGHT: LEFT LEG
-	renderBodySection(LOC_LEFT_LEG, col3X, row3Y, columnWidth - 8, rowHeight);
+	renderBodySection(LOC_LEFT_LEG, col3X, row3Y, columnWidth - 8);
+
+	// End scissor mode
+	EndScissorMode();
 
 	// ===== DRAGGED ITEM RENDERING (on top of everything) =====
 	if (gDragState.isDragging) {
@@ -375,9 +539,13 @@ void RenderMechBayScreen(GameState& game) {
 			DrawText(eq->GetUIName().c_str(), (int)dragX + 4, (int)dragY + 2, fontSize - 1, WHITE);
 		}
 
+		// Track if mouse is over a valid drop zone
+		bool overValidDropZone = false;
+
 		// Handle drop on inventory (return to inventory)
 		Rectangle inventoryArea = {(float)leftPanelX, (float)inventoryYStart, (float)leftPanelWidth, (float)(yPos - inventoryYStart)};
 		if (CheckCollisionPointRec(mousePos, inventoryArea)) {
+			overValidDropZone = true;
 			// Highlight inventory as drop zone
 			DrawRectangle(leftPanelX, inventoryYStart, leftPanelWidth, yPos - inventoryYStart, Color {255, 255, 0, 50});
 
@@ -392,13 +560,27 @@ void RenderMechBayScreen(GameState& game) {
 			}
 		}
 
+		// Check if over any body part area (scrollable viewport)
+		if (CheckCollisionPointRec(mousePos, scrollViewport)) {
+			overValidDropZone = true;
+			// Drop handling is done in renderBodySection lambda above
+		}
+
 		// Cancel drag on right-click or ESC
 		if (IsMouseButtonPressed(MOUSE_RIGHT_BUTTON) || IsKeyPressed(KEY_ESCAPE)) {
 			gDragState.Reset();
 		}
 
-		// Note: Drop handling is done in renderBodySection lambda above
-		// If mouse is released without hitting inventory or body section, drag will auto-cancel
+		// Auto-release to inventory if dropped outside valid zones
+		if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON) && !overValidDropZone) {
+			// Return to inventory
+			if (gDragState.sourceLocation != "inventory") {
+				// Remove from body part
+				loadout->RemoveEquipment(gDragState.sourceLocation, gDragState.sourceIndex);
+				// RemoveEquipment already adds back to inventory
+			}
+			gDragState.Reset();
+		}
 	}
 
 	// ===== APPLY/CANCEL BUTTONS =====
