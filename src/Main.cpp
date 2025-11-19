@@ -361,7 +361,9 @@ int main() {
 				game.camera.offsetY += panSpeed;
 		} else if (game.showMechbayScreen) {
 			// MechBay screen input
-			if (IsKeyPressed(KEY_ESCAPE)) {
+			// Only close MechBay on ESC if filter is not focused
+			// (filter handles ESC internally when focused)
+			if (IsKeyPressed(KEY_ESCAPE) && !game.mechbayFilterFocused) {
 				game.showMechbayScreen = false;
 			}
 		} else {

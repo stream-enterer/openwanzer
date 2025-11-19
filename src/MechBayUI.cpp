@@ -1,6 +1,7 @@
 #include "MechBayUI.hpp"
 #include <algorithm>
 #include <cstdio>
+#include <cstring>
 #include "Config.hpp"
 #include "Constants.hpp"
 #include "MechLoadout.hpp"
@@ -25,6 +26,127 @@ struct ScrollbarState {
 };
 
 static ScrollbarState gScrollbar;
+
+// Filter state for inventory search
+struct InventoryFilterState {
+	char searchText[64];                         // Current filter text
+	bool isFocused;                              // Is textbox focused?
+	equipment::EquipmentCategory activeCategory; // Active category filter (or UNKNOWN for all)
+
+	InventoryFilterState()
+	    : searchText {0}, isFocused(false), activeCategory(equipment::EquipmentCategory::UNKNOWN) {
+	}
+
+	void Clear() {
+		searchText[0] = '\0';
+	}
+
+	bool IsEmpty() const {
+		return searchText[0] == '\0';
+	}
+};
+
+static InventoryFilterState gFilterState;
+
+// Category filter groups
+enum CategoryGroup {
+	GROUP_ALL,
+	GROUP_WEAPONS,
+	GROUP_AMMO,
+	GROUP_INTERNALS,
+	GROUP_EQUIP
+};
+
+// Helper function to check if a category belongs to a group
+bool IsCategoryInGroup(equipment::EquipmentCategory category, CategoryGroup group) {
+	using namespace equipment;
+
+	switch (group) {
+		case GROUP_ALL:
+			return true;
+		case GROUP_WEAPONS:
+			return category == EquipmentCategory::WEAPON;
+		case GROUP_AMMO:
+			return category == EquipmentCategory::AMMO;
+		case GROUP_INTERNALS:
+			return category == EquipmentCategory::ENGINE || category == EquipmentCategory::GYRO || category == EquipmentCategory::COCKPIT || category == EquipmentCategory::STRUCTURE || category == EquipmentCategory::ACTUATOR;
+		case GROUP_EQUIP:
+			return category == EquipmentCategory::HEAT_SINK || category == EquipmentCategory::UPGRADE || category == EquipmentCategory::JUMP_JET || category == EquipmentCategory::ARMOR;
+		default:
+			return false;
+	}
+}
+
+// Fuzzy matching algorithm
+// Returns -1 for no match, or a positive score (higher is better)
+int FuzzyMatch(const char* needle, const char* haystack) {
+	if (!needle || !haystack)
+		return -1;
+
+	// Empty needle matches everything with max score
+	if (needle[0] == '\0')
+		return 10000;
+
+	// Convert to lowercase for case-insensitive matching
+	char needleLower[256];
+	char haystackLower[256];
+
+	// Convert needle to lowercase
+	int i = 0;
+	while (needle[i] && i < 255) {
+		needleLower[i] = std::tolower(needle[i]);
+		i++;
+	}
+	needleLower[i] = '\0';
+
+	// Convert haystack to lowercase
+	i = 0;
+	while (haystack[i] && i < 255) {
+		haystackLower[i] = std::tolower(haystack[i]);
+		i++;
+	}
+	haystackLower[i] = '\0';
+
+	int score = 0;
+	int haystackIndex = 0;
+	int needleLen = strlen(needleLower);
+	int haystackLen = strlen(haystackLower);
+
+	for (int needleIndex = 0; needleIndex < needleLen; needleIndex++) {
+		char needleChar = needleLower[needleIndex];
+		bool found = false;
+
+		// Search for this character in the remaining haystack
+		for (int j = haystackIndex; j < haystackLen; j++) {
+			if (haystackLower[j] == needleChar) {
+				// Found a match
+				found = true;
+				int charPos = j;
+
+				// Award points based on match characteristics
+				if (charPos == 0) {
+					score += 100; // Start of string bonus
+				}
+
+				if (charPos > 0 && (haystack[charPos - 1] == ' ' || haystack[charPos - 1] == '-' || haystack[charPos - 1] == '_')) {
+					score += 50; // Word boundary bonus
+				}
+
+				// Penalty for distance from previous match
+				score -= (charPos - haystackIndex) * 2;
+
+				haystackIndex = charPos + 1;
+				break;
+			}
+		}
+
+		if (!found) {
+			return -1; // No match
+		}
+	}
+
+	return score;
+}
 
 // Helper function implementations
 Color GetEquipmentColor(equipment::EquipmentCategory category, bool isLocked) {
@@ -75,6 +197,9 @@ void RenderMechBayScreen(GameState& game) {
 	}
 
 	mechloadout::MechLoadout* loadout = game.mechLoadout.get();
+
+	// Sync filter focus state to game state (so Main.cpp can check it)
+	game.mechbayFilterFocused = gFilterState.isFocused;
 
 	// Calculate screen dimensions
 	int screenWidth = SCREEN_WIDTH;
@@ -131,6 +256,100 @@ void RenderMechBayScreen(GameState& game) {
 	GuiLabel(Rectangle {(float)leftPanelX, (float)yPos, (float)leftPanelWidth, 20}, "INVENTORY");
 	yPos += 22;
 
+	// ===== FILTER INPUT BOX =====
+	const int filterHeight = 20;
+	const int filterMargin = 5;
+	const int iconSize = 16;
+
+	// Lens icon
+	GuiDrawIcon(ICON_LENS, leftPanelX + filterMargin, yPos + 2, 1, GRAY);
+
+	// Filter textbox
+	Rectangle filterBounds = {
+	    (float)(leftPanelX + iconSize + filterMargin * 2),
+	    (float)yPos,
+	    (float)(leftPanelWidth - iconSize - filterMargin * 3),
+	    (float)filterHeight};
+
+	// Draw textbox
+	if (GuiTextBox(filterBounds, gFilterState.searchText, sizeof(gFilterState.searchText), gFilterState.isFocused)) {
+		// Toggle focus when clicked
+		gFilterState.isFocused = !gFilterState.isFocused;
+	}
+
+	// Yellow border when focused
+	if (gFilterState.isFocused) {
+		DrawRectangleLinesEx(filterBounds, 2.0f, Color {255, 255, 0, 255});
+	}
+
+	yPos += filterHeight + filterMargin;
+
+	// ===== CATEGORY FILTER BUTTONS =====
+	const char* categoryLabels[] = {"WEAPONS", "AMMO", "INTRNL", "EQUIP"};
+	CategoryGroup categoryGroups[] = {GROUP_WEAPONS, GROUP_AMMO, GROUP_INTERNALS, GROUP_EQUIP};
+	static CategoryGroup activeGroup = GROUP_ALL;
+
+	int filterButtonWidth = (leftPanelWidth - 6) / 4;
+	int filterButtonHeight = 20;
+
+	for (int i = 0; i < 4; i++) {
+		int buttonX = leftPanelX + i * (filterButtonWidth + 2);
+		bool isActive = (activeGroup == categoryGroups[i]);
+
+		Rectangle buttonBounds = {(float)buttonX, (float)yPos, (float)filterButtonWidth, (float)filterButtonHeight};
+
+		if (GuiButton(buttonBounds, categoryLabels[i])) {
+			// Toggle: clicking active button deactivates it
+			if (isActive) {
+				activeGroup = GROUP_ALL;
+			} else {
+				activeGroup = categoryGroups[i];
+			}
+		}
+
+		// Highlight active button with yellow border
+		if (isActive) {
+			DrawRectangleLinesEx(buttonBounds, 2.0f, Color {255, 255, 0, 255});
+		}
+	}
+
+	yPos += filterButtonHeight + filterMargin;
+
+	// ===== INPUT HANDLING FOR FILTER =====
+	// Handle auto-focus on typing (printable characters)
+	int keyPressed = GetCharPressed();
+	if (keyPressed > 0 && keyPressed < 127 && !gFilterState.isFocused) {
+		// Auto-focus and insert character
+		gFilterState.isFocused = true;
+		int len = strlen(gFilterState.searchText);
+		if (len < (int)sizeof(gFilterState.searchText) - 1) {
+			gFilterState.searchText[len] = (char)keyPressed;
+			gFilterState.searchText[len + 1] = '\0';
+		}
+	}
+
+	// Handle ESC key
+	if (IsKeyPressed(KEY_ESCAPE)) {
+		if (gFilterState.isFocused) {
+			if (!gFilterState.IsEmpty()) {
+				// Clear text if not empty
+				gFilterState.Clear();
+			} else {
+				// Defocus if empty
+				gFilterState.isFocused = false;
+			}
+		}
+		// Note: If not focused, ESC will be handled by the existing MechBay close logic
+	}
+
+	// Handle mouse click outside filter box to defocus
+	if (gFilterState.isFocused && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+		Vector2 mousePos = GetMousePosition();
+		if (!CheckCollisionPointRec(mousePos, filterBounds)) {
+			gFilterState.isFocused = false;
+		}
+	}
+
 	// Inventory list header
 	GuiLabel(Rectangle {(float)leftPanelX, (float)yPos, 30, (float)lineHeight}, "QTY");
 	GuiLabel(Rectangle {(float)(leftPanelX + 35), (float)yPos, (float)(leftPanelWidth * 0.40f), (float)lineHeight}, "NAME");
@@ -139,9 +358,24 @@ void RenderMechBayScreen(GameState& game) {
 	GuiLabel(Rectangle {(float)(leftPanelX + leftPanelWidth * 0.75f), (float)yPos, 40, (float)lineHeight}, "DMG");
 	yPos += lineHeight;
 
-	// Render inventory items
+	// ===== FILTER AND RENDER INVENTORY ITEMS =====
 	const auto& inventory = loadout->GetInventory();
 	int inventoryYStart = yPos;
+
+	// Build filtered list with scores
+	struct FilteredItem {
+		std::string componentDefID;
+		equipment::Equipment* equipment;
+		int quantity;
+		int score;
+
+		bool operator<(const FilteredItem& other) const {
+			return score > other.score; // Sort descending by score
+		}
+	};
+
+	std::vector<FilteredItem> filteredItems;
+
 	for (const auto& pair : inventory) {
 		const std::string& componentDefID = pair.first;
 		int quantity = pair.second;
@@ -154,6 +388,28 @@ void RenderMechBayScreen(GameState& game) {
 		// Skip locked/structural items in inventory display
 		if (eq->IsLocked())
 			continue;
+
+		// Apply fuzzy text filter
+		int textScore = FuzzyMatch(gFilterState.searchText, eq->GetUIName().c_str());
+		if (textScore < 0)
+			continue; // No match
+
+		// Apply category filter
+		bool categoryMatch = IsCategoryInGroup(eq->GetCategory(), activeGroup);
+		if (!categoryMatch)
+			continue;
+
+		// Add to filtered list
+		filteredItems.push_back({componentDefID, eq, quantity, textScore});
+	}
+
+	// Sort by score (best matches first)
+	std::sort(filteredItems.begin(), filteredItems.end());
+
+	// Render filtered inventory items
+	for (const auto& item : filteredItems) {
+		equipment::Equipment* eq = item.equipment;
+		int quantity = item.quantity;
 
 		Rectangle itemBounds = {(float)leftPanelX, (float)yPos, (float)leftPanelWidth, (float)(lineHeight - 2)};
 
@@ -596,12 +852,18 @@ void RenderMechBayScreen(GameState& game) {
 		// Restore saved state
 		loadout->RestoreState();
 		game.showMechbayScreen = false;
+		// Reset filter state
+		gFilterState.Clear();
+		gFilterState.isFocused = false;
 	}
 
 	if (GuiButton(Rectangle {(float)applyButtonX, (float)buttonY, (float)buttonWidth, (float)buttonHeight}, "APPLY")) {
 		// Save current state
 		loadout->SaveState();
 		game.showMechbayScreen = false;
+		// Reset filter state
+		gFilterState.Clear();
+		gFilterState.isFocused = false;
 	}
 }
 
