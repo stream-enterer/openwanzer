@@ -216,6 +216,7 @@ struct GameState {
 	int maxTurns;
 	bool showOptionsMenu;
 	bool showMechbayScreen;
+	bool mechbayFilterFocused; // Is the MechBay inventory filter focused?
 	VideoSettings settings;
 	GameLayout layout;
 	CameraState camera;
