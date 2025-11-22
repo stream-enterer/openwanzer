@@ -2,8 +2,8 @@
 #define OPENWANZER_PAPERDOLL_UI_HPP
 
 #include "GameState.hpp"
+#include "Raylib.hpp"
 #include "Unit.hpp"
-#include "rl/raylib.h"
 
 namespace paperdollui {
 

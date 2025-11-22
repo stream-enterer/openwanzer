@@ -1,6 +1,6 @@
 # CLAUDE.md - AI Assistant Context for Open Wanzer
 
-Last Updated: 2025-11-15
+Last Updated: 2025-11-22
 
 ---
 
@@ -87,6 +87,41 @@ openwanzer/
 #### Data Files
 - **JSON keys**: snake_case (e.g., `"unit_type"`, `"max_health"`, `"armor_locations"`)
 - **JSON files**: lowercase_underscore (e.g., `game_config.json`, `unit_data.json`)
+
+#### Include Organization
+
+**CRITICAL: All #include statements must follow this organization:**
+
+1. **Project headers** (in double quotes) come FIRST, alphabetically sorted
+2. **Blank line**
+3. **Standard library headers** (in angle brackets) come SECOND, alphabetically sorted
+
+**Raylib Headers:**
+- All raylib headers are in `include/` with PascalCase names and `.hpp` extensions
+- `Raylib.hpp` - Main raylib header
+- `Raygui.hpp` - Immediate mode GUI header
+- `Raymath.hpp` - Math utilities header
+- `Rlgl.hpp` - OpenGL abstraction header
+
+**Example:**
+```cpp
+#include "Config.hpp"
+#include "Constants.hpp"
+#include "GameState.hpp"
+#include "Raylib.hpp"
+#include "Rendering.hpp"
+
+#include <algorithm>
+#include <memory>
+#include <string>
+#include <vector>
+```
+
+**Common Mistakes to Avoid:**
+- ❌ Mixing project and stdlib headers
+- ❌ Not alphabetizing within each section
+- ❌ Missing blank line between sections
+- ❌ Using old `rl/raylib.h` style paths
 
 ### Examples
 
@@ -545,6 +580,31 @@ cmake --build .
 ---
 
 ## Recent Changes
+
+### 2025-11-22: Raylib Header Reorganization and Include Style Standardization
+- **REORGANIZED RAYLIB HEADERS**: Moved all raylib headers to top-level include directory
+  - Moved `include/rl/raylib.h` → `include/Raylib.hpp`
+  - Moved `include/rl/raygui.h` → `include/Raygui.hpp`
+  - Moved `include/rl/raymath.h` → `include/Raymath.hpp`
+  - Moved `include/rl/rlgl.h` → `include/Rlgl.hpp`
+  - Removed `include/rl/` subdirectory (flat structure maintained)
+  - Updated internal include in `Raygui.hpp` to use new header name
+- **STANDARDIZED INCLUDE ORGANIZATION**: Established mandatory include ordering
+  - Project headers (double quotes) come FIRST, alphabetically sorted
+  - Blank line separator
+  - Standard library headers (angle brackets) come SECOND, alphabetically sorted
+  - Applied to all 15 files that include raylib headers (6 headers, 9 source files)
+- **UPDATED CLAUDE.MD**: Added "Include Organization" section
+  - Documented mandatory include ordering rules
+  - Listed all raylib headers with their new names and purposes
+  - Provided clear examples of correct include organization
+  - Added common mistakes to avoid
+- **FILES MODIFIED**:
+  - Headers: `Constants.hpp`, `Rendering.hpp`, `GameState.hpp`, `CombatArcs.hpp`, `PaperdollUI.hpp`, `MechBayUI.hpp`, `Raygui.hpp`
+  - Source: `Camera.cpp`, `HexDrawing.cpp`, `Main.cpp`, `GameState.cpp`, `PaperdollUI.cpp`, `UIDrawing.cpp`, `MechBayUI.cpp`, `Persistence.cpp`, `StyleManager.cpp`
+  - Documentation: `CLAUDE.md`
+- **RATIONALE**: Maintains flat directory structure consistency, improves discoverability of raylib headers, and enforces clean include organization across the codebase
+- Build status: Clean build with zero warnings
 
 ### 2025-11-15: Theme Dropdown Fix and Code Formatting Policy
 - **FIXED THEME DROPDOWN ISSUE**: Theme files now load correctly from any working directory

@@ -2,24 +2,22 @@
 // OPEN WANZER - Turn-based Tactical Mech Combat Game
 //==============================================================================
 
-#include "rl/raylib.h"
-#include "rl/raymath.h"
+#include "Raylib.hpp"
+#include "Raymath.hpp"
 
 // Suppress warnings from raygui.h
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-result"
 #pragma GCC diagnostic ignored "-Wstringop-overflow"
 #define RAYGUI_IMPLEMENTATION
-#include "rl/raygui.h"
+#include "Raygui.hpp"
 #pragma GCC diagnostic pop
 
-#include "Hex.hpp"
-
-// Include all module headers
 #include "Config.hpp"
 #include "Constants.hpp"
 #include "GameLogic.hpp"
 #include "GameState.hpp"
+#include "Hex.hpp"
 #include "Input.hpp"
 #include "MechBayUI.hpp"
 #include "PaperdollUI.hpp"

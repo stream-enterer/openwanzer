@@ -1,8 +1,9 @@
-#include <fstream>
-#include <string>
 #include "Config.hpp"
 #include "GameState.hpp"
-#include "rl/raylib.h"
+#include "Raylib.hpp"
+
+#include <fstream>
+#include <string>
 
 namespace config {
 

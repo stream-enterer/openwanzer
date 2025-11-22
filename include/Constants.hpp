@@ -1,7 +1,7 @@
 #ifndef OPENWANZER_CONSTANTS_HPP
 #define OPENWANZER_CONSTANTS_HPP
 
-#include "rl/raylib.h"
+#include "Raylib.hpp"
 
 // Default configuration values
 extern const int kDefaultScreenWidth;

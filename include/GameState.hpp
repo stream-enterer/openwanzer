@@ -1,15 +1,16 @@
 #ifndef OPENWANZER_GAME_STATE_HPP
 #define OPENWANZER_GAME_STATE_HPP
 
-#include <memory>
-#include <string>
-#include <vector>
 #include "CombatArcs.hpp"
 #include "GameHex.hpp"
 #include "HexCoord.hpp"
 #include "MechLoadout.hpp"
+#include "Raylib.hpp"
 #include "Unit.hpp"
-#include "rl/raylib.h"
+
+#include <memory>
+#include <string>
+#include <vector>
 
 // Forward declaration for calculateCenteredCameraOffset
 struct CameraState;

@@ -1,10 +1,11 @@
+#include "Config.hpp"
+#include "Raygui.hpp"
+#include "Raylib.hpp"
+
 #include <dirent.h>
 #include <sys/stat.h>
 #include <algorithm>
 #include <fstream>
-#include "Config.hpp"
-#include "rl/raygui.h"
-#include "rl/raylib.h"
 
 namespace config {
 
