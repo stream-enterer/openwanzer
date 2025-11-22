@@ -250,7 +250,8 @@ void RenderMechBayScreen(GameState& game) {
 
 	// Color based on tonnage (green if under, red if over)
 	Color tonnageColor = (currentTonnage <= maxTonnage) ? Color {80, 255, 80, 255} : Color {255, 80, 80, 255};
-	DrawText(tonnageText, leftPanelX, yPos, fontSize + 2, tonnageColor);
+	float spacing = (float)GuiGetStyle(DEFAULT, TEXT_SPACING);
+	DrawTextEx(GuiGetFont(), tonnageText, Vector2 {(float)leftPanelX, (float)yPos}, (float)(fontSize + 2), spacing, tonnageColor);
 	yPos += 30;
 
 	// Inventory section
@@ -445,25 +446,25 @@ void RenderMechBayScreen(GameState& game) {
 			} else {
 				snprintf(qtyText, sizeof(qtyText), "%d", quantity);
 			}
-			DrawText(qtyText, leftPanelX + 5, yPos + 2, fontSize, WHITE);
+			DrawTextEx(GuiGetFont(), qtyText, Vector2 {(float)(leftPanelX + 5), (float)(yPos + 2)}, (float)fontSize, spacing, WHITE);
 
 			// Name
-			DrawText(eq->GetUIName().c_str(), leftPanelX + 35, yPos + 2, fontSize, WHITE);
+			DrawTextEx(GuiGetFont(), eq->GetUIName().c_str(), Vector2 {(float)(leftPanelX + 35), (float)(yPos + 2)}, (float)fontSize, spacing, WHITE);
 
 			// Size
 			std::string sizeStr = GetSizeString(eq->GetInventorySize());
-			DrawText(sizeStr.c_str(), leftPanelX + leftPanelWidth * 0.45f, yPos + 2, fontSize, WHITE);
+			DrawTextEx(GuiGetFont(), sizeStr.c_str(), Vector2 {leftPanelX + leftPanelWidth * 0.45f, (float)(yPos + 2)}, (float)fontSize, spacing, WHITE);
 
 			// Tonnage
 			char tonsText[16];
 			snprintf(tonsText, sizeof(tonsText), "%.1f", eq->GetTonnage());
-			DrawText(tonsText, leftPanelX + leftPanelWidth * 0.60f, yPos + 2, fontSize, WHITE);
+			DrawTextEx(GuiGetFont(), tonsText, Vector2 {leftPanelX + leftPanelWidth * 0.60f, (float)(yPos + 2)}, (float)fontSize, spacing, WHITE);
 
 			// Damage (for weapons only)
 			if (eq->GetCategory() == equipment::EquipmentCategory::WEAPON) {
 				char dmgText[16];
 				snprintf(dmgText, sizeof(dmgText), "%d", eq->GetDamage());
-				DrawText(dmgText, leftPanelX + leftPanelWidth * 0.75f, yPos + 2, fontSize, WHITE);
+				DrawTextEx(GuiGetFont(), dmgText, Vector2 {leftPanelX + leftPanelWidth * 0.75f, (float)(yPos + 2)}, (float)fontSize, spacing, WHITE);
 			}
 		}
 
@@ -687,7 +688,7 @@ void RenderMechBayScreen(GameState& game) {
 					}
 
 					// Draw slot label
-					DrawText(eq->GetUIName().c_str(), colX + 4, sectionY + 2, fontSize - 1, WHITE);
+					DrawTextEx(GuiGetFont(), eq->GetUIName().c_str(), Vector2 {(float)(colX + 4), (float)(sectionY + 2)}, (float)(fontSize - 1), spacing, WHITE);
 				}
 
 				sectionY += slotHeight;
@@ -771,8 +772,8 @@ void RenderMechBayScreen(GameState& game) {
 
 	// CENTER: Tonnage display (not draggable)
 	int tonnageDisplayY = row2Y + row2MaxHeight / 2;
-	DrawText("TONNAGE", col2X + columnWidth / 2 - 40, tonnageDisplayY - 20, fontSize + 2, WHITE);
-	DrawText(tonnageText, col2X + columnWidth / 2 - 50, tonnageDisplayY, fontSize + 4, tonnageColor);
+	DrawTextEx(GuiGetFont(), "TONNAGE", Vector2 {(float)(col2X + columnWidth / 2 - 40), (float)(tonnageDisplayY - 20)}, (float)(fontSize + 2), spacing, WHITE);
+	DrawTextEx(GuiGetFont(), tonnageText, Vector2 {(float)(col2X + columnWidth / 2 - 50), (float)tonnageDisplayY}, (float)(fontSize + 4), spacing, tonnageColor);
 
 	// RIGHT: LEFT ARM
 	renderBodySection(LOC_LEFT_ARM, col3X, row2Y, columnWidth - 8);
@@ -804,7 +805,7 @@ void RenderMechBayScreen(GameState& game) {
 			Color bgColor = GetEquipmentColor(eq->GetCategory(), false);
 			DrawRectangleRec(dragRect, bgColor);
 			DrawRectangleLines((int)dragRect.x, (int)dragRect.y, (int)dragRect.width, (int)dragRect.height, WHITE);
-			DrawText(eq->GetUIName().c_str(), (int)dragX + 4, (int)dragY + 2, fontSize - 1, WHITE);
+			DrawTextEx(GuiGetFont(), eq->GetUIName().c_str(), Vector2 {dragX + 4, dragY + 2}, (float)(fontSize - 1), spacing, WHITE);
 		}
 
 		// Handle drop on inventory (return to inventory)
