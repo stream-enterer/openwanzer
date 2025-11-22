@@ -20,7 +20,6 @@ void saveConfig(const VideoSettings& settings) {
 	configFile << "vsync=" << (settings.vsync ? 1 : 0) << "\n";
 	configFile << "fpsIndex=" << settings.fpsIndex << "\n";
 	configFile << "hexSize=" << settings.hexSize << "\n";
-	configFile << "panSpeed=" << settings.panSpeed << "\n";
 
 	configFile.close();
 	TraceLog(LOG_INFO, "Config saved to config.txt");
@@ -69,12 +68,10 @@ void loadConfig(VideoSettings& settings) {
 					settings.hexSize = val;
 				}
 			} else if (key == "panSpeed") {
-				float val = std::stof(value);
-				if (val >= 1.0f && val <= 20.0f) {
-					settings.panSpeed = val;
-				}
+				// Deprecated: panSpeed is now hardcoded to 1.0f
+				// Keep this for backwards compatibility with old config files
 			}
-			// Ignore deprecated settings: msaa, guiScaleIndex, styleTheme
+			// Ignore deprecated settings: msaa, guiScaleIndex, styleTheme, panSpeed
 		} catch (const std::exception& e) {
 			// Ignore malformed values
 			TraceLog(LOG_WARNING, TextFormat("Failed to parse config value: %s", key.c_str()));

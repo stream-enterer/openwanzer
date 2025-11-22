@@ -162,13 +162,14 @@ void renderRearPaperdoll(const PaperdollPanel& panel, const Unit* unit) {
 
 void renderPaperdollLabels(const PaperdollPanel& panel) {
 	// Draw "FRONT" and "REAR" labels below paperdolls
-	float frontLabelX = panel.frontCT.x + panel.frontCT.width / 2 - 20;
-	float rearLabelX = panel.rearCT.x + panel.rearCT.width / 2 - 20;
+	float frontLabelX = panel.frontCT.x + panel.frontCT.width / 2 - 30;
+	float rearLabelX = panel.rearCT.x + panel.rearCT.width / 2 - 25;
 	float labelY = panel.frontLL.y + panel.frontLL.height + 5;
 
 	float spacing = (float)cherrystyle::kFontSpacing;
-	DrawTextEx(cherrystyle::CHERRY_FONT, "FRONT", Vector2 {frontLabelX, labelY}, 10, spacing, GRAY);
-	DrawTextEx(cherrystyle::CHERRY_FONT, "REAR", Vector2 {rearLabelX, labelY}, 10, spacing, GRAY);
+	const int fontSize = cherrystyle::kFontSize;
+	DrawTextEx(cherrystyle::CHERRY_FONT, "FRONT", Vector2 {frontLabelX, labelY}, (float)fontSize, spacing, GRAY);
+	DrawTextEx(cherrystyle::CHERRY_FONT, "REAR", Vector2 {rearLabelX, labelY}, (float)fontSize, spacing, GRAY);
 }
 
 // ============================================================================
@@ -244,8 +245,9 @@ void renderWeaponLoadout(const PaperdollPanel& panel, const Unit* unit) {
 	float y = panel.bounds.y + 30;
 
 	float spacing = (float)cherrystyle::kFontSpacing;
-	DrawTextEx(cherrystyle::CHERRY_FONT, "LOADOUT", Vector2 {x, y}, 14, spacing, GRAY);
-	y += 20;
+	const int fontSize = cherrystyle::kFontSize;
+	DrawTextEx(cherrystyle::CHERRY_FONT, "LOADOUT", Vector2 {x, y}, (float)fontSize, spacing, GRAY);
+	y += 22;
 
 	for (const Weapon& weapon : unit->weapons) {
 		Color weaponColor = getWeaponColor(weapon.type);
@@ -253,14 +255,14 @@ void renderWeaponLoadout(const PaperdollPanel& panel, const Unit* unit) {
 			weaponColor = DISABLED_WEAPON_COLOR;
 		}
 
-		DrawTextEx(cherrystyle::CHERRY_FONT, weapon.name.c_str(), Vector2 {x, y}, 12, spacing, weaponColor);
+		DrawTextEx(cherrystyle::CHERRY_FONT, weapon.name.c_str(), Vector2 {x, y}, (float)fontSize, spacing, weaponColor);
 
 		// Draw damage number in grey next to weapon
 		if (weapon.type == WeaponType::MELEE || weapon.type == WeaponType::ARTILLERY) {
-			DrawTextEx(cherrystyle::CHERRY_FONT, TextFormat("%d", weapon.damage), Vector2 {x + 80, y}, 12, spacing, GRAY);
+			DrawTextEx(cherrystyle::CHERRY_FONT, TextFormat("%d", weapon.damage), Vector2 {x + 80, y}, (float)fontSize, spacing, GRAY);
 		}
 
-		y += 16;
+		y += 18;
 	}
 }
 
@@ -282,8 +284,9 @@ void renderStatusBar(float x, float y, float width, float height,
 
 	// Text
 	float spacing = (float)cherrystyle::kFontSpacing;
-	DrawTextEx(cherrystyle::CHERRY_FONT, TextFormat("%d/%d", current, max), Vector2 {x + 5, y + 3}, 10, spacing, WHITE);
-	DrawTextEx(cherrystyle::CHERRY_FONT, label, Vector2 {x, y + height + 2}, 8, spacing, GRAY);
+	const int fontSize = cherrystyle::kFontSize;
+	DrawTextEx(cherrystyle::CHERRY_FONT, TextFormat("%d/%d", current, max), Vector2 {x + 5, y + 3}, (float)fontSize, spacing, WHITE);
+	DrawTextEx(cherrystyle::CHERRY_FONT, label, Vector2 {x, y + height + 4}, (float)fontSize, spacing, GRAY);
 }
 
 // ============================================================================
@@ -295,12 +298,15 @@ void renderPanelHeader(const PaperdollPanel& panel, const Unit* unit, [[maybe_un
 	float y = panel.bounds.y + 10;
 
 	float spacing = (float)cherrystyle::kFontSpacing;
+	const int fontSize = cherrystyle::kFontSize;
+	const int largeFontSize = 20;
+	const int mediumFontSize = 18;
 
 	// Line 1: Mech name and variant
 	std::string mechName = getWeightClassName(unit->weightClass);
 	std::string variant = "MK-I"; // Placeholder
 	DrawTextEx(cherrystyle::CHERRY_FONT, TextFormat("%s - %s", mechName.c_str(), variant.c_str()),
-	           Vector2 {x, y}, 20, spacing, ORANGE);
+	           Vector2 {x, y}, (float)largeFontSize, spacing, ORANGE);
 
 	// Line 1 continued: S: and A: values
 	int totalStructure = 0, currentStructure = 0;
@@ -314,30 +320,30 @@ void renderPanelHeader(const PaperdollPanel& panel, const Unit* unit, [[maybe_un
 	}
 
 	DrawTextEx(cherrystyle::CHERRY_FONT, TextFormat("S: %d/%d", currentStructure, totalStructure),
-	           Vector2 {x + 300, y}, 16, spacing, WHITE);
+	           Vector2 {x + 300, y}, (float)mediumFontSize, spacing, WHITE);
 	DrawTextEx(cherrystyle::CHERRY_FONT, TextFormat("A: %d/%d", currentArmor, totalArmor),
-	           Vector2 {x + 450, y}, 16, spacing, WHITE);
+	           Vector2 {x + 450, y}, (float)mediumFontSize, spacing, WHITE);
 
 	// Line 2: Mech weight class and faction/pilot info
-	y += 25;
-	DrawTextEx(cherrystyle::CHERRY_FONT, TextFormat("'MECH: %s", mechName.c_str()), Vector2 {x, y}, 14, spacing, LIGHTGRAY);
+	y += 28;
+	DrawTextEx(cherrystyle::CHERRY_FONT, TextFormat("'MECH: %s", mechName.c_str()), Vector2 {x, y}, (float)fontSize, spacing, LIGHTGRAY);
 
 	// Placeholder faction logo (just a small box)
 	DrawRectangle((int)(x + 150), (int)y, 20, 20, DARKGRAY);
-	DrawTextEx(cherrystyle::CHERRY_FONT, "PILOT", Vector2 {x + 180, y}, 14, spacing, LIGHTGRAY);
+	DrawTextEx(cherrystyle::CHERRY_FONT, "PILOT", Vector2 {x + 180, y}, (float)fontSize, spacing, LIGHTGRAY);
 
 	// Line 3: Initiative, Heat, Stability bars
-	y += 25;
+	y += 28;
 
 	// Initiative (placeholder)
-	DrawTextEx(cherrystyle::CHERRY_FONT, "-1", Vector2 {x, y}, 14, spacing, WHITE);
-	DrawTextEx(cherrystyle::CHERRY_FONT, "INITIATIVE", Vector2 {x, y + 15}, 10, spacing, LIGHTGRAY);
+	DrawTextEx(cherrystyle::CHERRY_FONT, "-1", Vector2 {x, y}, (float)fontSize, spacing, WHITE);
+	DrawTextEx(cherrystyle::CHERRY_FONT, "INITIATIVE", Vector2 {x, y + 18}, (float)fontSize, spacing, LIGHTGRAY);
 
-	// Heat bar (placeholder values)
-	renderStatusBar(x + 80, y, 100, 20, 50, 500, RED, "HEAT");
+	// Heat bar (placeholder values) - increased height for larger font
+	renderStatusBar(x + 80, y, 100, 24, 50, 500, RED, "HEAT");
 
-	// Stability bar (placeholder values)
-	renderStatusBar(x + 200, y, 100, 20, 75, 100, YELLOW, "STAB");
+	// Stability bar (placeholder values) - increased height for larger font
+	renderStatusBar(x + 200, y, 100, 24, 75, 100, YELLOW, "STAB");
 }
 
 // ============================================================================
@@ -359,9 +365,9 @@ void renderLocationTooltip(const PaperdollPanel& panel, const Unit* unit) {
 	std::string armorText = TextFormat("%d/%d", loc.currentArmor, loc.maxArmor);
 	std::string structureText = TextFormat("%d/%d", loc.currentStructure, loc.maxStructure);
 
-	// Calculate tooltip size
-	int tooltipWidth = 120;
-	int tooltipHeight = 60;
+	// Calculate tooltip size (increased for larger font)
+	int tooltipWidth = 140;
+	int tooltipHeight = 70;
 
 	// Position near mouse (with bounds checking)
 	Vector2 pos = panel.tooltipPos;
@@ -376,15 +382,16 @@ void renderLocationTooltip(const PaperdollPanel& panel, const Unit* unit) {
 
 	// Draw text
 	float spacing = (float)cherrystyle::kFontSpacing;
-	DrawTextEx(cherrystyle::CHERRY_FONT, locationName.c_str(), Vector2 {pos.x + 5, pos.y + 5}, 12, spacing, WHITE);
+	const int fontSize = cherrystyle::kFontSize;
+	DrawTextEx(cherrystyle::CHERRY_FONT, locationName.c_str(), Vector2 {pos.x + 5, pos.y + 5}, (float)fontSize, spacing, WHITE);
 
 	bool isStructureExposed = (loc.currentArmor == 0 && loc.currentStructure > 0);
 	Color structColor = isStructureExposed ? ORANGE : WHITE;
 
 	DrawTextEx(cherrystyle::CHERRY_FONT, TextFormat("A: %s", armorText.c_str()),
-	           Vector2 {pos.x + 5, pos.y + 22}, 10, spacing, WHITE);
+	           Vector2 {pos.x + 5, pos.y + 25}, (float)fontSize, spacing, WHITE);
 	DrawTextEx(cherrystyle::CHERRY_FONT, TextFormat("S: %s", structureText.c_str()),
-	           Vector2 {pos.x + 5, pos.y + 37}, 10, spacing, structColor);
+	           Vector2 {pos.x + 5, pos.y + 45}, (float)fontSize, spacing, structColor);
 }
 
 // ============================================================================

@@ -184,27 +184,51 @@ void drawMap(GameState &game) {
 		Vector2 origin = {unitWidth / 2, unitHeight / 2};
 		DrawRectanglePro(unitRect, origin, rotation, unitColor);
 
-		// Draw unit symbol (not scaled with zoom)
+		// Draw unit label overlay (independent of unit counter, sits on top)
 		std::string symbol = getUnitSymbol(unit->unitClass);
-		const int symbolFontSize = 10;
-		const int healthFontSize = 12;
-		float spacing = (float)cherrystyle::kFontSpacing;
-
-		int textWidth = (int)MeasureTextEx(cherrystyle::CHERRY_FONT, symbol.c_str(), (float)symbolFontSize, spacing).x;
-
-		// Note: Text is drawn unrotated at center for readability
-		// TODO: When using sprite textures, use DrawTexturePro with rotation parameter
-		// Example: DrawTexturePro(texture, sourceRec, destRec, origin, rotation, WHITE);
-		DrawTextEx(cherrystyle::CHERRY_FONT, symbol.c_str(),
-		           Vector2 {(float)(center.x - textWidth / 2), (float)(center.y - symbolFontSize / 2 - 5)},
-		           (float)symbolFontSize, spacing, WHITE);
-
-		// Draw health percentage
 		std::string health = std::to_string(unit->getOverallHealthPercent()) + "%";
-		textWidth = (int)MeasureTextEx(cherrystyle::CHERRY_FONT, health.c_str(), (float)healthFontSize, spacing).x;
+
+		const int labelFontSize = cherrystyle::kFontSize; // Use cherry font size (15)
+		float spacing = (float)cherrystyle::kFontSpacing;
+		const int labelPadding = 1; // 1px margin between text and border
+		const int lineSpacing = 2;  // Small spacing between lines
+
+		// Measure text for both lines
+		int symbolWidth = (int)MeasureTextEx(cherrystyle::CHERRY_FONT, symbol.c_str(), (float)labelFontSize, spacing).x;
+		int healthWidth = (int)MeasureTextEx(cherrystyle::CHERRY_FONT, health.c_str(), (float)labelFontSize, spacing).x;
+		int maxWidth = std::max(symbolWidth, healthWidth);
+
+		// Calculate label rectangle size
+		int labelWidth = maxWidth + labelPadding * 2;
+		int labelHeight = labelFontSize * 2 + lineSpacing + labelPadding * 2;
+
+		// Position label centered above the unit counter
+		float labelX = center.x - labelWidth / 2;
+		float labelY = center.y - labelHeight / 2;
+
+		Rectangle labelRect = {labelX, labelY, (float)labelWidth, (float)labelHeight};
+
+		// Draw background
+		Color backgroundColor = Color {20, 20, 20, 220}; // Semi-transparent dark background
+		DrawRectangleRec(labelRect, backgroundColor);
+
+		// Draw border
+		Color borderColor = Color {100, 100, 100, 255}; // Gray border
+		DrawRectangleLinesEx(labelRect, 1, borderColor);
+
+		// Draw unit symbol text (first line)
+		Color textColor = WHITE;
+		DrawTextEx(cherrystyle::CHERRY_FONT, symbol.c_str(),
+		           Vector2 {labelX + labelPadding + (labelWidth - labelPadding * 2 - symbolWidth) / 2,
+		                    labelY + labelPadding},
+		           (float)labelFontSize, spacing, textColor);
+
+		// Draw health percentage text (second line)
+		Color healthColor = YELLOW;
 		DrawTextEx(cherrystyle::CHERRY_FONT, health.c_str(),
-		           Vector2 {(float)(center.x - textWidth / 2), (float)(center.y + 10)},
-		           (float)healthFontSize, spacing, YELLOW);
+		           Vector2 {labelX + labelPadding + (labelWidth - labelPadding * 2 - healthWidth) / 2,
+		                    labelY + labelPadding + labelFontSize + lineSpacing},
+		           (float)labelFontSize, spacing, healthColor);
 	}
 
 	// Draw movement zone outline (yellow contiguous border)

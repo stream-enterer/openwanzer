@@ -222,8 +222,8 @@ void RenderMechBayScreen(GameState& game) {
 	// Layout constants
 	const int padding = 12;
 	const int headerHeight = 40;
-	const int fontSize = 12;
-	const int lineHeight = 20;
+	const int fontSize = cherrystyle::kFontSize; // Use cherry font size (15)
+	const int lineHeight = 22;                   // Increased to accommodate larger font
 
 	// Font settings
 	float spacing = (float)cherrystyle::kFontSpacing;
@@ -254,12 +254,12 @@ void RenderMechBayScreen(GameState& game) {
 
 	// Color based on tonnage (green if under, red if over)
 	Color tonnageColor = (currentTonnage <= maxTonnage) ? Color {80, 255, 80, 255} : Color {255, 80, 80, 255};
-	DrawTextEx(cherrystyle::CHERRY_FONT, tonnageText, Vector2 {(float)leftPanelX, (float)yPos}, (float)(fontSize + 2), spacing, tonnageColor);
-	yPos += 30;
+	DrawTextEx(cherrystyle::CHERRY_FONT, tonnageText, Vector2 {(float)leftPanelX, (float)yPos}, (float)fontSize, spacing, tonnageColor);
+	yPos += 32;
 
 	// Inventory section
-	GuiLabel(Rectangle {(float)leftPanelX, (float)yPos, (float)leftPanelWidth, 20}, "INVENTORY");
-	yPos += 22;
+	GuiLabel(Rectangle {(float)leftPanelX, (float)yPos, (float)leftPanelWidth, 22}, "INVENTORY");
+	yPos += 24;
 
 	// ===== FILTER INPUT BOX =====
 	const int filterHeight = 20;
@@ -361,7 +361,7 @@ void RenderMechBayScreen(GameState& game) {
 	GuiLabel(Rectangle {(float)(leftPanelX + leftPanelWidth * 0.45f), (float)yPos, 40, (float)lineHeight}, "SIZE");
 	GuiLabel(Rectangle {(float)(leftPanelX + leftPanelWidth * 0.60f), (float)yPos, 50, (float)lineHeight}, "TONS");
 	GuiLabel(Rectangle {(float)(leftPanelX + leftPanelWidth * 0.75f), (float)yPos, 40, (float)lineHeight}, "DMG");
-	yPos += lineHeight;
+	yPos += lineHeight + 2;
 
 	// ===== FILTER AND RENDER INVENTORY ITEMS =====
 	const auto& inventory = loadout->GetInventory();
@@ -497,10 +497,10 @@ void RenderMechBayScreen(GameState& game) {
 		if (!bodyPart)
 			return 0;
 
-		int height = 22;                           // Section name
-		height += 18;                              // Armor
-		height += 18;                              // Structure
-		height += 22;                              // Spacing
+		int height = 24;                           // Section name (increased for larger font)
+		height += 22;                              // Armor (increased for larger font)
+		height += 22;                              // Structure (increased for larger font)
+		height += 24;                              // Spacing
 		height += bodyPart->maxSlots * lineHeight; // All slots (occupied + empty)
 		return height;
 	};
@@ -619,19 +619,19 @@ void RenderMechBayScreen(GameState& game) {
 		int sectionY = colY;
 
 		// Section name header
-		GuiLabel(Rectangle {(float)colX, (float)sectionY, (float)colWidth, 20}, bodyPart->location.c_str());
-		sectionY += 22;
+		GuiLabel(Rectangle {(float)colX, (float)sectionY, (float)colWidth, 22}, bodyPart->location.c_str());
+		sectionY += 24;
 
 		// Armor/Structure info (mock data for now)
 		char armorText[64];
 		snprintf(armorText, sizeof(armorText), "ARMOR: 50");
-		GuiLabel(Rectangle {(float)colX, (float)sectionY, (float)colWidth, 18}, armorText);
-		sectionY += 18;
+		GuiLabel(Rectangle {(float)colX, (float)sectionY, (float)colWidth, 22}, armorText);
+		sectionY += 22;
 
 		char structText[64];
 		snprintf(structText, sizeof(structText), "STRUCT: 25");
-		GuiLabel(Rectangle {(float)colX, (float)sectionY, (float)colWidth, 18}, structText);
-		sectionY += 22;
+		GuiLabel(Rectangle {(float)colX, (float)sectionY, (float)colWidth, 22}, structText);
+		sectionY += 24;
 
 		int slotsStartY = sectionY; // Track where slots start
 
@@ -691,7 +691,7 @@ void RenderMechBayScreen(GameState& game) {
 					}
 
 					// Draw slot label
-					DrawTextEx(cherrystyle::CHERRY_FONT, eq->GetUIName().c_str(), Vector2 {(float)(colX + 4), (float)(sectionY + 2)}, (float)(fontSize - 1), spacing, WHITE);
+					DrawTextEx(cherrystyle::CHERRY_FONT, eq->GetUIName().c_str(), Vector2 {(float)(colX + 4), (float)(sectionY + 2)}, (float)fontSize, spacing, WHITE);
 				}
 
 				sectionY += slotHeight;
@@ -775,8 +775,8 @@ void RenderMechBayScreen(GameState& game) {
 
 	// CENTER: Tonnage display (not draggable)
 	int tonnageDisplayY = row2Y + row2MaxHeight / 2;
-	DrawTextEx(cherrystyle::CHERRY_FONT, "TONNAGE", Vector2 {(float)(col2X + columnWidth / 2 - 40), (float)(tonnageDisplayY - 20)}, (float)(fontSize + 2), spacing, WHITE);
-	DrawTextEx(cherrystyle::CHERRY_FONT, tonnageText, Vector2 {(float)(col2X + columnWidth / 2 - 50), (float)tonnageDisplayY}, (float)(fontSize + 4), spacing, tonnageColor);
+	DrawTextEx(cherrystyle::CHERRY_FONT, "TONNAGE", Vector2 {(float)(col2X + columnWidth / 2 - 40), (float)(tonnageDisplayY - 20)}, (float)fontSize, spacing, WHITE);
+	DrawTextEx(cherrystyle::CHERRY_FONT, tonnageText, Vector2 {(float)(col2X + columnWidth / 2 - 50), (float)tonnageDisplayY}, (float)fontSize, spacing, tonnageColor);
 
 	// RIGHT: LEFT ARM
 	renderBodySection(LOC_LEFT_ARM, col3X, row2Y, columnWidth - 8);
@@ -808,7 +808,7 @@ void RenderMechBayScreen(GameState& game) {
 			Color bgColor = GetEquipmentColor(eq->GetCategory(), false);
 			DrawRectangleRec(dragRect, bgColor);
 			DrawRectangleLines((int)dragRect.x, (int)dragRect.y, (int)dragRect.width, (int)dragRect.height, WHITE);
-			DrawTextEx(cherrystyle::CHERRY_FONT, eq->GetUIName().c_str(), Vector2 {dragX + 4, dragY + 2}, (float)(fontSize - 1), spacing, WHITE);
+			DrawTextEx(cherrystyle::CHERRY_FONT, eq->GetUIName().c_str(), Vector2 {dragX + 4, dragY + 2}, (float)fontSize, spacing, WHITE);
 		}
 
 		// Handle drop on inventory (return to inventory)

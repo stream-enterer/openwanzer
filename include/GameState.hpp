@@ -41,12 +41,11 @@ struct VideoSettings {
 	bool vsync;
 	int fpsIndex;
 	float hexSize;
-	float panSpeed;
 	bool resolutionDropdownEdit;
 	bool fpsDropdownEdit;
 
 	VideoSettings()
-	    : resolutionIndex(6), fullscreen(true), vsync(false), fpsIndex(6), hexSize(40.0f), panSpeed(5.0f), resolutionDropdownEdit(false), fpsDropdownEdit(false) {
+	    : resolutionIndex(6), fullscreen(true), vsync(false), fpsIndex(6), hexSize(40.0f), resolutionDropdownEdit(false), fpsDropdownEdit(false) {
 	}
 };
 

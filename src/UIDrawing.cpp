@@ -295,7 +295,7 @@ void drawUI(GameState &game) {
 
 void drawOptionsMenu(GameState &game, [[maybe_unused]] bool &needsRestart) {
 	int menuWidth = 600;
-	int menuHeight = 450; // Reduced height since we removed options
+	int menuHeight = 410; // Reduced height since we removed pan speed slider
 	int menuX = (SCREEN_WIDTH - menuWidth) / 2;
 	int menuY = (SCREEN_HEIGHT - menuHeight) / 2;
 
@@ -311,17 +311,21 @@ void drawOptionsMenu(GameState &game, [[maybe_unused]] bool &needsRestart) {
 	DrawRectangle(menuX, menuY, menuWidth, menuHeight, backgroundColor);
 	DrawRectangleLines(menuX, menuY, menuWidth, menuHeight, borderColor);
 
+	// Font settings
+	const int fontSize = cherrystyle::kFontSize;
+	const int titleFontSize = 20;
+	float spacing = (float)cherrystyle::kFontSpacing;
+
 	// Title
-	DrawText("VIDEO OPTIONS", menuX + 20, menuY + 15, 20, titleColor);
+	DrawTextEx(cherrystyle::CHERRY_FONT, "VIDEO OPTIONS", Vector2 {(float)(menuX + 20), (float)(menuY + 15)}, (float)titleFontSize, spacing, titleColor);
 
 	int y = menuY + 60;
 	int labelX = menuX + 30;
 	int controlX = menuX + 250;
 	int controlWidth = 300;
 
-	// Get label and text colors from style
+	// Get label color from style
 	Color labelColor = GetColor(GuiGetStyle(LABEL, TEXT_COLOR_NORMAL));
-	Color valueColor = GetColor(GuiGetStyle(DEFAULT, TEXT_COLOR_DISABLED));
 
 	// Store positions for dropdowns to draw them last
 	int resolutionY = y;
@@ -335,40 +339,26 @@ void drawOptionsMenu(GameState &game, [[maybe_unused]] bool &needsRestart) {
 
 	// Draw labels and non-dropdown controls first
 	// Resolution label
-	DrawText("Resolution:", labelX, resolutionY, 15, labelColor);
+	DrawTextEx(cherrystyle::CHERRY_FONT, "Resolution:", Vector2 {(float)labelX, (float)resolutionY}, (float)fontSize, spacing, labelColor);
 
 	// Fullscreen
-	DrawText("Fullscreen:", labelX, fullscreenY, 15, labelColor);
+	DrawTextEx(cherrystyle::CHERRY_FONT, "Fullscreen:", Vector2 {(float)labelX, (float)fullscreenY}, (float)fontSize, spacing, labelColor);
 	GuiCheckBox(Rectangle {(float)controlX, (float)fullscreenY - 5, 25, 25}, "",
 	            &game.settings.fullscreen);
 
 	// VSync
-	DrawText("VSync:", labelX, vsyncY, 15, labelColor);
+	DrawTextEx(cherrystyle::CHERRY_FONT, "VSync:", Vector2 {(float)labelX, (float)vsyncY}, (float)fontSize, spacing, labelColor);
 	GuiCheckBox(Rectangle {(float)controlX, (float)vsyncY - 5, 25, 25}, "",
 	            &game.settings.vsync);
 
 	// FPS Target label
-	DrawText("FPS Target:", labelX, fpsY, 15, labelColor);
-	std::string currentFps =
-	    game.settings.fpsIndex == 6
-	        ? "Unlimited"
-	        : std::to_string(FPS_VALUES[game.settings.fpsIndex]);
-	DrawText(currentFps.c_str(), controlX + controlWidth + 15, fpsY, 15, valueColor);
+	DrawTextEx(cherrystyle::CHERRY_FONT, "FPS Target:", Vector2 {(float)labelX, (float)fpsY}, (float)fontSize, spacing, labelColor);
 
 	// Hex Size Slider
-	DrawText("Hex Size:", labelX, y, 15, labelColor);
+	DrawTextEx(cherrystyle::CHERRY_FONT, "Hex Size:", Vector2 {(float)labelX, (float)y}, (float)fontSize, spacing, labelColor);
 	GuiSlider(Rectangle {(float)controlX, (float)y, (float)controlWidth, 20}, "20",
 	          "80", &game.settings.hexSize, 20, 80);
-	std::string hexSizeStr = std::to_string((int)game.settings.hexSize);
-	DrawText(hexSizeStr.c_str(), controlX + controlWidth + 15, y, 15, valueColor);
 	y += 40;
-
-	// Pan Speed Slider
-	DrawText("Camera Pan Speed:", labelX, y, 15, labelColor);
-	GuiSlider(Rectangle {(float)controlX, (float)y, (float)controlWidth, 20}, "1",
-	          "20", &game.settings.panSpeed, 1, 20);
-	std::string panSpeedStr = std::to_string((int)game.settings.panSpeed);
-	DrawText(panSpeedStr.c_str(), controlX + controlWidth + 15, y, 15, valueColor);
 
 	// Buttons
 	int buttonY = menuY + menuHeight - 60;
@@ -423,7 +413,6 @@ void drawOptionsMenu(GameState &game, [[maybe_unused]] bool &needsRestart) {
 		game.settings.vsync = false;
 		game.settings.fpsIndex = 6; // Unlimited FPS
 		game.settings.hexSize = 40.0f;
-		game.settings.panSpeed = 5.0f;
 	}
 
 	// Draw dropdowns last so they appear on top
@@ -434,16 +423,16 @@ void drawOptionsMenu(GameState &game, [[maybe_unused]] bool &needsRestart) {
 		resLabels += RESOLUTIONS[i].label;
 	}
 
-	// FPS Target dropdown
+	// FPS Target dropdown - increased height by 2px for better font fit
 	if (GuiDropdownBox(
-	        Rectangle {(float)controlX, (float)fpsY - 5, (float)controlWidth, 25},
+	        Rectangle {(float)controlX, (float)fpsY - 5, (float)controlWidth, 27},
 	        FPS_LABELS, &game.settings.fpsIndex, game.settings.fpsDropdownEdit)) {
 		game.settings.fpsDropdownEdit = !game.settings.fpsDropdownEdit;
 	}
 
-	// Resolution dropdown (draw last - topmost, overlaps all others)
+	// Resolution dropdown (draw last - topmost, overlaps all others) - increased height by 2px for better font fit
 	if (GuiDropdownBox(
-	        Rectangle {(float)controlX, (float)resolutionY - 5, (float)controlWidth, 25},
+	        Rectangle {(float)controlX, (float)resolutionY - 5, (float)controlWidth, 27},
 	        resLabels.c_str(), &game.settings.resolutionIndex,
 	        game.settings.resolutionDropdownEdit)) {
 		game.settings.resolutionDropdownEdit =

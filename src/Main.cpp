@@ -339,8 +339,8 @@ int main() {
 				}
 			}
 
-			// Camera panning
-			float panSpeed = game.settings.panSpeed;
+			// Camera panning (hardcoded speed)
+			const float panSpeed = 1.0f;
 			if (IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_A))
 				game.camera.offsetX -= panSpeed;
 			if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D))
