@@ -1,7 +1,7 @@
 #include "PaperdollUI.hpp"
 #include "ArmorLocation.hpp"
+#include "CherryStyle.hpp"
 #include "Constants.hpp"
-#include "FontManager.hpp"
 #include "GameLogic.hpp"
 #include "Raygui.hpp"
 #include "Raylib.hpp"
@@ -166,10 +166,9 @@ void renderPaperdollLabels(const PaperdollPanel& panel) {
 	float rearLabelX = panel.rearCT.x + panel.rearCT.width / 2 - 20;
 	float labelY = panel.frontLL.y + panel.frontLL.height + 5;
 
-	float spacing = fontmanager::FONT_CACHE.GetSpacing();
-	Font font10 = fontmanager::FONT_CACHE.GetFont(10);
-	DrawTextEx(font10, "FRONT", Vector2 {frontLabelX, labelY}, 10, spacing, GRAY);
-	DrawTextEx(font10, "REAR", Vector2 {rearLabelX, labelY}, 10, spacing, GRAY);
+	float spacing = (float)cherrystyle::kFontSpacing;
+	DrawTextEx(cherrystyle::CHERRY_FONT, "FRONT", Vector2 {frontLabelX, labelY}, 10, spacing, GRAY);
+	DrawTextEx(cherrystyle::CHERRY_FONT, "REAR", Vector2 {rearLabelX, labelY}, 10, spacing, GRAY);
 }
 
 // ============================================================================
@@ -244,10 +243,8 @@ void renderWeaponLoadout(const PaperdollPanel& panel, const Unit* unit) {
 	float x = panel.bounds.x + panel.bounds.width - 150; // Right side
 	float y = panel.bounds.y + 30;
 
-	float spacing = fontmanager::FONT_CACHE.GetSpacing();
-	Font font14 = fontmanager::FONT_CACHE.GetFont(14);
-	Font font12 = fontmanager::FONT_CACHE.GetFont(12);
-	DrawTextEx(font14, "LOADOUT", Vector2 {x, y}, 14, spacing, GRAY);
+	float spacing = (float)cherrystyle::kFontSpacing;
+	DrawTextEx(cherrystyle::CHERRY_FONT, "LOADOUT", Vector2 {x, y}, 14, spacing, GRAY);
 	y += 20;
 
 	for (const Weapon& weapon : unit->weapons) {
@@ -256,11 +253,11 @@ void renderWeaponLoadout(const PaperdollPanel& panel, const Unit* unit) {
 			weaponColor = DISABLED_WEAPON_COLOR;
 		}
 
-		DrawTextEx(font12, weapon.name.c_str(), Vector2 {x, y}, 12, spacing, weaponColor);
+		DrawTextEx(cherrystyle::CHERRY_FONT, weapon.name.c_str(), Vector2 {x, y}, 12, spacing, weaponColor);
 
 		// Draw damage number in grey next to weapon
 		if (weapon.type == WeaponType::MELEE || weapon.type == WeaponType::ARTILLERY) {
-			DrawTextEx(font12, TextFormat("%d", weapon.damage), Vector2 {x + 80, y}, 12, spacing, GRAY);
+			DrawTextEx(cherrystyle::CHERRY_FONT, TextFormat("%d", weapon.damage), Vector2 {x + 80, y}, 12, spacing, GRAY);
 		}
 
 		y += 16;
@@ -284,11 +281,9 @@ void renderStatusBar(float x, float y, float width, float height,
 	DrawRectangleLines((int)x, (int)y, (int)width, (int)height, WHITE);
 
 	// Text
-	float spacing = fontmanager::FONT_CACHE.GetSpacing();
-	Font font10 = fontmanager::FONT_CACHE.GetFont(10);
-	Font font8 = fontmanager::FONT_CACHE.GetFont(8);
-	DrawTextEx(font10, TextFormat("%d/%d", current, max), Vector2 {x + 5, y + 3}, 10, spacing, WHITE);
-	DrawTextEx(font8, label, Vector2 {x, y + height + 2}, 8, spacing, GRAY);
+	float spacing = (float)cherrystyle::kFontSpacing;
+	DrawTextEx(cherrystyle::CHERRY_FONT, TextFormat("%d/%d", current, max), Vector2 {x + 5, y + 3}, 10, spacing, WHITE);
+	DrawTextEx(cherrystyle::CHERRY_FONT, label, Vector2 {x, y + height + 2}, 8, spacing, GRAY);
 }
 
 // ============================================================================
@@ -299,16 +294,12 @@ void renderPanelHeader(const PaperdollPanel& panel, const Unit* unit, [[maybe_un
 	float x = panel.bounds.x + 10;
 	float y = panel.bounds.y + 10;
 
-	float spacing = fontmanager::FONT_CACHE.GetSpacing();
-	Font font20 = fontmanager::FONT_CACHE.GetFont(20);
-	Font font16 = fontmanager::FONT_CACHE.GetFont(16);
-	Font font14 = fontmanager::FONT_CACHE.GetFont(14);
-	Font font10 = fontmanager::FONT_CACHE.GetFont(10);
+	float spacing = (float)cherrystyle::kFontSpacing;
 
 	// Line 1: Mech name and variant
 	std::string mechName = getWeightClassName(unit->weightClass);
 	std::string variant = "MK-I"; // Placeholder
-	DrawTextEx(font20, TextFormat("%s - %s", mechName.c_str(), variant.c_str()),
+	DrawTextEx(cherrystyle::CHERRY_FONT, TextFormat("%s - %s", mechName.c_str(), variant.c_str()),
 	           Vector2 {x, y}, 20, spacing, ORANGE);
 
 	// Line 1 continued: S: and A: values
@@ -322,25 +313,25 @@ void renderPanelHeader(const PaperdollPanel& panel, const Unit* unit, [[maybe_un
 		currentStructure += loc.second.currentStructure;
 	}
 
-	DrawTextEx(font16, TextFormat("S: %d/%d", currentStructure, totalStructure),
+	DrawTextEx(cherrystyle::CHERRY_FONT, TextFormat("S: %d/%d", currentStructure, totalStructure),
 	           Vector2 {x + 300, y}, 16, spacing, WHITE);
-	DrawTextEx(font16, TextFormat("A: %d/%d", currentArmor, totalArmor),
+	DrawTextEx(cherrystyle::CHERRY_FONT, TextFormat("A: %d/%d", currentArmor, totalArmor),
 	           Vector2 {x + 450, y}, 16, spacing, WHITE);
 
 	// Line 2: Mech weight class and faction/pilot info
 	y += 25;
-	DrawTextEx(font14, TextFormat("'MECH: %s", mechName.c_str()), Vector2 {x, y}, 14, spacing, LIGHTGRAY);
+	DrawTextEx(cherrystyle::CHERRY_FONT, TextFormat("'MECH: %s", mechName.c_str()), Vector2 {x, y}, 14, spacing, LIGHTGRAY);
 
 	// Placeholder faction logo (just a small box)
 	DrawRectangle((int)(x + 150), (int)y, 20, 20, DARKGRAY);
-	DrawTextEx(font14, "PILOT", Vector2 {x + 180, y}, 14, spacing, LIGHTGRAY);
+	DrawTextEx(cherrystyle::CHERRY_FONT, "PILOT", Vector2 {x + 180, y}, 14, spacing, LIGHTGRAY);
 
 	// Line 3: Initiative, Heat, Stability bars
 	y += 25;
 
 	// Initiative (placeholder)
-	DrawTextEx(font14, "-1", Vector2 {x, y}, 14, spacing, WHITE);
-	DrawTextEx(font10, "INITIATIVE", Vector2 {x, y + 15}, 10, spacing, LIGHTGRAY);
+	DrawTextEx(cherrystyle::CHERRY_FONT, "-1", Vector2 {x, y}, 14, spacing, WHITE);
+	DrawTextEx(cherrystyle::CHERRY_FONT, "INITIATIVE", Vector2 {x, y + 15}, 10, spacing, LIGHTGRAY);
 
 	// Heat bar (placeholder values)
 	renderStatusBar(x + 80, y, 100, 20, 50, 500, RED, "HEAT");
@@ -384,17 +375,15 @@ void renderLocationTooltip(const PaperdollPanel& panel, const Unit* unit) {
 	DrawRectangleLinesEx(tooltipRect, 1, LIGHTGRAY);
 
 	// Draw text
-	float spacing = fontmanager::FONT_CACHE.GetSpacing();
-	Font font12 = fontmanager::FONT_CACHE.GetFont(12);
-	Font font10 = fontmanager::FONT_CACHE.GetFont(10);
-	DrawTextEx(font12, locationName.c_str(), Vector2 {pos.x + 5, pos.y + 5}, 12, spacing, WHITE);
+	float spacing = (float)cherrystyle::kFontSpacing;
+	DrawTextEx(cherrystyle::CHERRY_FONT, locationName.c_str(), Vector2 {pos.x + 5, pos.y + 5}, 12, spacing, WHITE);
 
 	bool isStructureExposed = (loc.currentArmor == 0 && loc.currentStructure > 0);
 	Color structColor = isStructureExposed ? ORANGE : WHITE;
 
-	DrawTextEx(font10, TextFormat("A: %s", armorText.c_str()),
+	DrawTextEx(cherrystyle::CHERRY_FONT, TextFormat("A: %s", armorText.c_str()),
 	           Vector2 {pos.x + 5, pos.y + 22}, 10, spacing, WHITE);
-	DrawTextEx(font10, TextFormat("S: %s", structureText.c_str()),
+	DrawTextEx(cherrystyle::CHERRY_FONT, TextFormat("S: %s", structureText.c_str()),
 	           Vector2 {pos.x + 5, pos.y + 37}, 10, spacing, structColor);
 }
 

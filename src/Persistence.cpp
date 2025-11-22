@@ -21,9 +21,6 @@ void saveConfig(const VideoSettings& settings) {
 	configFile << "fpsIndex=" << settings.fpsIndex << "\n";
 	configFile << "hexSize=" << settings.hexSize << "\n";
 	configFile << "panSpeed=" << settings.panSpeed << "\n";
-	configFile << "msaa=" << (settings.msaa ? 1 : 0) << "\n";
-	configFile << "guiScaleIndex=" << settings.guiScaleIndex << "\n";
-	configFile << "styleTheme=" << settings.styleTheme << "\n";
 
 	configFile.close();
 	TraceLog(LOG_INFO, "Config saved to config.txt");
@@ -76,16 +73,8 @@ void loadConfig(VideoSettings& settings) {
 				if (val >= 1.0f && val <= 20.0f) {
 					settings.panSpeed = val;
 				}
-			} else if (key == "msaa") {
-				settings.msaa = (std::stoi(value) != 0);
-			} else if (key == "guiScaleIndex") {
-				int val = std::stoi(value);
-				if (val >= 0 && val < GUI_SCALE_COUNT) {
-					settings.guiScaleIndex = val;
-				}
-			} else if (key == "styleTheme") {
-				settings.styleTheme = value;
 			}
+			// Ignore deprecated settings: msaa, guiScaleIndex, styleTheme
 		} catch (const std::exception& e) {
 			// Ignore malformed values
 			TraceLog(LOG_WARNING, TextFormat("Failed to parse config value: %s", key.c_str()));
