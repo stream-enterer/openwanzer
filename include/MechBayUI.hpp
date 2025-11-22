@@ -1,11 +1,12 @@
 #ifndef OPENWANZER_MECHBAY_UI_HPP
 #define OPENWANZER_MECHBAY_UI_HPP
 
-#include <string>
-#include <vector>
 #include "Equipment.hpp"
 #include "GameState.hpp"
-#include "rl/raylib.h"
+#include "Raylib.hpp"
+
+#include <string>
+#include <vector>
 
 namespace mechbayui {
 

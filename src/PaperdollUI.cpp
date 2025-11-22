@@ -1,13 +1,14 @@
 #include "PaperdollUI.hpp"
-#include <cmath>
-#include <string>
 #include "ArmorLocation.hpp"
 #include "Constants.hpp"
 #include "GameLogic.hpp"
+#include "Raygui.hpp"
+#include "Raylib.hpp"
+#include "Raymath.hpp"
 #include "UIPanels.hpp"
-#include "rl/raygui.h"
-#include "rl/raylib.h"
-#include "rl/raymath.h"
+
+#include <cmath>
+#include <string>
 
 namespace paperdollui {
 

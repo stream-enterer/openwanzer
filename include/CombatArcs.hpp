@@ -1,12 +1,15 @@
 #ifndef OPENWANZER_COMBAT_ARCS_HPP
 #define OPENWANZER_COMBAT_ARCS_HPP
 
-#include "rl/raylib.h"
 #include "HexCoord.hpp"
+#include "Raylib.hpp"
 
 namespace combatarcs {
 
-enum class AttackArc { FRONT, LEFT_SIDE, RIGHT_SIDE, REAR };
+enum class AttackArc { FRONT,
+	               LEFT_SIDE,
+	               RIGHT_SIDE,
+	               REAR };
 
 // Calculate which arc of the target is being attacked from
 AttackArc getAttackArc(Vector2 attackerPos, Vector2 targetPos, float targetFacing);

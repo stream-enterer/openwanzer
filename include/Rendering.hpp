@@ -1,9 +1,9 @@
 #ifndef OPENWANZER_RENDERING_HPP
 #define OPENWANZER_RENDERING_HPP
 
-#include "rl/raylib.h"
-#include "Hex.hpp"
 #include "GameState.hpp"
+#include "Hex.hpp"
+#include "Raylib.hpp"
 
 namespace rendering {
 

@@ -1,11 +1,12 @@
 #include "MechBayUI.hpp"
-#include <algorithm>
-#include <cstdio>
-#include <cstring>
 #include "Config.hpp"
 #include "Constants.hpp"
 #include "MechLoadout.hpp"
-#include "rl/raygui.h"
+#include "Raygui.hpp"
+
+#include <algorithm>
+#include <cstdio>
+#include <cstring>
 
 namespace mechbayui {
 

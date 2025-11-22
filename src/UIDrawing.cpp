@@ -1,17 +1,18 @@
-#include <algorithm>
-#include <sstream>
-#include <string>
-#include <vector>
 #include "Config.hpp"
 #include "Constants.hpp"
 #include "GameLogic.hpp"
 #include "Hex.hpp"
 #include "Input.hpp"
+#include "Raygui.hpp"
+#include "Raylib.hpp"
+#include "Raymath.hpp"
 #include "Rendering.hpp"
 #include "UIPanels.hpp"
-#include "rl/raygui.h"
-#include "rl/raylib.h"
-#include "rl/raymath.h"
+
+#include <algorithm>
+#include <sstream>
+#include <string>
+#include <vector>
 
 namespace rendering {
 

@@ -1,10 +1,11 @@
-#include <cmath>
 #include "Constants.hpp"
 #include "Hex.hpp"
 #include "Input.hpp"
+#include "Raylib.hpp"
+#include "Raymath.hpp"
 #include "Rendering.hpp"
-#include "rl/raylib.h"
-#include "rl/raymath.h"
+
+#include <cmath>
 
 namespace input {
 
