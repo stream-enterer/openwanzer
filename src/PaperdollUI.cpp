@@ -165,8 +165,9 @@ void renderPaperdollLabels(const PaperdollPanel& panel) {
 	float rearLabelX = panel.rearCT.x + panel.rearCT.width / 2 - 20;
 	float labelY = panel.frontLL.y + panel.frontLL.height + 5;
 
-	DrawText("FRONT", (int)frontLabelX, (int)labelY, 10, GRAY);
-	DrawText("REAR", (int)rearLabelX, (int)labelY, 10, GRAY);
+	float spacing = (float)GuiGetStyle(DEFAULT, TEXT_SPACING);
+	DrawTextEx(GuiGetFont(), "FRONT", Vector2 {frontLabelX, labelY}, 10, spacing, GRAY);
+	DrawTextEx(GuiGetFont(), "REAR", Vector2 {rearLabelX, labelY}, 10, spacing, GRAY);
 }
 
 // ============================================================================
@@ -241,7 +242,8 @@ void renderWeaponLoadout(const PaperdollPanel& panel, const Unit* unit) {
 	float x = panel.bounds.x + panel.bounds.width - 150; // Right side
 	float y = panel.bounds.y + 30;
 
-	DrawText("LOADOUT", (int)x, (int)y, 14, GRAY);
+	float spacing = (float)GuiGetStyle(DEFAULT, TEXT_SPACING);
+	DrawTextEx(GuiGetFont(), "LOADOUT", Vector2 {x, y}, 14, spacing, GRAY);
 	y += 20;
 
 	for (const Weapon& weapon : unit->weapons) {
@@ -250,11 +252,11 @@ void renderWeaponLoadout(const PaperdollPanel& panel, const Unit* unit) {
 			weaponColor = DISABLED_WEAPON_COLOR;
 		}
 
-		DrawText(weapon.name.c_str(), (int)x, (int)y, 12, weaponColor);
+		DrawTextEx(GuiGetFont(), weapon.name.c_str(), Vector2 {x, y}, 12, spacing, weaponColor);
 
 		// Draw damage number in grey next to weapon
 		if (weapon.type == WeaponType::MELEE || weapon.type == WeaponType::ARTILLERY) {
-			DrawText(TextFormat("%d", weapon.damage), (int)(x + 80), (int)y, 12, GRAY);
+			DrawTextEx(GuiGetFont(), TextFormat("%d", weapon.damage), Vector2 {x + 80, y}, 12, spacing, GRAY);
 		}
 
 		y += 16;
@@ -278,8 +280,9 @@ void renderStatusBar(float x, float y, float width, float height,
 	DrawRectangleLines((int)x, (int)y, (int)width, (int)height, WHITE);
 
 	// Text
-	DrawText(TextFormat("%d/%d", current, max), (int)(x + 5), (int)(y + 3), 10, WHITE);
-	DrawText(label, (int)x, (int)(y + height + 2), 8, GRAY);
+	float spacing = (float)GuiGetStyle(DEFAULT, TEXT_SPACING);
+	DrawTextEx(GuiGetFont(), TextFormat("%d/%d", current, max), Vector2 {x + 5, y + 3}, 10, spacing, WHITE);
+	DrawTextEx(GuiGetFont(), label, Vector2 {x, y + height + 2}, 8, spacing, GRAY);
 }
 
 // ============================================================================
@@ -290,11 +293,13 @@ void renderPanelHeader(const PaperdollPanel& panel, const Unit* unit, [[maybe_un
 	float x = panel.bounds.x + 10;
 	float y = panel.bounds.y + 10;
 
+	float spacing = (float)GuiGetStyle(DEFAULT, TEXT_SPACING);
+
 	// Line 1: Mech name and variant
 	std::string mechName = getWeightClassName(unit->weightClass);
 	std::string variant = "MK-I"; // Placeholder
-	DrawText(TextFormat("%s - %s", mechName.c_str(), variant.c_str()),
-	         (int)x, (int)y, 20, ORANGE);
+	DrawTextEx(GuiGetFont(), TextFormat("%s - %s", mechName.c_str(), variant.c_str()),
+	           Vector2 {x, y}, 20, spacing, ORANGE);
 
 	// Line 1 continued: S: and A: values
 	int totalStructure = 0, currentStructure = 0;
@@ -307,25 +312,25 @@ void renderPanelHeader(const PaperdollPanel& panel, const Unit* unit, [[maybe_un
 		currentStructure += loc.second.currentStructure;
 	}
 
-	DrawText(TextFormat("S: %d/%d", currentStructure, totalStructure),
-	         (int)(x + 300), (int)y, 16, WHITE);
-	DrawText(TextFormat("A: %d/%d", currentArmor, totalArmor),
-	         (int)(x + 450), (int)y, 16, WHITE);
+	DrawTextEx(GuiGetFont(), TextFormat("S: %d/%d", currentStructure, totalStructure),
+	           Vector2 {x + 300, y}, 16, spacing, WHITE);
+	DrawTextEx(GuiGetFont(), TextFormat("A: %d/%d", currentArmor, totalArmor),
+	           Vector2 {x + 450, y}, 16, spacing, WHITE);
 
 	// Line 2: Mech weight class and faction/pilot info
 	y += 25;
-	DrawText(TextFormat("'MECH: %s", mechName.c_str()), (int)x, (int)y, 14, LIGHTGRAY);
+	DrawTextEx(GuiGetFont(), TextFormat("'MECH: %s", mechName.c_str()), Vector2 {x, y}, 14, spacing, LIGHTGRAY);
 
 	// Placeholder faction logo (just a small box)
 	DrawRectangle((int)(x + 150), (int)y, 20, 20, DARKGRAY);
-	DrawText("PILOT", (int)(x + 180), (int)y, 14, LIGHTGRAY);
+	DrawTextEx(GuiGetFont(), "PILOT", Vector2 {x + 180, y}, 14, spacing, LIGHTGRAY);
 
 	// Line 3: Initiative, Heat, Stability bars
 	y += 25;
 
 	// Initiative (placeholder)
-	DrawText("-1", (int)x, (int)y, 14, WHITE);
-	DrawText("INITIATIVE", (int)x, (int)(y + 15), 10, LIGHTGRAY);
+	DrawTextEx(GuiGetFont(), "-1", Vector2 {x, y}, 14, spacing, WHITE);
+	DrawTextEx(GuiGetFont(), "INITIATIVE", Vector2 {x, y + 15}, 10, spacing, LIGHTGRAY);
 
 	// Heat bar (placeholder values)
 	renderStatusBar(x + 80, y, 100, 20, 50, 500, RED, "HEAT");
@@ -369,15 +374,16 @@ void renderLocationTooltip(const PaperdollPanel& panel, const Unit* unit) {
 	DrawRectangleLinesEx(tooltipRect, 1, LIGHTGRAY);
 
 	// Draw text
-	DrawText(locationName.c_str(), (int)(pos.x + 5), (int)(pos.y + 5), 12, WHITE);
+	float spacing = (float)GuiGetStyle(DEFAULT, TEXT_SPACING);
+	DrawTextEx(GuiGetFont(), locationName.c_str(), Vector2 {pos.x + 5, pos.y + 5}, 12, spacing, WHITE);
 
 	bool isStructureExposed = (loc.currentArmor == 0 && loc.currentStructure > 0);
 	Color structColor = isStructureExposed ? ORANGE : WHITE;
 
-	DrawText(TextFormat("A: %s", armorText.c_str()),
-	         (int)(pos.x + 5), (int)(pos.y + 22), 10, WHITE);
-	DrawText(TextFormat("S: %s", structureText.c_str()),
-	         (int)(pos.x + 5), (int)(pos.y + 37), 10, structColor);
+	DrawTextEx(GuiGetFont(), TextFormat("A: %s", armorText.c_str()),
+	           Vector2 {pos.x + 5, pos.y + 22}, 10, spacing, WHITE);
+	DrawTextEx(GuiGetFont(), TextFormat("S: %s", structureText.c_str()),
+	           Vector2 {pos.x + 5, pos.y + 37}, 10, spacing, structColor);
 }
 
 // ============================================================================

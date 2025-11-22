@@ -1,6 +1,7 @@
 #include "Constants.hpp"
 #include "GameLogic.hpp"
 #include "Hex.hpp"
+#include "Raygui.hpp"
 #include "Raylib.hpp"
 #include "Raymath.hpp"
 #include "Rendering.hpp"
@@ -185,25 +186,24 @@ void drawMap(GameState &game) {
 		// Draw unit symbol (rotated with unit)
 		std::string symbol = getUnitSymbol(unit->unitClass);
 		int fontSize = (int)(10 * game.camera.zoom);
+		float spacing = (float)GuiGetStyle(DEFAULT, TEXT_SPACING);
 		if (fontSize >= 8) { // Only draw text if it's readable
-			int textWidth = MeasureText(symbol.c_str(), fontSize);
+			int textWidth = (int)MeasureTextEx(GuiGetFont(), symbol.c_str(), (float)fontSize, spacing).x;
 
 			// Note: Text is drawn unrotated at center for readability
 			// TODO: When using sprite textures, use DrawTexturePro with rotation parameter
 			// Example: DrawTexturePro(texture, sourceRec, destRec, origin, rotation, WHITE);
-			DrawText(symbol.c_str(),
-			         (int)(center.x - textWidth / 2),
-			         (int)(center.y - fontSize / 2 - 5),
-			         fontSize, WHITE);
+			DrawTextEx(GuiGetFont(), symbol.c_str(),
+			           Vector2 {(float)(center.x - textWidth / 2), (float)(center.y - fontSize / 2 - 5)},
+			           (float)fontSize, spacing, WHITE);
 
 			// Draw health percentage
 			std::string health = std::to_string(unit->getOverallHealthPercent()) + "%";
 			fontSize = (int)(12 * game.camera.zoom);
-			textWidth = MeasureText(health.c_str(), fontSize);
-			DrawText(health.c_str(),
-			         (int)(center.x - textWidth / 2),
-			         (int)(center.y + 5 * game.camera.zoom),
-			         fontSize, YELLOW);
+			textWidth = (int)MeasureTextEx(GuiGetFont(), health.c_str(), (float)fontSize, spacing).x;
+			DrawTextEx(GuiGetFont(), health.c_str(),
+			           Vector2 {(float)(center.x - textWidth / 2), (float)(center.y + 5 * game.camera.zoom)},
+			           (float)fontSize, spacing, YELLOW);
 		}
 	}
 
