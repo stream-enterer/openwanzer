@@ -1,4 +1,5 @@
 #include "Constants.hpp"
+#include "FontManager.hpp"
 #include "GameLogic.hpp"
 #include "Hex.hpp"
 #include "Raygui.hpp"
@@ -183,28 +184,29 @@ void drawMap(GameState &game) {
 		Vector2 origin = {unitWidth / 2, unitHeight / 2};
 		DrawRectanglePro(unitRect, origin, rotation, unitColor);
 
-		// Draw unit symbol (rotated with unit)
+		// Draw unit symbol (not scaled with zoom)
 		std::string symbol = getUnitSymbol(unit->unitClass);
-		int fontSize = (int)(10 * game.camera.zoom);
-		float spacing = (float)GuiGetStyle(DEFAULT, TEXT_SPACING);
-		if (fontSize >= 8) { // Only draw text if it's readable
-			int textWidth = (int)MeasureTextEx(GuiGetFont(), symbol.c_str(), (float)fontSize, spacing).x;
+		const int symbolFontSize = 10;
+		const int healthFontSize = 12;
+		float spacing = fontmanager::FONT_CACHE.GetSpacing();
 
-			// Note: Text is drawn unrotated at center for readability
-			// TODO: When using sprite textures, use DrawTexturePro with rotation parameter
-			// Example: DrawTexturePro(texture, sourceRec, destRec, origin, rotation, WHITE);
-			DrawTextEx(GuiGetFont(), symbol.c_str(),
-			           Vector2 {(float)(center.x - textWidth / 2), (float)(center.y - fontSize / 2 - 5)},
-			           (float)fontSize, spacing, WHITE);
+		Font symbolFont = fontmanager::FONT_CACHE.GetFont(symbolFontSize);
+		int textWidth = (int)MeasureTextEx(symbolFont, symbol.c_str(), (float)symbolFontSize, spacing).x;
 
-			// Draw health percentage
-			std::string health = std::to_string(unit->getOverallHealthPercent()) + "%";
-			fontSize = (int)(12 * game.camera.zoom);
-			textWidth = (int)MeasureTextEx(GuiGetFont(), health.c_str(), (float)fontSize, spacing).x;
-			DrawTextEx(GuiGetFont(), health.c_str(),
-			           Vector2 {(float)(center.x - textWidth / 2), (float)(center.y + 5 * game.camera.zoom)},
-			           (float)fontSize, spacing, YELLOW);
-		}
+		// Note: Text is drawn unrotated at center for readability
+		// TODO: When using sprite textures, use DrawTexturePro with rotation parameter
+		// Example: DrawTexturePro(texture, sourceRec, destRec, origin, rotation, WHITE);
+		DrawTextEx(symbolFont, symbol.c_str(),
+		           Vector2 {(float)(center.x - textWidth / 2), (float)(center.y - symbolFontSize / 2 - 5)},
+		           (float)symbolFontSize, spacing, WHITE);
+
+		// Draw health percentage
+		std::string health = std::to_string(unit->getOverallHealthPercent()) + "%";
+		Font healthFont = fontmanager::FONT_CACHE.GetFont(healthFontSize);
+		textWidth = (int)MeasureTextEx(healthFont, health.c_str(), (float)healthFontSize, spacing).x;
+		DrawTextEx(healthFont, health.c_str(),
+		           Vector2 {(float)(center.x - textWidth / 2), (float)(center.y + 10)},
+		           (float)healthFontSize, spacing, YELLOW);
 	}
 
 	// Draw movement zone outline (yellow contiguous border)
