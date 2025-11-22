@@ -42,16 +42,11 @@ struct VideoSettings {
 	int fpsIndex;
 	float hexSize;
 	float panSpeed;
-	bool msaa;
-	int guiScaleIndex;
-	std::string styleTheme;
 	bool resolutionDropdownEdit;
 	bool fpsDropdownEdit;
-	bool guiScaleDropdownEdit;
-	bool styleThemeDropdownEdit;
 
 	VideoSettings()
-	    : resolutionIndex(6), fullscreen(true), vsync(false), fpsIndex(6), hexSize(40.0f), panSpeed(5.0f), msaa(false), guiScaleIndex(0), styleTheme("dark"), resolutionDropdownEdit(false), fpsDropdownEdit(false), guiScaleDropdownEdit(false), styleThemeDropdownEdit(false) {
+	    : resolutionIndex(6), fullscreen(true), vsync(false), fpsIndex(6), hexSize(40.0f), panSpeed(5.0f), resolutionDropdownEdit(false), fpsDropdownEdit(false) {
 	}
 };
 
@@ -79,10 +74,6 @@ extern const int RESOLUTION_COUNT;
 
 extern const int FPS_VALUES[];
 extern const char *FPS_LABELS;
-
-extern const float GUI_SCALE_VALUES[];
-extern const char *GUI_SCALE_LABELS;
-extern const int GUI_SCALE_COUNT;
 
 // Combat Log Message
 struct LogMessage {

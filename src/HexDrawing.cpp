@@ -1,5 +1,5 @@
+#include "CherryStyle.hpp"
 #include "Constants.hpp"
-#include "FontManager.hpp"
 #include "GameLogic.hpp"
 #include "Hex.hpp"
 #include "Raygui.hpp"
@@ -188,23 +188,21 @@ void drawMap(GameState &game) {
 		std::string symbol = getUnitSymbol(unit->unitClass);
 		const int symbolFontSize = 10;
 		const int healthFontSize = 12;
-		float spacing = fontmanager::FONT_CACHE.GetSpacing();
+		float spacing = (float)cherrystyle::kFontSpacing;
 
-		Font symbolFont = fontmanager::FONT_CACHE.GetFont(symbolFontSize);
-		int textWidth = (int)MeasureTextEx(symbolFont, symbol.c_str(), (float)symbolFontSize, spacing).x;
+		int textWidth = (int)MeasureTextEx(cherrystyle::CHERRY_FONT, symbol.c_str(), (float)symbolFontSize, spacing).x;
 
 		// Note: Text is drawn unrotated at center for readability
 		// TODO: When using sprite textures, use DrawTexturePro with rotation parameter
 		// Example: DrawTexturePro(texture, sourceRec, destRec, origin, rotation, WHITE);
-		DrawTextEx(symbolFont, symbol.c_str(),
+		DrawTextEx(cherrystyle::CHERRY_FONT, symbol.c_str(),
 		           Vector2 {(float)(center.x - textWidth / 2), (float)(center.y - symbolFontSize / 2 - 5)},
 		           (float)symbolFontSize, spacing, WHITE);
 
 		// Draw health percentage
 		std::string health = std::to_string(unit->getOverallHealthPercent()) + "%";
-		Font healthFont = fontmanager::FONT_CACHE.GetFont(healthFontSize);
-		textWidth = (int)MeasureTextEx(healthFont, health.c_str(), (float)healthFontSize, spacing).x;
-		DrawTextEx(healthFont, health.c_str(),
+		textWidth = (int)MeasureTextEx(cherrystyle::CHERRY_FONT, health.c_str(), (float)healthFontSize, spacing).x;
+		DrawTextEx(cherrystyle::CHERRY_FONT, health.c_str(),
 		           Vector2 {(float)(center.x - textWidth / 2), (float)(center.y + 10)},
 		           (float)healthFontSize, spacing, YELLOW);
 	}

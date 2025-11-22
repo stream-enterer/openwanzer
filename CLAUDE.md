@@ -581,6 +581,68 @@ cmake --build .
 
 ## Recent Changes
 
+### 2025-11-22: Cherry UI Style Refactoring - Simplified Font and Style System
+- **IMPLEMENTED FIXED CHERRY UI STYLE**: Removed all dynamic font scaling and style selection
+  - Created `CherryStyle.hpp` and `CherryStyle.cpp` with fixed constants for Cherry style
+  - Fixed font size: 15px (cherrystyle::kFontSize)
+  - Fixed font spacing: 0 (cherrystyle::kFontSpacing)
+  - Fixed line spacing: 22 (cherrystyle::kTextLineSpacing)
+  - Loads `style_cherry.txt.rgs` and `Westington.ttf` from `resources/styles/cherry/`
+  - Single global font instance: `cherrystyle::CHERRY_FONT`
+- **REMOVED FONTMANAGER SYSTEM**: Eliminated multi-size font caching complexity
+  - Deleted `FontManager.hpp` and `FontManager.cpp`
+  - Removed all `fontmanager::FONT_CACHE` calls across codebase
+  - Replaced with direct usage of `cherrystyle::CHERRY_FONT`
+  - All UI now uses consistent font size of 15px
+- **REMOVED STYLE SELECTION**: Simplified configuration system
+  - Deleted `StyleManager.cpp` (merged functionality into CherryStyle)
+  - Removed `discoverStyles()`, `loadStyleTheme()`, `getStyleIndex()` from Config
+  - Removed `AVAILABLE_STYLES`, `STYLE_LABELS_STRING`, `STYLES_PATH` globals
+  - Removed `applyGuiScale()` function (no longer needed)
+  - Style is now loaded once at startup in `Main.cpp` via `cherrystyle::InitializeCherryStyle()`
+- **SIMPLIFIED VIDEOSETTINGS STRUCTURE**: Removed deprecated UI options
+  - Removed `msaa` field (anti-aliasing option)
+  - Removed `guiScaleIndex` field (GUI scale dropdown)
+  - Removed `styleTheme` field (style theme dropdown)
+  - Removed `guiScaleDropdownEdit` and `styleThemeDropdownEdit` fields
+  - Removed `GUI_SCALE_VALUES`, `GUI_SCALE_LABELS`, `GUI_SCALE_COUNT` constants
+  - Updated `Persistence.cpp` to ignore deprecated config keys for backwards compatibility
+- **STREAMLINED OPTIONS MENU**: Reduced menu complexity
+  - Removed "GUI Scale" dropdown
+  - Removed "Style Theme" dropdown
+  - Removed "Anti-Aliasing (4x)" checkbox
+  - Reduced menu height from 650px to 450px
+  - All remaining options (Resolution, Fullscreen, VSync, FPS, Hex Size, Pan Speed) now use fixed font size
+  - Removed `needsRestart` warning (MSAA was the only setting requiring restart)
+- **UPDATED UI RENDERING**: Standardized all text rendering
+  - `UIDrawing.cpp`: Updated all font calls to use `cherrystyle::CHERRY_FONT` at size 15
+  - Combat log now uses `kTextLineSpacing` (22) for consistent line height
+  - Unit info box uses fixed 18px line spacing
+  - Status bar text uses font size 15 (previously varied from 20px)
+  - All `DrawTextEx()` calls now use `cherrystyle::CHERRY_FONT` and `cherrystyle::kFontSpacing`
+- **FILES CREATED**:
+  - `include/CherryStyle.hpp`: Cherry style constants and initialization
+  - `src/CherryStyle.cpp`: Cherry style loading implementation
+- **FILES DELETED**:
+  - `include/FontManager.hpp`
+  - `src/FontManager.cpp`
+  - `src/StyleManager.cpp`
+- **FILES MODIFIED**:
+  - `include/Config.hpp`: Removed style-related declarations
+  - `include/GameState.hpp`: Simplified VideoSettings structure
+  - `src/GameState.cpp`: Removed GUI_SCALE constants
+  - `src/Persistence.cpp`: Updated config save/load, deprecated old settings
+  - `src/Main.cpp`: Added CherryStyle initialization, removed old style loading
+  - `src/UIDrawing.cpp`: Replaced all font manager calls with Cherry font
+- **RATIONALE**:
+  - Eliminates scaling artifacts from dynamic font rendering
+  - Simplifies codebase by removing unnecessary abstraction layers
+  - Improves maintainability with single, well-tested UI style
+  - Reduces configuration complexity for users
+  - Cherry style provides excellent readability with the Westington font
+- Build status: Clean build with zero warnings
+- Window title updated: "Open Wanzer - Tactical Mech Combat"
+
 ### 2025-11-22: Raylib Header Reorganization and Include Style Standardization
 - **REORGANIZED RAYLIB HEADERS**: Moved all raylib headers to top-level include directory
   - Moved `include/rl/raylib.h` → `include/Raylib.hpp`

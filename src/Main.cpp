@@ -13,6 +13,7 @@
 #include "Raygui.hpp"
 #pragma GCC diagnostic pop
 
+#include "CherryStyle.hpp"
 #include "Config.hpp"
 #include "Constants.hpp"
 #include "GameLogic.hpp"
@@ -25,9 +26,6 @@
 #include "UIPanels.hpp"
 
 int main() {
-	// Discover available styles first (before window init)
-	config::discoverStyles();
-
 	// Create temporary settings to load config before window init
 	VideoSettings tempSettings;
 	config::loadConfig(tempSettings);
@@ -37,9 +35,6 @@ int main() {
 	if (tempSettings.vsync) {
 		flags |= FLAG_VSYNC_HINT;
 	}
-	if (tempSettings.msaa) {
-		flags |= FLAG_MSAA_4X_HINT;
-	}
 	SetConfigFlags(flags);
 
 	// Apply resolution from config
@@ -48,7 +43,7 @@ int main() {
 	HEX_SIZE = tempSettings.hexSize;
 
 	InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT,
-	           "Panzer General 2 Prototype - Raylib + RayGUI");
+	           "Open Wanzer - Tactical Mech Combat");
 
 	// Disable ESC key to exit - we use it for menu control
 	SetExitKey(KEY_NULL);
@@ -61,11 +56,8 @@ int main() {
 	// Apply FPS from config
 	SetTargetFPS(FPS_VALUES[tempSettings.fpsIndex]);
 
-	// Load style theme from config
-	config::loadStyleTheme(tempSettings.styleTheme);
-
-	// Apply GUI scale from config
-	config::applyGuiScale(GUI_SCALE_VALUES[tempSettings.guiScaleIndex]);
+	// Initialize Cherry UI style
+	cherrystyle::InitializeCherryStyle();
 
 	GameState game;
 	// Apply loaded settings to game state
@@ -367,11 +359,9 @@ int main() {
 		} else {
 			// Options menu input
 			if (IsKeyPressed(KEY_ESCAPE)) {
-				if (game.settings.resolutionDropdownEdit || game.settings.fpsDropdownEdit || game.settings.guiScaleDropdownEdit || game.settings.styleThemeDropdownEdit) {
+				if (game.settings.resolutionDropdownEdit || game.settings.fpsDropdownEdit) {
 					game.settings.resolutionDropdownEdit = false;
 					game.settings.fpsDropdownEdit = false;
-					game.settings.guiScaleDropdownEdit = false;
-					game.settings.styleThemeDropdownEdit = false;
 				} else {
 					game.showOptionsMenu = false;
 				}

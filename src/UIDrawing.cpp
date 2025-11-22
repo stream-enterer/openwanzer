@@ -1,6 +1,6 @@
+#include "CherryStyle.hpp"
 #include "Config.hpp"
 #include "Constants.hpp"
-#include "FontManager.hpp"
 #include "GameLogic.hpp"
 #include "Hex.hpp"
 #include "Input.hpp"
@@ -18,13 +18,12 @@
 namespace rendering {
 
 void drawCombatLog(GameState &game) {
-	// Use fixed font sizes for pixel-perfect rendering
-	const int fontSize = 12;
-	const int titleFontSize = 16;
-	const int lineSpacing = fontSize + 4;
+	// Use fixed font size from Cherry style
+	const int fontSize = cherrystyle::kFontSize;
+	const int lineSpacing = cherrystyle::kTextLineSpacing;
 	const float scrollBarWidth = 15.0f;
 	const float padding = 10.0f;
-	const int titleHeight = 25;
+	const int titleHeight = 30;
 
 	Rectangle bounds = game.combatLog.bounds;
 
@@ -39,9 +38,8 @@ void drawCombatLog(GameState &game) {
 	DrawRectangleLinesEx(bounds, 1, borderColor); // 1px border
 
 	// Draw title
-	float spacing = fontmanager::FONT_CACHE.GetSpacing();
-	Font titleFont = fontmanager::FONT_CACHE.GetFont(titleFontSize);
-	DrawTextEx(titleFont, "Combat Log", Vector2 {bounds.x + padding, bounds.y + 5}, (float)titleFontSize, spacing, titleColor);
+	float spacing = (float)cherrystyle::kFontSpacing;
+	DrawTextEx(cherrystyle::CHERRY_FONT, "Combat Log", Vector2 {bounds.x + padding, bounds.y + 8}, (float)fontSize, spacing, titleColor);
 
 	// Calculate text area (below title, with padding, leaving space for scrollbar)
 	Rectangle textArea = {
@@ -74,8 +72,7 @@ void drawCombatLog(GameState &game) {
 
 		while (words >> word) {
 			std::string testLine = currentLine.empty() ? word : currentLine + " " + word;
-			Font font = fontmanager::FONT_CACHE.GetFont(fontSize);
-			int textWidth = (int)MeasureTextEx(font, testLine.c_str(), (float)fontSize, spacing).x;
+			int textWidth = (int)MeasureTextEx(cherrystyle::CHERRY_FONT, testLine.c_str(), (float)fontSize, spacing).x;
 
 			if (textWidth > maxWidth && !currentLine.empty()) {
 				// Current line is full, save it
@@ -110,10 +107,9 @@ void drawCombatLog(GameState &game) {
 	// Draw messages from top to bottom, applying scroll offset
 	int yPos = (int)(textArea.y - game.combatLog.scrollOffset);
 
-	Font font = fontmanager::FONT_CACHE.GetFont(fontSize);
 	for (size_t i = 0; i < displayLines.size(); i++) {
 		if (yPos + lineSpacing >= textArea.y && yPos <= textArea.y + textArea.height) {
-			DrawTextEx(font, displayLines[i].c_str(), Vector2 {textArea.x, (float)yPos}, (float)fontSize, spacing, lineColors[i]);
+			DrawTextEx(cherrystyle::CHERRY_FONT, displayLines[i].c_str(), Vector2 {textArea.x, (float)yPos}, (float)fontSize, spacing, lineColors[i]);
 		}
 		yPos += lineSpacing;
 	}
@@ -157,9 +153,10 @@ void drawUnitInfoBox(GameState &game) {
 	if (!game.selectedUnit || game.showOptionsMenu)
 		return;
 
-	// Use fixed font sizes for pixel-perfect rendering
-	const int fontSize = 12;
+	// Use fixed font size from Cherry style
+	const int fontSize = cherrystyle::kFontSize;
 	const float padding = 10.0f;
+	const int lineSpacing = 18;
 	Rectangle bounds = game.unitInfoBox.bounds;
 
 	Color backgroundColor = GetColor(GuiGetStyle(DROPDOWNBOX, BASE_COLOR_NORMAL));
@@ -177,59 +174,52 @@ void drawUnitInfoBox(GameState &game) {
 	Unit *unit = game.selectedUnit;
 	int y = (int)bounds.y + (int)padding;
 	int x = (int)bounds.x + (int)padding;
-	const int titleSize = fontSize + 4;
-	const int normalSize = fontSize;
-	float spacing = fontmanager::FONT_CACHE.GetSpacing();
+	float spacing = (float)cherrystyle::kFontSpacing;
 
-	// Use font manager for proper font rendering
-	Font titleFont = fontmanager::FONT_CACHE.GetFont(titleSize);
-	DrawTextEx(titleFont, unit->name.c_str(), Vector2 {(float)x, (float)y}, (float)titleSize, spacing, textColor);
-	y += titleSize + 10;
-
-	Font normalFont = fontmanager::FONT_CACHE.GetFont(normalSize);
-	Font smallFont = fontmanager::FONT_CACHE.GetFont(normalSize - 2);
+	// Draw unit name
+	DrawTextEx(cherrystyle::CHERRY_FONT, unit->name.c_str(), Vector2 {(float)x, (float)y}, (float)fontSize, spacing, textColor);
+	y += fontSize + 12;
 
 	std::string info = "Health: " + std::to_string(unit->getOverallHealthPercent()) + "%";
-	DrawTextEx(normalFont, info.c_str(), Vector2 {(float)x, (float)y}, (float)normalSize, spacing, textColor);
-	y += normalSize + 5;
+	DrawTextEx(cherrystyle::CHERRY_FONT, info.c_str(), Vector2 {(float)x, (float)y}, (float)fontSize, spacing, textColor);
+	y += lineSpacing;
 
 	const LocationStatus &ct = unit->locations.at(ArmorLocation::CENTER_TORSO);
 	info = "CT Armor: " + std::to_string(ct.currentArmor) + "/" + std::to_string(ct.maxArmor);
-	DrawTextEx(smallFont, info.c_str(), Vector2 {(float)x, (float)y}, (float)(normalSize - 2), spacing, textColor);
-	y += normalSize;
+	DrawTextEx(cherrystyle::CHERRY_FONT, info.c_str(), Vector2 {(float)x, (float)y}, (float)fontSize, spacing, textColor);
+	y += lineSpacing;
 
 	info = "CT Structure: " + std::to_string(ct.currentStructure) + "/" + std::to_string(ct.maxStructure);
-	DrawTextEx(smallFont, info.c_str(), Vector2 {(float)x, (float)y}, (float)(normalSize - 2), spacing, textColor);
-	y += normalSize + 5;
+	DrawTextEx(cherrystyle::CHERRY_FONT, info.c_str(), Vector2 {(float)x, (float)y}, (float)fontSize, spacing, textColor);
+	y += lineSpacing + 4;
 
 	info = "Moves: " + std::to_string(unit->movesLeft) + "/" + std::to_string(unit->movementPoints);
-	DrawTextEx(normalFont, info.c_str(), Vector2 {(float)x, (float)y}, (float)normalSize, spacing, textColor);
-	y += normalSize + 5;
+	DrawTextEx(cherrystyle::CHERRY_FONT, info.c_str(), Vector2 {(float)x, (float)y}, (float)fontSize, spacing, textColor);
+	y += lineSpacing;
 
 	info = "Facing: " + gamelogic::getFacingName(unit->facing);
-	DrawTextEx(normalFont, info.c_str(), Vector2 {(float)x, (float)y}, (float)normalSize, spacing, textColor);
-	y += normalSize + 10;
+	DrawTextEx(cherrystyle::CHERRY_FONT, info.c_str(), Vector2 {(float)x, (float)y}, (float)fontSize, spacing, textColor);
 }
 
 void drawUI(GameState &game) {
 	// Turn info panel (status bar)
 	DrawRectangleRec(game.layout.statusBar, Color {40, 40, 40, 240});
 
-	float spacing = fontmanager::FONT_CACHE.GetSpacing();
-	Font font20 = fontmanager::FONT_CACHE.GetFont(20);
+	const int fontSize = cherrystyle::kFontSize;
+	float spacing = (float)cherrystyle::kFontSpacing;
 
 	std::string turnText = "Turn: " + std::to_string(game.currentTurn) + "/" + std::to_string(game.maxTurns);
-	DrawTextEx(font20, turnText.c_str(), Vector2 {10, 10}, 20, spacing, WHITE);
+	DrawTextEx(cherrystyle::CHERRY_FONT, turnText.c_str(), Vector2 {10, 12}, (float)fontSize, spacing, WHITE);
 
 	std::string playerText = game.currentPlayer == 0 ? "Axis" : "Allied";
 	playerText = "Current: " + playerText;
-	DrawTextEx(font20, playerText.c_str(), Vector2 {200, 10}, 20, spacing,
+	DrawTextEx(cherrystyle::CHERRY_FONT, playerText.c_str(), Vector2 {200, 12}, (float)fontSize, spacing,
 	           game.currentPlayer == 0 ? RED : BLUE);
 
 	// Zoom indicator
 	char zoomText[32];
 	snprintf(zoomText, sizeof(zoomText), "Zoom: %.0f%%", game.camera.zoom * 100);
-	DrawTextEx(font20, zoomText, Vector2 {400, 10}, 20, spacing, WHITE);
+	DrawTextEx(cherrystyle::CHERRY_FONT, zoomText, Vector2 {400, 12}, (float)fontSize, spacing, WHITE);
 
 	// Terrain hover display (shows terrain type, coordinates, and move cost)
 	Vector2 mousePos = GetMousePosition();
@@ -265,7 +255,7 @@ void drawUI(GameState &game) {
 		char hoverText[128];
 		snprintf(hoverText, sizeof(hoverText), "[%s %d,%d Move Cost: %s]",
 		         terrainName.c_str(), hoveredHex.row, hoveredHex.col, costStr.c_str());
-		DrawTextEx(font20, hoverText, Vector2 {580, 10}, 20, spacing, Color {255, 255, 150, 255}); // Light yellow
+		DrawTextEx(cherrystyle::CHERRY_FONT, hoverText, Vector2 {580, 12}, (float)fontSize, spacing, Color {255, 255, 150, 255}); // Light yellow
 	}
 
 	// Reset UI button (moved further left to make room)
@@ -303,9 +293,9 @@ void drawUI(GameState &game) {
 	drawUnitInfoBox(game);
 }
 
-void drawOptionsMenu(GameState &game, bool &needsRestart) {
+void drawOptionsMenu(GameState &game, [[maybe_unused]] bool &needsRestart) {
 	int menuWidth = 600;
-	int menuHeight = 650;
+	int menuHeight = 450; // Reduced height since we removed options
 	int menuX = (SCREEN_WIDTH - menuWidth) / 2;
 	int menuY = (SCREEN_HEIGHT - menuHeight) / 2;
 
@@ -321,15 +311,10 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
 	DrawRectangle(menuX, menuY, menuWidth, menuHeight, backgroundColor);
 	DrawRectangleLines(menuX, menuY, menuWidth, menuHeight, borderColor);
 
-	float spacing = fontmanager::FONT_CACHE.GetSpacing();
-	Font font30 = fontmanager::FONT_CACHE.GetFont(30);
-	Font font20 = fontmanager::FONT_CACHE.GetFont(20);
-	Font font14 = fontmanager::FONT_CACHE.GetFont(14);
-
 	// Title
-	DrawTextEx(font30, "VIDEO OPTIONS", Vector2 {(float)(menuX + 20), (float)(menuY + 15)}, 30, spacing, titleColor);
+	DrawText("VIDEO OPTIONS", menuX + 20, menuY + 15, 20, titleColor);
 
-	int y = menuY + 70;
+	int y = menuY + 60;
 	int labelX = menuX + 30;
 	int controlX = menuX + 250;
 	int controlWidth = 300;
@@ -340,80 +325,58 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
 
 	// Store positions for dropdowns to draw them last
 	int resolutionY = y;
-	y += 50;
+	y += 40;
 	int fullscreenY = y;
-	y += 50;
+	y += 40;
 	int vsyncY = y;
-	y += 50;
+	y += 40;
 	int fpsY = y;
-	y += 50;
-	int guiScaleY = y;
-	y += 50;
-	int styleThemeY = y;
-	y += 50;
+	y += 40;
 
 	// Draw labels and non-dropdown controls first
 	// Resolution label
-	DrawTextEx(font20, "Resolution:", Vector2 {(float)labelX, (float)resolutionY}, 20, spacing, labelColor);
+	DrawText("Resolution:", labelX, resolutionY, 15, labelColor);
 
 	// Fullscreen
-	DrawTextEx(font20, "Fullscreen:", Vector2 {(float)labelX, (float)fullscreenY}, 20, spacing, labelColor);
-	GuiCheckBox(Rectangle {(float)controlX, (float)fullscreenY - 5, 30, 30}, "",
+	DrawText("Fullscreen:", labelX, fullscreenY, 15, labelColor);
+	GuiCheckBox(Rectangle {(float)controlX, (float)fullscreenY - 5, 25, 25}, "",
 	            &game.settings.fullscreen);
 
 	// VSync
-	DrawTextEx(font20, "VSync:", Vector2 {(float)labelX, (float)vsyncY}, 20, spacing, labelColor);
-	GuiCheckBox(Rectangle {(float)controlX, (float)vsyncY - 5, 30, 30}, "",
+	DrawText("VSync:", labelX, vsyncY, 15, labelColor);
+	GuiCheckBox(Rectangle {(float)controlX, (float)vsyncY - 5, 25, 25}, "",
 	            &game.settings.vsync);
 
 	// FPS Target label
-	DrawTextEx(font20, "FPS Target:", Vector2 {(float)labelX, (float)fpsY}, 20, spacing, labelColor);
+	DrawText("FPS Target:", labelX, fpsY, 15, labelColor);
 	std::string currentFps =
 	    game.settings.fpsIndex == 6
 	        ? "Unlimited"
 	        : std::to_string(FPS_VALUES[game.settings.fpsIndex]);
-	DrawTextEx(font20, currentFps.c_str(), Vector2 {(float)(controlX + controlWidth + 15), (float)fpsY}, 20, spacing, valueColor);
-
-	// GUI Scale label
-	DrawTextEx(font20, "GUI Scale:", Vector2 {(float)labelX, (float)guiScaleY}, 20, spacing, labelColor);
-
-	// Style Theme label
-	DrawTextEx(font20, "Style Theme:", Vector2 {(float)labelX, (float)styleThemeY}, 20, spacing, labelColor);
-
-	// MSAA
-	DrawTextEx(font20, "Anti-Aliasing (4x):", Vector2 {(float)labelX, (float)y}, 20, spacing, labelColor);
-	bool oldMsaa = game.settings.msaa;
-	GuiCheckBox(Rectangle {(float)controlX, (float)y - 5, 30, 30}, "",
-	            &game.settings.msaa);
-	if (game.settings.msaa != oldMsaa)
-		needsRestart = true;
-	y += 50;
+	DrawText(currentFps.c_str(), controlX + controlWidth + 15, fpsY, 15, valueColor);
 
 	// Hex Size Slider
-	DrawTextEx(font20, "Hex Size:", Vector2 {(float)labelX, (float)y}, 20, spacing, labelColor);
+	DrawText("Hex Size:", labelX, y, 15, labelColor);
 	GuiSlider(Rectangle {(float)controlX, (float)y, (float)controlWidth, 20}, "20",
 	          "80", &game.settings.hexSize, 20, 80);
 	std::string hexSizeStr = std::to_string((int)game.settings.hexSize);
-	DrawTextEx(font20, hexSizeStr.c_str(), Vector2 {(float)(controlX + controlWidth + 15), (float)y}, 20, spacing, valueColor);
-	y += 50;
+	DrawText(hexSizeStr.c_str(), controlX + controlWidth + 15, y, 15, valueColor);
+	y += 40;
 
 	// Pan Speed Slider
-	DrawTextEx(font20, "Camera Pan Speed:", Vector2 {(float)labelX, (float)y}, 20, spacing, labelColor);
+	DrawText("Camera Pan Speed:", labelX, y, 15, labelColor);
 	GuiSlider(Rectangle {(float)controlX, (float)y, (float)controlWidth, 20}, "1",
 	          "20", &game.settings.panSpeed, 1, 20);
 	std::string panSpeedStr = std::to_string((int)game.settings.panSpeed);
-	DrawTextEx(font20, panSpeedStr.c_str(), Vector2 {(float)(controlX + controlWidth + 15), (float)y}, 20, spacing, valueColor);
-	y += 60;
+	DrawText(panSpeedStr.c_str(), controlX + controlWidth + 15, y, 15, valueColor);
 
 	// Buttons
-	int buttonY = menuY + menuHeight - 70;
-	if (GuiButton(Rectangle {(float)menuX + 30, (float)buttonY, 150, 40},
+	int buttonY = menuY + menuHeight - 60;
+	if (GuiButton(Rectangle {(float)menuX + 30, (float)buttonY, 150, 35},
 	              "Apply")) {
 		// Close any open dropdowns
 		game.settings.resolutionDropdownEdit = false;
 		game.settings.fpsDropdownEdit = false;
-		game.settings.guiScaleDropdownEdit = false;
-		game.settings.styleThemeDropdownEdit = false;
 
 		// Apply settings
 		Resolution res = RESOLUTIONS[game.settings.resolutionIndex];
@@ -439,29 +402,21 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
 		// Apply hex size
 		HEX_SIZE = game.settings.hexSize;
 
-		// Apply style theme
-		config::loadStyleTheme(game.settings.styleTheme);
-
-		// Apply GUI scale (after style is loaded)
-		config::applyGuiScale(GUI_SCALE_VALUES[game.settings.guiScaleIndex]);
-
 		// Save config to file
 		config::saveConfig(game.settings);
 
 		// Menu stays open after applying settings
 	}
 
-	if (GuiButton(Rectangle {(float)menuX + 220, (float)buttonY, 150, 40},
+	if (GuiButton(Rectangle {(float)menuX + 220, (float)buttonY, 150, 35},
 	              "Cancel")) {
 		// Close any open dropdowns
 		game.settings.resolutionDropdownEdit = false;
 		game.settings.fpsDropdownEdit = false;
-		game.settings.guiScaleDropdownEdit = false;
-		game.settings.styleThemeDropdownEdit = false;
 		game.showOptionsMenu = false;
 	}
 
-	if (GuiButton(Rectangle {(float)menuX + 410, (float)buttonY, 150, 40},
+	if (GuiButton(Rectangle {(float)menuX + 410, (float)buttonY, 150, 35},
 	              "Defaults")) {
 		game.settings.resolutionIndex = 6; // 1920x1080
 		game.settings.fullscreen = true;
@@ -469,13 +424,9 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
 		game.settings.fpsIndex = 6; // Unlimited FPS
 		game.settings.hexSize = 40.0f;
 		game.settings.panSpeed = 5.0f;
-		game.settings.msaa = false;
-		game.settings.guiScaleIndex = 0; // 1.0
-		game.settings.styleTheme = "dark";
 	}
 
 	// Draw dropdowns last so they appear on top
-	// Draw from bottom to top (Style Theme, GUI Scale, FPS, Resolution) so top dropdowns overlap bottom ones
 	std::string resLabels;
 	for (int i = 0; i < RESOLUTION_COUNT; i++) {
 		if (i > 0)
@@ -483,47 +434,20 @@ void drawOptionsMenu(GameState &game, bool &needsRestart) {
 		resLabels += RESOLUTIONS[i].label;
 	}
 
-	// Style Theme dropdown (draw first - bottommost)
-	// Get current style index
-	int currentStyleIndex = config::getStyleIndex(game.settings.styleTheme);
-	if (GuiDropdownBox(
-	        Rectangle {(float)controlX, (float)styleThemeY - 5, (float)controlWidth, 30},
-	        config::STYLE_LABELS_STRING.c_str(), &currentStyleIndex, game.settings.styleThemeDropdownEdit)) {
-		game.settings.styleThemeDropdownEdit = !game.settings.styleThemeDropdownEdit;
-	}
-	// Update style theme name if index changed
-	if (currentStyleIndex >= 0 && currentStyleIndex < (int)config::AVAILABLE_STYLES.size()) {
-		game.settings.styleTheme = config::AVAILABLE_STYLES[currentStyleIndex];
-	}
-
-	// GUI Scale dropdown
-	if (GuiDropdownBox(
-	        Rectangle {(float)controlX, (float)guiScaleY - 5, (float)controlWidth, 30},
-	        GUI_SCALE_LABELS, &game.settings.guiScaleIndex, game.settings.guiScaleDropdownEdit)) {
-		game.settings.guiScaleDropdownEdit = !game.settings.guiScaleDropdownEdit;
-	}
-
 	// FPS Target dropdown
 	if (GuiDropdownBox(
-	        Rectangle {(float)controlX, (float)fpsY - 5, (float)controlWidth, 30},
+	        Rectangle {(float)controlX, (float)fpsY - 5, (float)controlWidth, 25},
 	        FPS_LABELS, &game.settings.fpsIndex, game.settings.fpsDropdownEdit)) {
 		game.settings.fpsDropdownEdit = !game.settings.fpsDropdownEdit;
 	}
 
 	// Resolution dropdown (draw last - topmost, overlaps all others)
 	if (GuiDropdownBox(
-	        Rectangle {(float)controlX, (float)resolutionY - 5, (float)controlWidth, 30},
+	        Rectangle {(float)controlX, (float)resolutionY - 5, (float)controlWidth, 25},
 	        resLabels.c_str(), &game.settings.resolutionIndex,
 	        game.settings.resolutionDropdownEdit)) {
 		game.settings.resolutionDropdownEdit =
 		    !game.settings.resolutionDropdownEdit;
-	}
-
-	// Restart warning
-	if (needsRestart) {
-		Color warningColor = GetColor(GuiGetStyle(DEFAULT, LINE_COLOR));
-		DrawTextEx(font14, "Note: MSAA requires restart to take effect",
-		           Vector2 {(float)(menuX + 30), (float)(menuY + menuHeight - 25)}, 14, spacing, warningColor);
 	}
 }
 

@@ -10,9 +10,7 @@ const int RESOLUTION_COUNT = 9;
 const int FPS_VALUES[] = {30, 60, 75, 120, 144, 240, 0};
 const char* FPS_LABELS = "30;60;75;120;144;240;Unlimited";
 
-const float GUI_SCALE_VALUES[] = {1.0f, 1.5f, 2.0f};
-const char* GUI_SCALE_LABELS = "1.00;1.50;2.00";
-const int GUI_SCALE_COUNT = 3;
+// GUI scale removed - Cherry UI uses fixed font size
 
 // GameLayout implementation
 void GameLayout::recalculate(int w, int h) {
