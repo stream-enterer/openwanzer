@@ -1,4 +1,5 @@
 #include "Config.hpp"
+#include "FontManager.hpp"
 #include "Raygui.hpp"
 #include "Raylib.hpp"
 
@@ -91,6 +92,31 @@ int getStyleIndex(const std::string& styleName) {
 	return 0; // Default to first style if not found
 }
 
+// Helper function to find font file in style directory
+static std::string findFontFile(const std::string& stylePath) {
+	// Look for .ttf or .otf files in the style directory
+	std::string fontPath;
+
+	DIR* dir = opendir(stylePath.c_str());
+	if (dir == nullptr) {
+		return fontPath;
+	}
+
+	struct dirent* entry;
+	while ((entry = readdir(dir)) != nullptr) {
+		std::string fileName = entry->d_name;
+
+		// Check for font file extensions
+		if (fileName.find(".ttf") != std::string::npos || fileName.find(".otf") != std::string::npos) {
+			fontPath = stylePath + "/" + fileName;
+			break;
+		}
+	}
+	closedir(dir);
+
+	return fontPath;
+}
+
 // Load style theme
 void loadStyleTheme(const std::string& themeName) {
 	// Use the path that was discovered during discoverStyles()
@@ -108,6 +134,17 @@ void loadStyleTheme(const std::string& themeName) {
 	// Load the style
 	GuiLoadStyle(stylePath.c_str());
 	TraceLog(LOG_INFO, TextFormat("Style loaded: %s", themeName.c_str()));
+
+	// Find and load font at multiple sizes
+	std::string styleDir = STYLES_PATH + "/" + themeName;
+	std::string fontPath = findFontFile(styleDir);
+
+	if (!fontPath.empty()) {
+		fontmanager::FONT_CACHE.LoadFontAtSizes(fontPath);
+		TraceLog(LOG_INFO, TextFormat("Font cache loaded from: %s", fontPath.c_str()));
+	} else {
+		TraceLog(LOG_WARNING, TextFormat("No font file found in: %s", styleDir.c_str()));
+	}
 }
 
 // Apply GUI scale (currently disabled)
