@@ -18,8 +18,9 @@
 namespace rendering {
 
 void drawCombatLog(GameState &game) {
-	// Get font size from raygui theme (same as dropdowns)
-	const int fontSize = GuiGetStyle(DEFAULT, TEXT_SIZE);
+	// Use fixed font sizes for pixel-perfect rendering
+	const int fontSize = 12;
+	const int titleFontSize = 16;
 	const int lineSpacing = fontSize + 4;
 	const float scrollBarWidth = 15.0f;
 	const float padding = 10.0f;
@@ -39,7 +40,8 @@ void drawCombatLog(GameState &game) {
 
 	// Draw title
 	float spacing = fontmanager::FONT_CACHE.GetSpacing();
-	DrawTextEx(fontmanager::FONT_CACHE.GetFont(16), "Combat Log", Vector2 {bounds.x + padding, bounds.y + 5}, 16, spacing, titleColor);
+	Font titleFont = fontmanager::FONT_CACHE.GetFont(titleFontSize);
+	DrawTextEx(titleFont, "Combat Log", Vector2 {bounds.x + padding, bounds.y + 5}, (float)titleFontSize, spacing, titleColor);
 
 	// Calculate text area (below title, with padding, leaving space for scrollbar)
 	Rectangle textArea = {
@@ -155,8 +157,8 @@ void drawUnitInfoBox(GameState &game) {
 	if (!game.selectedUnit || game.showOptionsMenu)
 		return;
 
-	// Get font size and colors from raygui dropdown theme
-	const int fontSize = GuiGetStyle(DEFAULT, TEXT_SIZE);
+	// Use fixed font sizes for pixel-perfect rendering
+	const int fontSize = 12;
 	const float padding = 10.0f;
 	Rectangle bounds = game.unitInfoBox.bounds;
 
