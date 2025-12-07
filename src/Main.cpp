@@ -75,6 +75,23 @@ int main() {
 	game.addUnit(UnitClass::MEDIUM, 1, 9, 10);
 	game.addUnit(UnitClass::ASSAULT, 1, 8, 11);
 
+	// Set one mech per side to have 0 armor (but full structure) for testing
+	// This tests the orange structure pattern display
+	if (game.units.size() >= 1) {
+		// First unit (side 0) - strip all armor
+		Unit* unit0 = game.units[0].get();
+		for (auto& loc : unit0->locations) {
+			loc.second.currentArmor = 0;
+		}
+	}
+	if (game.units.size() >= 4) {
+		// Fourth unit (side 1) - strip all armor
+		Unit* unit1 = game.units[3].get();
+		for (auto& loc : unit1->locations) {
+			loc.second.currentArmor = 0;
+		}
+	}
+
 	// Initialize Spotting for all units
 	gamelogic::initializeAllSpotting(game);
 
@@ -178,7 +195,7 @@ int main() {
 				HexCoord clickedHex = rendering::offsetToGameCoord(offset);
 
 				if (clickedHex.row >= 0 && clickedHex.row < MAP_ROWS && clickedHex.col >= 0 && clickedHex.col < MAP_COLS) {
-					Unit *clickedUnit = game.getUnitAt(clickedHex);
+					Unit* clickedUnit = game.getUnitAt(clickedHex);
 
 					// Phase 2: confirming facing
 					if (game.selectedUnit && game.movementSel.isFacingSelection) {
@@ -219,13 +236,26 @@ int main() {
 							}
 						} else if (game.map[clickedHex.row][clickedHex.col].isAttackSel) {
 							if (clickedUnit) {
+								// Show target panel during attack
+								Layout attackLayout = rendering::createHexLayout(HEX_SIZE, game.camera.offsetX,
+								                                                 game.camera.offsetY, game.camera.zoom);
+								OffsetCoord atkOffset = rendering::gameCoordToOffset(game.selectedUnit->position);
+								OffsetCoord defOffset = rendering::gameCoordToOffset(clickedUnit->position);
+								::Hex atkCube = OffsetToCube(atkOffset);
+								::Hex defCube = OffsetToCube(defOffset);
+								Point atkPixel = HexToPixel(attackLayout, atkCube);
+								Point defPixel = HexToPixel(attackLayout, defCube);
+								Vector2 atkPos = {(float)atkPixel.x, (float)atkPixel.y};
+								Vector2 defPos = {(float)defPixel.x, (float)defPixel.y};
+								combatarcs::AttackArc attackArc = combatarcs::getAttackArc(atkPos, defPos, clickedUnit->facing);
+								uipanel::showTargetPanel(game, clickedUnit, attackArc);
+
 								gamelogic::performAttack(game, game.selectedUnit, clickedUnit);
 								rendering::clearSelectionHighlights(game);
 								game.selectedUnit = nullptr;
 								game.movementSel.reset();
 								game.showAttackLines = false;
-								// Hide panels after attack
-								uipanel::hideTargetPanel(game);
+								// Keep target panel visible after attack (don't hide it)
 								uipanel::hidePlayerPanel(game);
 							}
 						} else if (clickedUnit) {
@@ -344,13 +374,13 @@ int main() {
 			// Camera panning (hardcoded speed)
 			const float panSpeed = 1.0f;
 			if (IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_A))
-				game.camera.offsetX -= panSpeed;
-			if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D))
 				game.camera.offsetX += panSpeed;
+			if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D))
+				game.camera.offsetX -= panSpeed;
 			if (IsKeyDown(KEY_UP) || IsKeyDown(KEY_W))
-				game.camera.offsetY -= panSpeed;
-			if (IsKeyDown(KEY_DOWN) || IsKeyDown(KEY_S))
 				game.camera.offsetY += panSpeed;
+			if (IsKeyDown(KEY_DOWN) || IsKeyDown(KEY_S))
+				game.camera.offsetY -= panSpeed;
 		} else if (game.showMechbayScreen) {
 			// MechBay screen input
 			// Only close MechBay on ESC if filter is not focused
@@ -370,12 +400,21 @@ int main() {
 			}
 		}
 
+		// Update combat texts
+		gamelogic::updateCombatTexts(game);
+
+		// Update panel flash animations
+		paperdollui::updatePanelFlashes(game);
+
 		// Drawing
 		BeginDrawing();
 		ClearBackground(kColorBackground);
 
 		rendering::drawMap(game);
 		rendering::drawUI(game);
+
+		// Draw combat texts (floating damage numbers)
+		rendering::drawCombatTexts(game);
 
 		// Draw paperdoll panels
 		paperdollui::renderTargetPanel(game);

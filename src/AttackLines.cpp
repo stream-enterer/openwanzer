@@ -53,10 +53,15 @@ void updateAttackLines(GameState& game) {
 		combatarcs::AttackArc arc = combatarcs::getAttackArc(
 		    atkPos, tgtPos, unit->facing);
 
+		// Check if target is out of range
+		int distance = hexDistance(game.selectedUnit->position, unit->position);
+		bool outOfRange = distance > game.selectedUnit->weaponRange;
+
 		game.attackLines.emplace_back(
 		    game.selectedUnit->position,
 		    unit->position,
-		    arc);
+		    arc,
+		    outOfRange);
 	}
 }
 

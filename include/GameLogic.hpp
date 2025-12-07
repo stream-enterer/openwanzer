@@ -3,12 +3,12 @@
 
 #include <string>
 #include <vector>
-#include "Hex.hpp"
 #include "Enums.hpp"
-#include "HexCoord.hpp"
 #include "GameHex.hpp"
-#include "Unit.hpp"
 #include "GameState.hpp"
+#include "Hex.hpp"
+#include "HexCoord.hpp"
+#include "Unit.hpp"
 
 namespace gamelogic {
 
@@ -44,7 +44,7 @@ void addLogMessage(GameState& game, const std::string& message);
 // ============================================================================
 
 std::vector<HexCoord> findPath(GameState& game, Unit* unit,
-                                const HexCoord& start, const HexCoord& goal);
+                               const HexCoord& start, const HexCoord& goal);
 
 void highlightMovementRange(GameState& game, Unit* unit);
 
@@ -77,6 +77,13 @@ void endTurn(GameState& game);
 // ============================================================================
 
 void updateAttackLines(GameState& game);
+
+// ============================================================================
+// COMBAT TEXT (combat_text.cpp)
+// ============================================================================
+
+void spawnCombatText(GameState& game, const HexCoord& targetHex, const std::string& text, bool isStructure);
+void updateCombatTexts(GameState& game);
 
 } // namespace gamelogic
 

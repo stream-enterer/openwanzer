@@ -43,6 +43,7 @@ void drawOptionsMenu(GameState& game, bool& needsRestart);
 void drawTargetArcRing(GameState& game, Unit* unit);
 void drawAttackerFiringCone(GameState& game);
 void drawAttackLines(GameState& game);
+void drawCombatTexts(GameState& game);
 
 } // namespace rendering
 

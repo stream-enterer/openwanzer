@@ -1,4 +1,6 @@
 #include "DamageSystem.hpp"
+#include "PaperdollUI.hpp"
+
 #include <algorithm>
 #include "GameLogic.hpp"
 
@@ -41,6 +43,9 @@ void applyDamageToLocation(GameState& game, Unit* target, ArmorLocation location
 	LocationStatus& structLocation = target->locations[structLoc];
 
 	gamelogic::addLogMessage(game, "[DAMAGE] " + std::to_string(damage) + " damage to " + locationToString(location));
+
+	// Trigger hit flash on paperdoll panel
+	paperdollui::triggerHitFlash(game, target, location);
 
 	int remainingDamage = damage;
 

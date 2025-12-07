@@ -13,6 +13,10 @@
 
 namespace paperdollui {
 
+// Forward declarations
+Rectangle getLocationRect(const PaperdollPanel& panel, ArmorLocation location);
+void renderFlashOverlay(const PaperdollPanel& panel);
+
 // ============================================================================
 // COLORS AND CONSTANTS
 // ============================================================================
@@ -421,16 +425,19 @@ void renderTargetPanel(const GameState& game) {
 	// 4. Draw rear paperdoll
 	renderRearPaperdoll(panel, unit);
 
-	// 5. Draw attack arc indicators (red lines)
+	// 5. Draw flash overlay (hit animation)
+	renderFlashOverlay(panel);
+
+	// 6. Draw attack arc indicators (red lines)
 	renderAttackArcIndicators(panel, panel.currentArc);
 
-	// 6. Draw "FRONT" and "REAR" labels
+	// 7. Draw "FRONT" and "REAR" labels
 	renderPaperdollLabels(panel);
 
-	// 7. Draw weapon loadout list
+	// 8. Draw weapon loadout list
 	renderWeaponLoadout(panel, unit);
 
-	// 8. Draw tooltip if hovering over body part
+	// 9. Draw tooltip if hovering over body part
 	if (panel.showTooltip) {
 		renderLocationTooltip(panel, unit);
 	}
@@ -459,10 +466,13 @@ void renderPlayerPanel(const GameState& game) {
 	// 4. Draw rear paperdoll
 	renderRearPaperdoll(panel, unit);
 
-	// 5. Draw "FRONT" and "REAR" labels
+	// 5. Draw flash overlay (hit animation)
+	renderFlashOverlay(panel);
+
+	// 6. Draw "FRONT" and "REAR" labels
 	renderPaperdollLabels(panel);
 
-	// 6. Draw tooltip if hovering over body part
+	// 7. Draw tooltip if hovering over body part
 	if (panel.showTooltip) {
 		renderLocationTooltip(panel, unit);
 	}
@@ -577,6 +587,77 @@ void handlePaperdollTooltips(GameState& game) {
 	if (game.playerPanel.isVisible) {
 		updatePanelTooltip(game.playerPanel, mousePos);
 	}
+}
+
+// ============================================================================
+// FLASH OVERLAY
+// ============================================================================
+
+// Get the rectangle for a given armor location in a panel
+Rectangle getLocationRect(const PaperdollPanel& panel, ArmorLocation location) {
+	switch (location) {
+		case ArmorLocation::HEAD:
+			return panel.frontHead;
+		case ArmorLocation::CENTER_TORSO:
+			return panel.frontCT;
+		case ArmorLocation::LEFT_TORSO:
+			return panel.frontLT;
+		case ArmorLocation::RIGHT_TORSO:
+			return panel.frontRT;
+		case ArmorLocation::LEFT_ARM:
+			return panel.frontLA;
+		case ArmorLocation::RIGHT_ARM:
+			return panel.frontRA;
+		case ArmorLocation::LEFT_LEG:
+			return panel.frontLL;
+		case ArmorLocation::RIGHT_LEG:
+			return panel.frontRL;
+		case ArmorLocation::CENTER_TORSO_REAR:
+			return panel.rearCT;
+		case ArmorLocation::LEFT_TORSO_REAR:
+			return panel.rearLT;
+		case ArmorLocation::RIGHT_TORSO_REAR:
+			return panel.rearRT;
+		default:
+			return Rectangle {0, 0, 0, 0};
+	}
+}
+
+void renderFlashOverlay(const PaperdollPanel& panel) {
+	if (panel.flashFrame < 0 || panel.flashLocation == ArmorLocation::NONE)
+		return;
+
+	Rectangle rect = getLocationRect(panel, panel.flashLocation);
+	if (rect.width <= 0 || rect.height <= 0)
+		return;
+
+	// Shrink rectangle slightly to stay inside borders
+	Rectangle innerRect = {
+	    rect.x + 1,
+	    rect.y + 1,
+	    rect.width - 2,
+	    rect.height - 2};
+
+	unsigned char alpha = panel.getFlashAlpha();
+	Color flashColor = Color {0, 0, 0, alpha};
+	DrawRectangleRec(innerRect, flashColor);
+}
+
+void triggerHitFlash(GameState& game, Unit* unit, ArmorLocation location) {
+	// Check if unit matches target panel
+	if (game.targetPanel.isVisible && game.targetPanel.targetUnit == unit) {
+		game.targetPanel.startFlash(location);
+	}
+
+	// Check if unit matches player panel
+	if (game.playerPanel.isVisible && game.playerPanel.playerUnit == unit) {
+		game.playerPanel.startFlash(location);
+	}
+}
+
+void updatePanelFlashes(GameState& game) {
+	game.targetPanel.updateFlash();
+	game.playerPanel.updateFlash();
 }
 
 } // namespace paperdollui
