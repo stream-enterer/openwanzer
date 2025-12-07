@@ -1,9 +1,3 @@
-# CLAUDE.md - Open Wanzer Project Context
-
-Last Updated: 2025-12-07
-
----
-
 ## Critical Constraints
 
 ### Compiler Warnings: Zero Tolerance
@@ -59,9 +53,3 @@ Binary: `build/openwanzer`
 - Paperdoll UI shows visual damage
 
 **Combat:** Attack arcs affect hit tables, range affects hit chance, hardness system for target types
-
----
-
-## Session-End Protocol
-
-Update this file's "Last Updated" date if you made significant architectural changes or added critical constraints.
