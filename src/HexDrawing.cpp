@@ -172,8 +172,8 @@ void drawMap(GameState &game) {
 		::Hex cubeHex = OffsetToCube(offset);
 		Point center = HexToPixel(layout, cubeHex);
 
-		float unitWidth = 40 * game.camera.zoom;
-		float unitHeight = 30 * game.camera.zoom;
+		float unitWidth = 50 * game.camera.zoom;
+		float unitHeight = 37.5f * game.camera.zoom;
 
 		// Use facing angle directly (0-360 degrees)
 		float rotation = unit->facing;

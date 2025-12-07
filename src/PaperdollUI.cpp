@@ -535,17 +535,31 @@ void handlePaperdollPanelDrag(GameState& game) {
 		game.playerPanel.isDragging = false;
 	}
 
-	// Update position while dragging
+	// Update position while dragging, clamping to screen bounds
 	if (game.targetPanel.isDragging) {
-		game.targetPanel.bounds.x = mousePos.x - game.targetPanel.dragOffset.x;
-		game.targetPanel.bounds.y = mousePos.y - game.targetPanel.dragOffset.y;
+		float newX = mousePos.x - game.targetPanel.dragOffset.x;
+		float newY = mousePos.y - game.targetPanel.dragOffset.y;
+
+		// Clamp to screen bounds (keep panel fully visible)
+		newX = Clamp(newX, 0, SCREEN_WIDTH - game.targetPanel.bounds.width);
+		newY = Clamp(newY, 0, SCREEN_HEIGHT - game.targetPanel.bounds.height);
+
+		game.targetPanel.bounds.x = newX;
+		game.targetPanel.bounds.y = newY;
 		// Recalculate paperdoll regions so they move with the panel
 		uipanel::calculatePaperdollRegions(game.targetPanel);
 	}
 
 	if (game.playerPanel.isDragging) {
-		game.playerPanel.bounds.x = mousePos.x - game.playerPanel.dragOffset.x;
-		game.playerPanel.bounds.y = mousePos.y - game.playerPanel.dragOffset.y;
+		float newX = mousePos.x - game.playerPanel.dragOffset.x;
+		float newY = mousePos.y - game.playerPanel.dragOffset.y;
+
+		// Clamp to screen bounds (keep panel fully visible)
+		newX = Clamp(newX, 0, SCREEN_WIDTH - game.playerPanel.bounds.width);
+		newY = Clamp(newY, 0, SCREEN_HEIGHT - game.playerPanel.bounds.height);
+
+		game.playerPanel.bounds.x = newX;
+		game.playerPanel.bounds.y = newY;
 		// Recalculate paperdoll regions so they move with the panel
 		uipanel::calculatePaperdollRegions(game.playerPanel);
 	}

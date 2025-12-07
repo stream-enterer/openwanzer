@@ -1,7 +1,9 @@
-#include <algorithm>
-#include <string>
 #include "Constants.hpp"
 #include "GameLogic.hpp"
+#include "UIPanels.hpp"
+
+#include <algorithm>
+#include <string>
 
 // Forward declaration for Rendering function
 namespace rendering {
@@ -87,6 +89,10 @@ void endTurn(GameState &game) {
 	game.selectedUnit = nullptr;
 	game.movementSel.reset();
 	rendering::clearSelectionHighlights(game);
+
+	// Hide paperdoll panels on turn end
+	uipanel::hideTargetPanel(game);
+	uipanel::hidePlayerPanel(game);
 
 	// Clear attack lines when ending turn
 	game.attackLines.clear();

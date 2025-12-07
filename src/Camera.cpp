@@ -51,8 +51,8 @@ void handleCombatLogScroll(GameState &game) {
 
 // Handle mouse zoom with special behavior
 void handleZoom(GameState &game) {
-	// Don't zoom if hovering over combat log
-	if (game.combatLog.isHovering)
+	// Don't zoom if zoom is locked or hovering over combat log
+	if (game.camera.zoomLocked || game.combatLog.isHovering)
 		return;
 
 	float wheelMove = GetMouseWheelMove();
@@ -182,15 +182,29 @@ void handleCombatLogDrag(GameState &game) {
 		game.unitInfoBox.isDragging = false;
 	}
 
-	// Update position while dragging
+	// Update position while dragging, clamping to screen bounds
 	if (game.combatLog.isDragging) {
-		game.combatLog.bounds.x = mousePos.x - game.combatLog.dragOffset.x;
-		game.combatLog.bounds.y = mousePos.y - game.combatLog.dragOffset.y;
+		float newX = mousePos.x - game.combatLog.dragOffset.x;
+		float newY = mousePos.y - game.combatLog.dragOffset.y;
+
+		// Clamp to screen bounds (keep element fully visible)
+		newX = Clamp(newX, 0, SCREEN_WIDTH - game.combatLog.bounds.width);
+		newY = Clamp(newY, 0, SCREEN_HEIGHT - game.combatLog.bounds.height);
+
+		game.combatLog.bounds.x = newX;
+		game.combatLog.bounds.y = newY;
 	}
 
 	if (game.unitInfoBox.isDragging) {
-		game.unitInfoBox.bounds.x = mousePos.x - game.unitInfoBox.dragOffset.x;
-		game.unitInfoBox.bounds.y = mousePos.y - game.unitInfoBox.dragOffset.y;
+		float newX = mousePos.x - game.unitInfoBox.dragOffset.x;
+		float newY = mousePos.y - game.unitInfoBox.dragOffset.y;
+
+		// Clamp to screen bounds (keep element fully visible)
+		newX = Clamp(newX, 0, SCREEN_WIDTH - game.unitInfoBox.bounds.width);
+		newY = Clamp(newY, 0, SCREEN_HEIGHT - game.unitInfoBox.bounds.height);
+
+		game.unitInfoBox.bounds.x = newX;
+		game.unitInfoBox.bounds.y = newY;
 	}
 }
 

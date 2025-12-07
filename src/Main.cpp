@@ -164,8 +164,10 @@ int main() {
 				game.showAttackLines = true;
 			}
 
-			// Left-click handling
-			if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && !game.combatLog.isDragging && !game.unitInfoBox.isDragging) {
+			// Left-click handling (skip if interacting with draggable UI elements)
+			Vector2 clickMousePos = GetMousePosition();
+			bool clickedPaperdoll = (game.targetPanel.isVisible && CheckCollisionPointRec(clickMousePos, game.targetPanel.bounds)) || (game.playerPanel.isVisible && CheckCollisionPointRec(clickMousePos, game.playerPanel.bounds));
+			if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && !game.combatLog.isDragging && !game.unitInfoBox.isDragging && !game.targetPanel.isDragging && !game.playerPanel.isDragging && !clickedPaperdoll) {
 				Vector2 mousePos = GetMousePosition();
 				Layout layout = rendering::createHexLayout(HEX_SIZE, game.camera.offsetX,
 				                                           game.camera.offsetY, game.camera.zoom);
@@ -306,8 +308,8 @@ int main() {
 				}
 			}
 
-			// Keyboard zoom
-			if (IsKeyPressed(KEY_R)) {
+			// Keyboard zoom (only if not locked)
+			if (!game.camera.zoomLocked && IsKeyPressed(KEY_R)) {
 				float oldZoom = game.camera.zoom;
 				float newZoom = Clamp(oldZoom + 0.25f, 0.5f, 2.0f);
 				if (newZoom != oldZoom) {
@@ -323,7 +325,7 @@ int main() {
 				}
 			}
 
-			if (IsKeyPressed(KEY_F)) {
+			if (!game.camera.zoomLocked && IsKeyPressed(KEY_F)) {
 				float oldZoom = game.camera.zoom;
 				float newZoom = Clamp(oldZoom - 0.25f, 0.5f, 2.0f);
 				if (newZoom != oldZoom) {
