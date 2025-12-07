@@ -23,11 +23,12 @@ struct CameraState {
 	float zoom;        // 0.5 to 2.0 (50% to 200%)
 	int zoomDirection; // -1 for zooming out, 1 for zooming in, 0 for neutral
 	bool isPanning;
+	bool zoomLocked; // When true, mouse wheel and keyboard zoom are disabled
 	Vector2 panStartMouse;
 	Vector2 panStartOffset;
 
 	CameraState()
-	    : offsetX(0.0f), offsetY(0.0f), zoom(1.0f), zoomDirection(0), isPanning(false), panStartMouse {0, 0}, panStartOffset {0, 0} {
+	    : offsetX(0.0f), offsetY(0.0f), zoom(1.0f), zoomDirection(0), isPanning(false), zoomLocked(false), panStartMouse {0, 0}, panStartOffset {0, 0} {
 		// Initialize to centered position (will be properly calculated after layout is set)
 		offsetX = 100.0f;
 		offsetY = 100.0f;
@@ -45,7 +46,7 @@ struct VideoSettings {
 	bool fpsDropdownEdit;
 
 	VideoSettings()
-	    : resolutionIndex(6), fullscreen(true), vsync(false), fpsIndex(6), hexSize(40.0f), resolutionDropdownEdit(false), fpsDropdownEdit(false) {
+	    : resolutionIndex(6), fullscreen(true), vsync(false), fpsIndex(6), hexSize(65.0f), resolutionDropdownEdit(false), fpsDropdownEdit(false) {
 	}
 };
 

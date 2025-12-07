@@ -221,6 +221,13 @@ void drawUI(GameState &game) {
 	snprintf(zoomText, sizeof(zoomText), "Zoom: %.0f%%", game.camera.zoom * 100);
 	DrawTextEx(cherrystyle::CHERRY_FONT, zoomText, Vector2 {400, 12}, (float)fontSize, spacing, WHITE);
 
+	// Zoom lock toggle button (small checkbox with lock icon)
+	float zoomTextWidth = MeasureTextEx(cherrystyle::CHERRY_FONT, zoomText, (float)fontSize, spacing).x;
+	const char *lockIcon = game.camera.zoomLocked ? "#55#" : "#56#"; // raygui lock/unlock icons
+	if (GuiToggle(Rectangle {400 + zoomTextWidth + 10, 7, 26, 26}, lockIcon, &game.camera.zoomLocked)) {
+		// Toggle handled by raygui
+	}
+
 	// Terrain hover display (shows terrain type, coordinates, and move cost)
 	Vector2 mousePos = GetMousePosition();
 	Layout layout = createHexLayout(HEX_SIZE, game.camera.offsetX,
@@ -354,12 +361,6 @@ void drawOptionsMenu(GameState &game, [[maybe_unused]] bool &needsRestart) {
 	// FPS Target label
 	DrawTextEx(cherrystyle::CHERRY_FONT, "FPS Target:", Vector2 {(float)labelX, (float)fpsY}, (float)fontSize, spacing, labelColor);
 
-	// Hex Size Slider
-	DrawTextEx(cherrystyle::CHERRY_FONT, "Hex Size:", Vector2 {(float)labelX, (float)y}, (float)fontSize, spacing, labelColor);
-	GuiSlider(Rectangle {(float)controlX, (float)y, (float)controlWidth, 20}, "20",
-	          "80", &game.settings.hexSize, 20, 80);
-	y += 40;
-
 	// Buttons
 	int buttonY = menuY + menuHeight - 60;
 	if (GuiButton(Rectangle {(float)menuX + 30, (float)buttonY, 150, 35},
@@ -412,7 +413,7 @@ void drawOptionsMenu(GameState &game, [[maybe_unused]] bool &needsRestart) {
 		game.settings.fullscreen = true;
 		game.settings.vsync = false;
 		game.settings.fpsIndex = 6; // Unlimited FPS
-		game.settings.hexSize = 40.0f;
+		game.settings.hexSize = 65.0f;
 	}
 
 	// Draw dropdowns last so they appear on top
