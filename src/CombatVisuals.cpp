@@ -1,4 +1,5 @@
 #include <cmath>
+#include "CherryStyle.hpp"
 #include "CombatArcs.hpp"
 #include "Constants.hpp"
 #include "Hex.hpp"
@@ -119,6 +120,39 @@ void drawAttackerFiringCone(GameState& game) {
 	           2.0f, YELLOW);
 }
 
+// Draw a dotted/dashed line between two points
+void drawDottedLine(Vector2 from, Vector2 to, float thickness, Color color, float dashLength, float gapLength) {
+	float dx = to.x - from.x;
+	float dy = to.y - from.y;
+	float length = sqrtf(dx * dx + dy * dy);
+
+	if (length < 1.0f)
+		return;
+
+	// Normalize direction
+	float nx = dx / length;
+	float ny = dy / length;
+
+	float currentPos = 0.0f;
+	bool drawing = true;
+
+	while (currentPos < length) {
+		float segmentLength = drawing ? dashLength : gapLength;
+		float endPos = currentPos + segmentLength;
+		if (endPos > length)
+			endPos = length;
+
+		if (drawing) {
+			Vector2 segStart = {from.x + nx * currentPos, from.y + ny * currentPos};
+			Vector2 segEnd = {from.x + nx * endPos, from.y + ny * endPos};
+			DrawLineEx(segStart, segEnd, thickness, color);
+		}
+
+		currentPos = endPos;
+		drawing = !drawing;
+	}
+}
+
 void drawAttackLines(GameState& game) {
 	if (!game.showAttackLines || game.attackLines.empty())
 		return;
@@ -136,12 +170,33 @@ void drawAttackLines(GameState& game) {
 		Point fromPoint = HexToPixel(layout, fromCube);
 		Point toPoint = HexToPixel(layout, toCube);
 
-		Color lineColor = combatarcs::getLineColor(line.arc);
+		Vector2 fromVec = {(float)fromPoint.x, (float)fromPoint.y};
+		Vector2 toVec = {(float)toPoint.x, (float)toPoint.y};
 
-		DrawLineEx(Vector2 {(float)fromPoint.x, (float)fromPoint.y},
-		           Vector2 {(float)toPoint.x, (float)toPoint.y},
-		           3.0f,
-		           lineColor);
+		if (line.outOfRange) {
+			// Draw gray dotted line for out-of-range targets
+			drawDottedLine(fromVec, toVec, 3.0f, GRAY, 8.0f, 6.0f);
+		} else {
+			// Draw solid colored line for in-range targets
+			Color lineColor = combatarcs::getLineColor(line.arc);
+			DrawLineEx(fromVec, toVec, 3.0f, lineColor);
+		}
+	}
+}
+
+void drawCombatTexts(GameState& game) {
+	if (game.combatTexts.empty())
+		return;
+
+	float spacing = (float)cherrystyle::kFontSpacing;
+	const int fontSize = cherrystyle::kFontSize;
+
+	for (const auto& ct : game.combatTexts) {
+		Color textColor = ct.color;
+		textColor.a = ct.getAlpha();
+
+		DrawTextEx(cherrystyle::CHERRY_FONT, ct.text.c_str(),
+		           ct.position, (float)fontSize, spacing, textColor);
 	}
 }
 

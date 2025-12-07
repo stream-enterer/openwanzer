@@ -141,9 +141,10 @@ struct AttackLine {
 	HexCoord from;
 	HexCoord to;
 	combatarcs::AttackArc arc;
+	bool outOfRange;
 
-	AttackLine(HexCoord f, HexCoord t, combatarcs::AttackArc a)
-	    : from(f), to(t), arc(a) {
+	AttackLine(HexCoord f, HexCoord t, combatarcs::AttackArc a, bool oor = false)
+	    : from(f), to(t), arc(a), outOfRange(oor) {
 	}
 };
 
@@ -169,8 +170,13 @@ struct PaperdollPanel {
 	bool showTooltip;
 	Vector2 tooltipPos;
 
+	// Flash overlay state (for hit animation)
+	ArmorLocation flashLocation;
+	int flashFrame; // 0-9: frames 0-4 darken, 5-9 lighten; -1 = no flash
+	static constexpr int FLASH_TOTAL_FRAMES = 10;
+
 	PaperdollPanel()
-	    : isVisible(false), isDragging(false), hoveredLocation(ArmorLocation::NONE), showTooltip(false) {
+	    : isVisible(false), isDragging(false), hoveredLocation(ArmorLocation::NONE), showTooltip(false), flashLocation(ArmorLocation::NONE), flashFrame(-1) {
 		bounds = {0, 0, 0, 0};
 		dragOffset = {0, 0};
 		defaultPosition = {0, 0};
@@ -178,6 +184,35 @@ struct PaperdollPanel {
 		frontLA = frontRA = frontLL = frontRL = {0, 0, 0, 0};
 		rearCT = rearLT = rearRT = rearLA = rearRA = {0, 0, 0, 0};
 		tooltipPos = {0, 0};
+	}
+
+	void startFlash(ArmorLocation location) {
+		flashLocation = location;
+		flashFrame = 0;
+	}
+
+	void updateFlash() {
+		if (flashFrame >= 0) {
+			flashFrame++;
+			if (flashFrame >= FLASH_TOTAL_FRAMES) {
+				flashFrame = -1;
+				flashLocation = ArmorLocation::NONE;
+			}
+		}
+	}
+
+	// Returns alpha for black overlay (0 = no overlay, 255 = full black)
+	unsigned char getFlashAlpha() const {
+		if (flashFrame < 0)
+			return 0;
+
+		// Frames 0-4: darken (0 to 255)
+		// Frames 5-9: lighten (255 to 0)
+		if (flashFrame < 5) {
+			return (unsigned char)((flashFrame + 1) * 255 / 5);
+		} else {
+			return (unsigned char)(255 - ((flashFrame - 4) * 255 / 5));
+		}
 	}
 };
 
@@ -195,6 +230,52 @@ struct PlayerPanel : public PaperdollPanel {
 
 	PlayerPanel()
 	    : playerUnit(nullptr) {
+	}
+};
+
+// Combat text for floating damage numbers
+struct CombatText {
+	Vector2 position;     // Current screen position
+	Vector2 basePosition; // Starting position (for animation)
+	std::string text;
+	Color color;
+	int currentFrame; // Current frame in animation
+	bool isStructure; // Orange for structure, white for armor/miss
+
+	// Animation phases:
+	// Frames 0-4: Fade in (5 frames)
+	// Frames 5-14: Float up + fade out (10 frames)
+	static constexpr int FADE_IN_FRAMES = 5;
+	static constexpr int FLOAT_FRAMES = 10;
+	static constexpr int TOTAL_FRAMES = FADE_IN_FRAMES + FLOAT_FRAMES;
+
+	CombatText(Vector2 pos, const std::string &txt, bool structure)
+	    : position(pos), basePosition(pos), text(txt), currentFrame(0), isStructure(structure) {
+		color = structure ? ORANGE : WHITE;
+	}
+
+	bool isFinished() const {
+		return currentFrame >= TOTAL_FRAMES;
+	}
+
+	void update() {
+		currentFrame++;
+
+		// Float up during float phase (1 pixel per frame)
+		if (currentFrame > FADE_IN_FRAMES) {
+			position.y = basePosition.y - (currentFrame - FADE_IN_FRAMES);
+		}
+	}
+
+	unsigned char getAlpha() const {
+		if (currentFrame < FADE_IN_FRAMES) {
+			// Fade in: 0 to 255 over 5 frames
+			return (unsigned char)((currentFrame + 1) * 255 / FADE_IN_FRAMES);
+		} else {
+			// Fade out: 255 to 0 over 10 frames
+			int floatFrame = currentFrame - FADE_IN_FRAMES;
+			return (unsigned char)(255 - (floatFrame * 255 / FLOAT_FRAMES));
+		}
 	}
 };
 
@@ -219,6 +300,7 @@ struct GameState {
 	bool showAttackLines;                // Whether to show attack lines
 	TargetPanel targetPanel;             // HBS-style target mech panel
 	PlayerPanel playerPanel;             // HBS-style player mech panel
+	std::vector<CombatText> combatTexts; // Floating damage numbers
 
 	// MechBay loadout management
 	std::unique_ptr<mechloadout::MechLoadout> mechLoadout;

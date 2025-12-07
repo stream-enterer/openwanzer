@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include <string>
 #include "ArmorLocation.hpp"
 #include "CombatArcs.hpp"
@@ -63,13 +64,50 @@ void performAttack(GameState &game, Unit *attacker, Unit *defender) {
 	}
 	addLogMessage(game, "[HIT LOCATION] Attack from " + arcName + " arc");
 
+	// 30% miss chance
+	int missRoll = std::rand() % 100;
+	if (missRoll < 30) {
+		addLogMessage(game, "[COMBAT] MISS!");
+		spawnCombatText(game, defender->position, "MISS!", false);
+		attacker->hasFired = true;
+		addLogMessage(game, "---");
+		return;
+	}
+
 	// Roll hit location
 	ArmorLocation hitLoc = hittables::rollHitLocation(arc);
 	addLogMessage(game, "[HIT LOCATION] Hit: " + locationToString(hitLoc));
 
+	// Get the structure location (rear armor maps to front structure)
+	ArmorLocation structLoc = damagesystem::mapRearToFront(hitLoc);
+
+	// Record armor/structure before damage
+	int armorBefore = defender->locations[hitLoc].currentArmor;
+	int structureBefore = defender->locations[structLoc].currentStructure;
+
 	// Apply damage
 	int damage = attacker->attack;
 	damagesystem::applyDamageToLocation(game, defender, hitLoc, damage);
+
+	// Calculate actual damage dealt
+	int armorAfter = defender->locations[hitLoc].currentArmor;
+	int structureAfter = defender->locations[structLoc].currentStructure;
+
+	int armorDamage = armorBefore - armorAfter;
+	int structureDamage = structureBefore - structureAfter;
+
+	// Spawn combat text for damage
+	if (armorDamage > 0 && structureDamage > 0) {
+		// Both armor and structure damaged - spawn two numbers
+		spawnCombatText(game, defender->position, std::to_string(armorDamage), false);
+		spawnCombatText(game, defender->position, std::to_string(structureDamage), true);
+	} else if (structureDamage > 0) {
+		// Only structure damage (no armor)
+		spawnCombatText(game, defender->position, std::to_string(structureDamage), true);
+	} else if (armorDamage > 0) {
+		// Only armor damage
+		spawnCombatText(game, defender->position, std::to_string(armorDamage), false);
+	}
 
 	// Check death
 	if (!defender->isAlive()) {
