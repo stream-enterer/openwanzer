@@ -51,9 +51,6 @@ const Color ARTILLERY_COLOR = RED;
 const Color MELEE_COLOR = WHITE;
 const Color DISABLED_WEAPON_COLOR = DARKGRAY;
 
-// Attack arc indicator
-const Color ARC_INDICATOR_COLOR = RED;
-
 // ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
@@ -180,34 +177,6 @@ void renderPaperdollLabels(const PaperdollPanel& panel) {
 }
 
 // ============================================================================
-// ATTACK ARC INDICATORS
-// ============================================================================
-
-void renderAttackArcIndicators(const PaperdollPanel& panel, combatarcs::AttackArc arc) {
-	// Highlight the targeted box based on attack arc
-	// (10% chance to hit CENTER is always there, but we highlight the primary target)
-	Rectangle targetBox;
-
-	switch (arc) {
-		case combatarcs::AttackArc::FRONT:
-			targetBox = panel.boxFront;
-			break;
-		case combatarcs::AttackArc::LEFT_SIDE:
-			targetBox = panel.boxLeft;
-			break;
-		case combatarcs::AttackArc::RIGHT_SIDE:
-			targetBox = panel.boxRight;
-			break;
-		case combatarcs::AttackArc::REAR:
-			targetBox = panel.boxRear;
-			break;
-	}
-
-	// Draw red border around targeted location
-	DrawRectangleLinesEx(targetBox, 3, ARC_INDICATOR_COLOR);
-}
-
-// ============================================================================
 // WEAPON LOADOUT
 // ============================================================================
 
@@ -303,18 +272,15 @@ void renderPanelHeader(const PaperdollPanel& panel, const Unit* unit, [[maybe_un
 	DrawRectangle((int)(x + 150), (int)y, 20, 20, DARKGRAY);
 	DrawTextEx(cherrystyle::CHERRY_FONT, "PILOT", Vector2 {x + 180, y}, (float)fontSize, spacing, LIGHTGRAY);
 
-	// Line 3: Initiative, Heat, Stability bars
+	// Line 3: Heat and Shield bars (vertically stacked)
 	y += 28;
 
-	// Initiative (placeholder)
-	DrawTextEx(cherrystyle::CHERRY_FONT, "-1", Vector2 {x, y}, (float)fontSize, spacing, WHITE);
-	DrawTextEx(cherrystyle::CHERRY_FONT, "INITIATIVE", Vector2 {x, y + 18}, (float)fontSize, spacing, LIGHTGRAY);
+	// Heat bar (placeholder values) - moved 15px right from original position
+	float barX = x + 95;
+	renderStatusBar(barX, y, 100, 24, 50, 500, RED, "HEAT");
 
-	// Heat bar (placeholder values) - increased height for larger font
-	renderStatusBar(x + 80, y, 100, 24, 50, 500, RED, "HEAT");
-
-	// Stability bar (placeholder values) - increased height for larger font
-	renderStatusBar(x + 200, y, 100, 24, 75, 100, YELLOW, "STAB");
+	// Shield bar below heat bar (placeholder values) - cyan color
+	renderStatusBar(barX, y + 42, 100, 24, 75, 100, SKYBLUE, "SHIELD");
 }
 
 // ============================================================================
@@ -392,13 +358,10 @@ void renderTargetPanel(const GameState& game) {
 	// 4. Draw flash overlay (hit animation)
 	renderFlashOverlay(panel);
 
-	// 5. Draw attack arc indicators (red border on targeted location)
-	renderAttackArcIndicators(panel, panel.currentArc);
-
-	// 6. Draw weapon loadout list
+	// 5. Draw weapon loadout list
 	renderWeaponLoadout(panel, unit);
 
-	// 7. Draw tooltip if hovering over body part
+	// 6. Draw tooltip if hovering over body part
 	if (panel.showTooltip) {
 		renderLocationTooltip(panel, unit);
 	}

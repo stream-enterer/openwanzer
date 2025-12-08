@@ -29,8 +29,10 @@ void updateAttackLines(GameState& game) {
 	Point attackerPos = HexToPixel(layout, attackerCube);
 
 	for (const auto& unit : game.units) {
-		// Skip self and friendlies
+		// Skip self, friendlies, and dead units
 		if (unit.get() == game.selectedUnit || unit->side == game.selectedUnit->side)
+			continue;
+		if (!unit->isAlive())
 			continue;
 
 		// Only show targeting lines to units that are in LOS (spotted by current player)
