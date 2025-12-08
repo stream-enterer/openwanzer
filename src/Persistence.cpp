@@ -20,6 +20,9 @@ void saveConfig(const VideoSettings& settings) {
 	configFile << "vsync=" << (settings.vsync ? 1 : 0) << "\n";
 	configFile << "fpsIndex=" << settings.fpsIndex << "\n";
 	configFile << "hexSize=" << settings.hexSize << "\n";
+	configFile << "combatTextFadeInTime=" << settings.combatTextFadeInTime << "\n";
+	configFile << "combatTextFloatTime=" << settings.combatTextFloatTime << "\n";
+	configFile << "combatTextFloatSpeed=" << settings.combatTextFloatSpeed << "\n";
 
 	configFile.close();
 	TraceLog(LOG_INFO, "Config saved to config.txt");
@@ -66,6 +69,21 @@ void loadConfig(VideoSettings& settings) {
 				float val = std::stof(value);
 				if (val >= 20.0f && val <= 80.0f) {
 					settings.hexSize = val;
+				}
+			} else if (key == "combatTextFadeInTime") {
+				float val = std::stof(value);
+				if (val >= 0.01f && val <= 5.0f) {
+					settings.combatTextFadeInTime = val;
+				}
+			} else if (key == "combatTextFloatTime") {
+				float val = std::stof(value);
+				if (val >= 0.01f && val <= 5.0f) {
+					settings.combatTextFloatTime = val;
+				}
+			} else if (key == "combatTextFloatSpeed") {
+				float val = std::stof(value);
+				if (val >= 1.0f && val <= 200.0f) {
+					settings.combatTextFloatSpeed = val;
 				}
 			} else if (key == "panSpeed") {
 				// Deprecated: panSpeed is now hardcoded to 1.0f

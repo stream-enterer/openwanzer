@@ -83,7 +83,7 @@ void updateAttackLines(GameState& game);
 // ============================================================================
 
 void spawnCombatText(GameState& game, const HexCoord& targetHex, const std::string& text, bool isStructure);
-void updateCombatTexts(GameState& game);
+void updateCombatTexts(GameState& game, float deltaTime);
 
 } // namespace gamelogic
 

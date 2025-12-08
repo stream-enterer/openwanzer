@@ -45,8 +45,14 @@ struct VideoSettings {
 	bool resolutionDropdownEdit;
 	bool fpsDropdownEdit;
 
+	// Combat text animation timing (in seconds)
+	// Defaults based on 30fps YouTube video: 5 frames = 0.17s, 10 frames = 0.33s
+	float combatTextFadeInTime; // Duration of fade-in phase
+	float combatTextFloatTime;  // Duration of float-up + fade-out phase
+	float combatTextFloatSpeed; // Pixels per second during float (30fps * 1px/frame = 30px/s)
+
 	VideoSettings()
-	    : resolutionIndex(6), fullscreen(true), vsync(false), fpsIndex(6), hexSize(65.0f), resolutionDropdownEdit(false), fpsDropdownEdit(false) {
+	    : resolutionIndex(6), fullscreen(true), vsync(false), fpsIndex(6), hexSize(65.0f), resolutionDropdownEdit(false), fpsDropdownEdit(false), combatTextFadeInTime(0.17f), combatTextFloatTime(0.33f), combatTextFloatSpeed(30.0f) {
 	}
 };
 
@@ -239,42 +245,48 @@ struct CombatText {
 	Vector2 basePosition; // Starting position (for animation)
 	std::string text;
 	Color color;
-	int currentFrame; // Current frame in animation
-	bool isStructure; // Orange for structure, white for armor/miss
+	float currentTime; // Current time elapsed in animation (seconds)
+	bool isStructure;  // Orange for structure, white for armor/miss
 
-	// Animation phases:
-	// Frames 0-4: Fade in (5 frames)
-	// Frames 5-14: Float up + fade out (10 frames)
-	static constexpr int FADE_IN_FRAMES = 5;
-	static constexpr int FLOAT_FRAMES = 10;
-	static constexpr int TOTAL_FRAMES = FADE_IN_FRAMES + FLOAT_FRAMES;
+	// Animation timing (in seconds) - set from config
+	float fadeInTime; // Duration of fade-in phase
+	float floatTime;  // Duration of float-up + fade-out phase
+	float floatSpeed; // Pixels per second during float
 
-	CombatText(Vector2 pos, const std::string &txt, bool structure)
-	    : position(pos), basePosition(pos), text(txt), currentFrame(0), isStructure(structure) {
+	CombatText(Vector2 pos, const std::string &txt, bool structure, float fadeIn = 0.17f, float floatDur = 0.33f, float speed = 30.0f)
+	    : position(pos), basePosition(pos), text(txt), currentTime(0.0f), isStructure(structure), fadeInTime(fadeIn), floatTime(floatDur), floatSpeed(speed) {
 		color = structure ? ORANGE : WHITE;
 	}
 
-	bool isFinished() const {
-		return currentFrame >= TOTAL_FRAMES;
+	float getTotalTime() const {
+		return fadeInTime + floatTime;
 	}
 
-	void update() {
-		currentFrame++;
+	bool isFinished() const {
+		return currentTime >= getTotalTime();
+	}
 
-		// Float up during float phase (1 pixel per frame)
-		if (currentFrame > FADE_IN_FRAMES) {
-			position.y = basePosition.y - (currentFrame - FADE_IN_FRAMES);
+	void update(float deltaTime) {
+		currentTime += deltaTime;
+
+		// Float up during float phase
+		if (currentTime > fadeInTime) {
+			float floatElapsed = currentTime - fadeInTime;
+			position.y = basePosition.y - (floatElapsed * floatSpeed);
 		}
 	}
 
 	unsigned char getAlpha() const {
-		if (currentFrame < FADE_IN_FRAMES) {
-			// Fade in: 0 to 255 over 5 frames
-			return (unsigned char)((currentFrame + 1) * 255 / FADE_IN_FRAMES);
+		if (currentTime < fadeInTime) {
+			// Fade in: 0 to 255 over fadeInTime
+			float progress = currentTime / fadeInTime;
+			return (unsigned char)(progress * 255.0f);
 		} else {
-			// Fade out: 255 to 0 over 10 frames
-			int floatFrame = currentFrame - FADE_IN_FRAMES;
-			return (unsigned char)(255 - (floatFrame * 255 / FLOAT_FRAMES));
+			// Fade out: 255 to 0 over floatTime
+			float floatElapsed = currentTime - fadeInTime;
+			float progress = floatElapsed / floatTime;
+			progress = (progress > 1.0f) ? 1.0f : progress;
+			return (unsigned char)((1.0f - progress) * 255.0f);
 		}
 	}
 };
