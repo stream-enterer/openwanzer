@@ -173,6 +173,9 @@ void GameState::initializeMap() {
 
 Unit* GameState::getUnitAt(const HexCoord& coord) {
 	for (auto& unit : units) {
+		// Skip dead units - they don't occupy hexes
+		if (!unit->isAlive())
+			continue;
 		if (unit->position == coord) {
 			return unit.get();
 		}

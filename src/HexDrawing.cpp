@@ -162,6 +162,10 @@ void drawMap(GameState &game) {
 
 	// Draw units (friendly units always visible, enemy units only if spotted)
 	for (auto &unit : game.units) {
+		// Skip dead units - they should not be rendered
+		if (!unit->isAlive())
+			continue;
+
 		GameHex &unitHex = game.map[unit->position.row][unit->position.col];
 
 		// Hide enemy units that aren't spotted (FOG OF WAR)

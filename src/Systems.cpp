@@ -20,6 +20,10 @@ void setUnitSpotRange(GameState &game, Unit *unit, bool on) {
 	if (!unit)
 		return;
 
+	// Dead units should not contribute to spotting (except when clearing their spotting)
+	if (on && !unit->isAlive())
+		return;
+
 	HexCoord pos = unit->position;
 	int range = unit->spotRange;
 	std::vector<HexCoord> cells = getCellsInRange(pos.row, pos.col, range);
@@ -48,9 +52,11 @@ void initializeAllSpotting(GameState &game) {
 		}
 	}
 
-	// Set spotting for all units
+	// Set spotting for all living units only
 	for (auto &unit : game.units) {
-		setUnitSpotRange(game, unit.get(), true);
+		if (unit->isAlive()) {
+			setUnitSpotRange(game, unit.get(), true);
+		}
 	}
 }
 
@@ -76,9 +82,9 @@ void endTurn(GameState &game) {
 	playerName = game.currentPlayer == 0 ? "Axis" : "Allied";
 	addLogMessage(game, playerName + " turn begins");
 
-	// Reset actions for units about to start their turn
+	// Reset actions for units about to start their turn (skip dead units)
 	for (auto &unit : game.units) {
-		if (unit->side == game.currentPlayer) {
+		if (unit->side == game.currentPlayer && unit->isAlive()) {
 			unit->hasMoved = false;
 			unit->hasFired = false;
 			unit->movesLeft = unit->movementPoints;

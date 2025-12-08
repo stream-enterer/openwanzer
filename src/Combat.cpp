@@ -15,6 +15,10 @@ void performAttack(GameState &game, Unit *attacker, Unit *defender) {
 	if (!attacker || !defender)
 		return;
 
+	// Can't attack with dead units or attack dead units
+	if (!attacker->isAlive() || !defender->isAlive())
+		return;
+
 	if (attacker->hasFired) {
 		addLogMessage(game, "Unit has already fired this turn");
 		return;
