@@ -78,52 +78,51 @@ void resetPanelPositions(GameState& game) {
 }
 
 void calculatePaperdollRegions(PaperdollPanel& panel) {
-	// Calculate precise Rectangle bounds for each body part
-	// based on panel.bounds position + internal layout
+	// Calculate precise Rectangle bounds for 5-box cross layout
+	// Layout (top-down view):
+	//         [FRONT]
+	//     [LEFT][CENTER][RIGHT]
+	//         [REAR]
 
 	float startX = panel.bounds.x + PAPERDOLL_PADDING;
 	float startY = panel.bounds.y + 60; // After header section
 
-	// Front paperdoll layout (each section is 25x30)
-	float sectionWidth = 25.0f;
-	float sectionHeight = 30.0f;
+	// Each box is 30x30 pixels
+	float boxSize = 30.0f;
+	float gap = 2.0f; // Small gap between boxes
 
-	// Row 1: HEAD
-	panel.frontHead = Rectangle {startX + sectionWidth * 2, startY,
-	                             sectionWidth, sectionHeight};
+	// Row 1: FRONT (centered above middle row)
+	panel.boxFront = Rectangle {
+	    startX + boxSize + gap, // Aligned with CENTER
+	    startY,
+	    boxSize,
+	    boxSize};
 
-	// Row 2: LA, LT, CT, RT, RA
-	panel.frontLA = Rectangle {startX, startY + sectionHeight,
-	                           sectionWidth, sectionHeight};
-	panel.frontLT = Rectangle {startX + sectionWidth, startY + sectionHeight,
-	                           sectionWidth, sectionHeight};
-	panel.frontCT = Rectangle {startX + sectionWidth * 2, startY + sectionHeight,
-	                           sectionWidth, sectionHeight};
-	panel.frontRT = Rectangle {startX + sectionWidth * 3, startY + sectionHeight,
-	                           sectionWidth, sectionHeight};
-	panel.frontRA = Rectangle {startX + sectionWidth * 4, startY + sectionHeight,
-	                           sectionWidth, sectionHeight};
+	// Row 2: LEFT, CENTER, RIGHT
+	panel.boxLeft = Rectangle {
+	    startX,
+	    startY + boxSize + gap,
+	    boxSize,
+	    boxSize};
 
-	// Row 3: LL, RL
-	panel.frontLL = Rectangle {startX + sectionWidth, startY + sectionHeight * 2,
-	                           sectionWidth, sectionHeight};
-	panel.frontRL = Rectangle {startX + sectionWidth * 3, startY + sectionHeight * 2,
-	                           sectionWidth, sectionHeight};
+	panel.boxCenter = Rectangle {
+	    startX + boxSize + gap,
+	    startY + boxSize + gap,
+	    boxSize,
+	    boxSize};
 
-	// Rear paperdoll (to the right of front)
-	float rearStartX = startX + FRONT_PAPERDOLL_WIDTH + 20;
+	panel.boxRight = Rectangle {
+	    startX + (boxSize + gap) * 2,
+	    startY + boxSize + gap,
+	    boxSize,
+	    boxSize};
 
-	// Rear only has torso sections (arms are blackened)
-	panel.rearLA = Rectangle {rearStartX, startY + sectionHeight,
-	                          sectionWidth * 0.8f, sectionHeight};
-	panel.rearLT = Rectangle {rearStartX + sectionWidth * 0.8f, startY + sectionHeight,
-	                          sectionWidth, sectionHeight};
-	panel.rearCT = Rectangle {rearStartX + sectionWidth * 1.8f, startY + sectionHeight,
-	                          sectionWidth, sectionHeight};
-	panel.rearRT = Rectangle {rearStartX + sectionWidth * 2.8f, startY + sectionHeight,
-	                          sectionWidth, sectionHeight};
-	panel.rearRA = Rectangle {rearStartX + sectionWidth * 3.8f, startY + sectionHeight,
-	                          sectionWidth * 0.8f, sectionHeight};
+	// Row 3: REAR (centered below middle row)
+	panel.boxRear = Rectangle {
+	    startX + boxSize + gap, // Aligned with CENTER
+	    startY + (boxSize + gap) * 2,
+	    boxSize,
+	    boxSize};
 }
 
 } // namespace uipanel

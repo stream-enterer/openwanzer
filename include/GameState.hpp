@@ -154,7 +154,11 @@ struct AttackLine {
 	}
 };
 
-// Paperdoll Panel structures for HBS-style mech UI
+// Paperdoll Panel structures for simplified 5-box cross layout
+// Layout (top-down view):
+//         [FRONT]
+//     [LEFT][CENTER][RIGHT]
+//         [REAR]
 struct PaperdollPanel {
 	Rectangle bounds; // Panel position and size
 	bool isVisible;
@@ -162,14 +166,12 @@ struct PaperdollPanel {
 	Vector2 dragOffset;
 	Vector2 defaultPosition; // For reset functionality
 
-	// Paperdoll regions (for hover detection)
-	Rectangle frontHead;
-	Rectangle frontCT, frontLT, frontRT;
-	Rectangle frontLA, frontRA;
-	Rectangle frontLL, frontRL;
-
-	Rectangle rearCT, rearLT, rearRT;
-	Rectangle rearLA, rearRA; // Blackened, non-interactive
+	// 5-box cross paperdoll regions (for hover detection)
+	Rectangle boxFront;
+	Rectangle boxLeft;
+	Rectangle boxCenter;
+	Rectangle boxRight;
+	Rectangle boxRear;
 
 	// Current tooltip state
 	ArmorLocation hoveredLocation;
@@ -186,9 +188,7 @@ struct PaperdollPanel {
 		bounds = {0, 0, 0, 0};
 		dragOffset = {0, 0};
 		defaultPosition = {0, 0};
-		frontHead = frontCT = frontLT = frontRT = {0, 0, 0, 0};
-		frontLA = frontRA = frontLL = frontRL = {0, 0, 0, 0};
-		rearCT = rearLT = rearRT = rearLA = rearRA = {0, 0, 0, 0};
+		boxFront = boxLeft = boxCenter = boxRight = boxRear = {0, 0, 0, 0};
 		tooltipPos = {0, 0};
 	}
 
@@ -241,11 +241,13 @@ struct PlayerPanel : public PaperdollPanel {
 
 // Combat text for floating damage numbers
 struct CombatText {
-	Vector2 position;     // Current screen position
-	Vector2 basePosition; // Starting position (for animation)
+	HexCoord spawnHex; // Hex where text was spawned (for camera-relative positioning)
+	Vector2 hexOffset; // Random offset relative to hex center (calculated once at spawn)
+	Vector2 position;  // Current screen position (recalculated each frame)
 	std::string text;
 	Color color;
 	float currentTime; // Current time elapsed in animation (seconds)
+	float floatOffset; // Current vertical float offset (pixels, in world space)
 	bool isStructure;  // Orange for structure, white for armor/miss
 
 	// Animation timing (in seconds) - set from config
@@ -253,8 +255,8 @@ struct CombatText {
 	float floatTime;  // Duration of float-up + fade-out phase
 	float floatSpeed; // Pixels per second during float
 
-	CombatText(Vector2 pos, const std::string &txt, bool structure, float fadeIn = 0.17f, float floatDur = 0.33f, float speed = 30.0f)
-	    : position(pos), basePosition(pos), text(txt), currentTime(0.0f), isStructure(structure), fadeInTime(fadeIn), floatTime(floatDur), floatSpeed(speed) {
+	CombatText(HexCoord hex, Vector2 offset, const std::string &txt, bool structure, float fadeIn = 0.17f, float floatDur = 0.33f, float speed = 30.0f)
+	    : spawnHex(hex), hexOffset(offset), position {0, 0}, text(txt), currentTime(0.0f), floatOffset(0.0f), isStructure(structure), fadeInTime(fadeIn), floatTime(floatDur), floatSpeed(speed) {
 		color = structure ? ORANGE : WHITE;
 	}
 
@@ -269,10 +271,10 @@ struct CombatText {
 	void update(float deltaTime) {
 		currentTime += deltaTime;
 
-		// Float up during float phase
+		// Update float offset during float phase
 		if (currentTime > fadeInTime) {
 			float floatElapsed = currentTime - fadeInTime;
-			position.y = basePosition.y - (floatElapsed * floatSpeed);
+			floatOffset = floatElapsed * floatSpeed;
 		}
 	}
 
