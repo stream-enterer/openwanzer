@@ -78,12 +78,9 @@ void performAttack(GameState &game, Unit *attacker, Unit *defender) {
 	ArmorLocation hitLoc = hittables::rollHitLocation(arc);
 	addLogMessage(game, "[HIT LOCATION] Hit: " + locationToString(hitLoc));
 
-	// Get the structure location (rear armor maps to front structure)
-	ArmorLocation structLoc = damagesystem::mapRearToFront(hitLoc);
-
 	// Record armor/structure before damage
 	int armorBefore = defender->locations[hitLoc].currentArmor;
-	int structureBefore = defender->locations[structLoc].currentStructure;
+	int structureBefore = defender->locations[hitLoc].currentStructure;
 
 	// Apply damage
 	int damage = attacker->attack;
@@ -91,7 +88,7 @@ void performAttack(GameState &game, Unit *attacker, Unit *defender) {
 
 	// Calculate actual damage dealt
 	int armorAfter = defender->locations[hitLoc].currentArmor;
-	int structureAfter = defender->locations[structLoc].currentStructure;
+	int structureAfter = defender->locations[hitLoc].currentStructure;
 
 	int armorDamage = armorBefore - armorAfter;
 	int structureDamage = structureBefore - structureAfter;

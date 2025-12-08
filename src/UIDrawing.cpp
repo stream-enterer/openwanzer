@@ -184,12 +184,12 @@ void drawUnitInfoBox(GameState &game) {
 	DrawTextEx(cherrystyle::CHERRY_FONT, info.c_str(), Vector2 {(float)x, (float)y}, (float)fontSize, spacing, textColor);
 	y += lineSpacing;
 
-	const LocationStatus &ct = unit->locations.at(ArmorLocation::CENTER_TORSO);
-	info = "CT Armor: " + std::to_string(ct.currentArmor) + "/" + std::to_string(ct.maxArmor);
+	const LocationStatus &center = unit->locations.at(ArmorLocation::CENTER);
+	info = "Center Armor: " + std::to_string(center.currentArmor) + "/" + std::to_string(center.maxArmor);
 	DrawTextEx(cherrystyle::CHERRY_FONT, info.c_str(), Vector2 {(float)x, (float)y}, (float)fontSize, spacing, textColor);
 	y += lineSpacing;
 
-	info = "CT Structure: " + std::to_string(ct.currentStructure) + "/" + std::to_string(ct.maxStructure);
+	info = "Center Structure: " + std::to_string(center.currentStructure) + "/" + std::to_string(center.maxStructure);
 	DrawTextEx(cherrystyle::CHERRY_FONT, info.c_str(), Vector2 {(float)x, (float)y}, (float)fontSize, spacing, textColor);
 	y += lineSpacing + 4;
 

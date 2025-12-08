@@ -3,85 +3,58 @@
 void Unit::initializeLocations(WeightClass wClass) {
 	weightClass = wClass;
 
+	// Simplified 5-part armor system
+	// Structure is 5 for all locations and all weight classes
+	// Armor varies by weight class:
+	// - Front: highest armor
+	// - Rear: lowest armor
+	// - Left/Right/Center: equal middle armor
 	switch (wClass) {
-		case WeightClass::LIGHT: // 35 tons
-			locations[ArmorLocation::HEAD] = LocationStatus(18, 6);
-			locations[ArmorLocation::CENTER_TORSO] = LocationStatus(50, 18);
-			locations[ArmorLocation::CENTER_TORSO_REAR] = LocationStatus(10, 0);
-			locations[ArmorLocation::LEFT_TORSO] = LocationStatus(32, 14);
-			locations[ArmorLocation::LEFT_TORSO_REAR] = LocationStatus(8, 0);
-			locations[ArmorLocation::RIGHT_TORSO] = LocationStatus(32, 14);
-			locations[ArmorLocation::RIGHT_TORSO_REAR] = LocationStatus(8, 0);
-			locations[ArmorLocation::LEFT_ARM] = LocationStatus(28, 12);
-			locations[ArmorLocation::RIGHT_ARM] = LocationStatus(28, 12);
-			locations[ArmorLocation::LEFT_LEG] = LocationStatus(36, 14);
-			locations[ArmorLocation::RIGHT_LEG] = LocationStatus(36, 14);
+		case WeightClass::LIGHT:
+			// Front 20, Rear 10, L/R/C 15, Structure 5
+			locations[ArmorLocation::FRONT] = LocationStatus(20, 5);
+			locations[ArmorLocation::REAR] = LocationStatus(10, 5);
+			locations[ArmorLocation::LEFT] = LocationStatus(15, 5);
+			locations[ArmorLocation::RIGHT] = LocationStatus(15, 5);
+			locations[ArmorLocation::CENTER] = LocationStatus(15, 5);
 			break;
 
-		case WeightClass::MEDIUM: // 50 tons
-			locations[ArmorLocation::HEAD] = LocationStatus(18, 8);
-			locations[ArmorLocation::CENTER_TORSO] = LocationStatus(80, 26);
-			locations[ArmorLocation::CENTER_TORSO_REAR] = LocationStatus(16, 0);
-			locations[ArmorLocation::LEFT_TORSO] = LocationStatus(52, 20);
-			locations[ArmorLocation::LEFT_TORSO_REAR] = LocationStatus(12, 0);
-			locations[ArmorLocation::RIGHT_TORSO] = LocationStatus(52, 20);
-			locations[ArmorLocation::RIGHT_TORSO_REAR] = LocationStatus(12, 0);
-			locations[ArmorLocation::LEFT_ARM] = LocationStatus(40, 16);
-			locations[ArmorLocation::RIGHT_ARM] = LocationStatus(40, 16);
-			locations[ArmorLocation::LEFT_LEG] = LocationStatus(52, 20);
-			locations[ArmorLocation::RIGHT_LEG] = LocationStatus(52, 20);
+		case WeightClass::MEDIUM:
+			// Front 30, Rear 20, L/R/C 25, Structure 5
+			locations[ArmorLocation::FRONT] = LocationStatus(30, 5);
+			locations[ArmorLocation::REAR] = LocationStatus(20, 5);
+			locations[ArmorLocation::LEFT] = LocationStatus(25, 5);
+			locations[ArmorLocation::RIGHT] = LocationStatus(25, 5);
+			locations[ArmorLocation::CENTER] = LocationStatus(25, 5);
 			break;
 
-		case WeightClass::HEAVY: // 70 tons
-			locations[ArmorLocation::HEAD] = LocationStatus(18, 10);
-			locations[ArmorLocation::CENTER_TORSO] = LocationStatus(100, 36);
-			locations[ArmorLocation::CENTER_TORSO_REAR] = LocationStatus(24, 0);
-			locations[ArmorLocation::LEFT_TORSO] = LocationStatus(64, 28);
-			locations[ArmorLocation::LEFT_TORSO_REAR] = LocationStatus(16, 0);
-			locations[ArmorLocation::RIGHT_TORSO] = LocationStatus(64, 28);
-			locations[ArmorLocation::RIGHT_TORSO_REAR] = LocationStatus(16, 0);
-			locations[ArmorLocation::LEFT_ARM] = LocationStatus(52, 24);
-			locations[ArmorLocation::RIGHT_ARM] = LocationStatus(52, 24);
-			locations[ArmorLocation::LEFT_LEG] = LocationStatus(64, 28);
-			locations[ArmorLocation::RIGHT_LEG] = LocationStatus(64, 28);
+		case WeightClass::HEAVY:
+			// Front 40, Rear 30, L/R/C 35, Structure 5
+			locations[ArmorLocation::FRONT] = LocationStatus(40, 5);
+			locations[ArmorLocation::REAR] = LocationStatus(30, 5);
+			locations[ArmorLocation::LEFT] = LocationStatus(35, 5);
+			locations[ArmorLocation::RIGHT] = LocationStatus(35, 5);
+			locations[ArmorLocation::CENTER] = LocationStatus(35, 5);
 			break;
 
-		case WeightClass::ASSAULT: // 100 tons
-			locations[ArmorLocation::HEAD] = LocationStatus(18, 12);
-			locations[ArmorLocation::CENTER_TORSO] = LocationStatus(120, 50);
-			locations[ArmorLocation::CENTER_TORSO_REAR] = LocationStatus(36, 0);
-			locations[ArmorLocation::LEFT_TORSO] = LocationStatus(80, 40);
-			locations[ArmorLocation::LEFT_TORSO_REAR] = LocationStatus(24, 0);
-			locations[ArmorLocation::RIGHT_TORSO] = LocationStatus(80, 40);
-			locations[ArmorLocation::RIGHT_TORSO_REAR] = LocationStatus(24, 0);
-			locations[ArmorLocation::LEFT_ARM] = LocationStatus(64, 34);
-			locations[ArmorLocation::RIGHT_ARM] = LocationStatus(64, 34);
-			locations[ArmorLocation::LEFT_LEG] = LocationStatus(80, 40);
-			locations[ArmorLocation::RIGHT_LEG] = LocationStatus(80, 40);
+		case WeightClass::ASSAULT:
+			// Front 50, Rear 40, L/R/C 45, Structure 5
+			locations[ArmorLocation::FRONT] = LocationStatus(50, 5);
+			locations[ArmorLocation::REAR] = LocationStatus(40, 5);
+			locations[ArmorLocation::LEFT] = LocationStatus(45, 5);
+			locations[ArmorLocation::RIGHT] = LocationStatus(45, 5);
+			locations[ArmorLocation::CENTER] = LocationStatus(45, 5);
 			break;
 	}
 }
 
 bool Unit::isAlive() const {
-	if (locations.at(ArmorLocation::HEAD).isDestroyed)
-		return false;
-	if (locations.at(ArmorLocation::CENTER_TORSO).isDestroyed)
-		return false;
-
-	if (locations.at(ArmorLocation::LEFT_LEG).isDestroyed && locations.at(ArmorLocation::RIGHT_LEG).isDestroyed)
-		return false;
-
-	return true;
+	// Mech is destroyed when CENTER is destroyed
+	return !locations.at(ArmorLocation::CENTER).isDestroyed;
 }
 
 bool Unit::canMove() const {
-	if (!isAlive())
-		return false;
-
-	bool leftLegGone = locations.at(ArmorLocation::LEFT_LEG).isDestroyed;
-	bool rightLegGone = locations.at(ArmorLocation::RIGHT_LEG).isDestroyed;
-
-	return !(leftLegGone && rightLegGone);
+	return isAlive();
 }
 
 int Unit::getOverallHealthPercent() const {

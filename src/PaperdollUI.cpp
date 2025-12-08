@@ -53,8 +53,6 @@ const Color DISABLED_WEAPON_COLOR = DARKGRAY;
 
 // Attack arc indicator
 const Color ARC_INDICATOR_COLOR = RED;
-const int ARC_LINE_THICKNESS = 2;
-const int ARC_LINE_PADDING = 2;
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -138,109 +136,75 @@ void renderBodySection(Rectangle rect, const Unit* unit, ArmorLocation location)
 }
 
 // ============================================================================
-// PAPERDOLL RENDERING
+// PAPERDOLL RENDERING (5-box cross layout)
 // ============================================================================
 
-void renderFrontPaperdoll(const PaperdollPanel& panel, const Unit* unit) {
-	// Draw each body section with appropriate color
-	renderBodySection(panel.frontHead, unit, ArmorLocation::HEAD);
-	renderBodySection(panel.frontLA, unit, ArmorLocation::LEFT_ARM);
-	renderBodySection(panel.frontRA, unit, ArmorLocation::RIGHT_ARM);
-	renderBodySection(panel.frontLT, unit, ArmorLocation::LEFT_TORSO);
-	renderBodySection(panel.frontCT, unit, ArmorLocation::CENTER_TORSO);
-	renderBodySection(panel.frontRT, unit, ArmorLocation::RIGHT_TORSO);
-	renderBodySection(panel.frontLL, unit, ArmorLocation::LEFT_LEG);
-	renderBodySection(panel.frontRL, unit, ArmorLocation::RIGHT_LEG);
-}
-
-void renderRearPaperdoll(const PaperdollPanel& panel, const Unit* unit) {
-	// Draw rear torso sections
-	renderBodySection(panel.rearLT, unit, ArmorLocation::LEFT_TORSO_REAR);
-	renderBodySection(panel.rearCT, unit, ArmorLocation::CENTER_TORSO_REAR);
-	renderBodySection(panel.rearRT, unit, ArmorLocation::RIGHT_TORSO_REAR);
-
-	// Draw blackened arms (non-targetable from rear)
-	DrawRectangleRec(panel.rearLA, Color {20, 20, 20, 255});
-	DrawRectangleLinesEx(panel.rearLA, 1, Color {40, 40, 40, 255});
-
-	DrawRectangleRec(panel.rearRA, Color {20, 20, 20, 255});
-	DrawRectangleLinesEx(panel.rearRA, 1, Color {40, 40, 40, 255});
+void renderCrossPaperdoll(const PaperdollPanel& panel, const Unit* unit) {
+	// Draw 5-box cross layout:
+	//         [FRONT]
+	//     [LEFT][CENTER][RIGHT]
+	//         [REAR]
+	renderBodySection(panel.boxFront, unit, ArmorLocation::FRONT);
+	renderBodySection(panel.boxLeft, unit, ArmorLocation::LEFT);
+	renderBodySection(panel.boxCenter, unit, ArmorLocation::CENTER);
+	renderBodySection(panel.boxRight, unit, ArmorLocation::RIGHT);
+	renderBodySection(panel.boxRear, unit, ArmorLocation::REAR);
 }
 
 void renderPaperdollLabels(const PaperdollPanel& panel) {
-	// Draw "FRONT" and "REAR" labels below paperdolls
-	float frontLabelX = panel.frontCT.x + panel.frontCT.width / 2 - 30;
-	float rearLabelX = panel.rearCT.x + panel.rearCT.width / 2 - 25;
-	float labelY = panel.frontLL.y + panel.frontLL.height + 5;
-
+	// Draw single-letter labels inside or near each box
 	float spacing = (float)cherrystyle::kFontSpacing;
-	const int fontSize = cherrystyle::kFontSize;
-	DrawTextEx(cherrystyle::CHERRY_FONT, "FRONT", Vector2 {frontLabelX, labelY}, (float)fontSize, spacing, GRAY);
-	DrawTextEx(cherrystyle::CHERRY_FONT, "REAR", Vector2 {rearLabelX, labelY}, (float)fontSize, spacing, GRAY);
+	const int fontSize = 12; // Smaller font for labels
+
+	// Calculate label positions (centered in each box)
+	float frontLabelX = panel.boxFront.x + panel.boxFront.width / 2 - 3;
+	float frontLabelY = panel.boxFront.y + panel.boxFront.height + 2;
+
+	float leftLabelX = panel.boxLeft.x + panel.boxLeft.width / 2 - 3;
+	float leftLabelY = panel.boxLeft.y + panel.boxLeft.height + 2;
+
+	float centerLabelX = panel.boxCenter.x + panel.boxCenter.width / 2 - 3;
+	float centerLabelY = panel.boxCenter.y + panel.boxCenter.height + 2;
+
+	float rightLabelX = panel.boxRight.x + panel.boxRight.width / 2 - 3;
+	float rightLabelY = panel.boxRight.y + panel.boxRight.height + 2;
+
+	float rearLabelX = panel.boxRear.x + panel.boxRear.width / 2 - 3;
+	float rearLabelY = panel.boxRear.y + panel.boxRear.height + 2;
+
+	DrawTextEx(cherrystyle::CHERRY_FONT, "F", Vector2 {frontLabelX, frontLabelY}, (float)fontSize, spacing, GRAY);
+	DrawTextEx(cherrystyle::CHERRY_FONT, "L", Vector2 {leftLabelX, leftLabelY}, (float)fontSize, spacing, GRAY);
+	DrawTextEx(cherrystyle::CHERRY_FONT, "C", Vector2 {centerLabelX, centerLabelY}, (float)fontSize, spacing, GRAY);
+	DrawTextEx(cherrystyle::CHERRY_FONT, "R", Vector2 {rightLabelX, rightLabelY}, (float)fontSize, spacing, GRAY);
+	DrawTextEx(cherrystyle::CHERRY_FONT, "R", Vector2 {rearLabelX, rearLabelY}, (float)fontSize, spacing, GRAY);
 }
 
 // ============================================================================
 // ATTACK ARC INDICATORS
 // ============================================================================
 
-Rectangle getBoundingRectForFrontPaperdoll(const PaperdollPanel& panel) {
-	// Calculate bounding box for front paperdoll
-	float minX = panel.frontLA.x;
-	float maxX = panel.frontRA.x + panel.frontRA.width;
-	float minY = panel.frontHead.y;
-	float maxY = panel.frontLL.y + panel.frontLL.height;
-	return Rectangle {minX, minY, maxX - minX, maxY - minY};
-}
-
-Rectangle getBoundingRectForRearPaperdoll(const PaperdollPanel& panel) {
-	// Calculate bounding box for rear paperdoll
-	float minX = panel.rearLA.x;
-	float maxX = panel.rearRA.x + panel.rearRA.width;
-	float minY = panel.rearLT.y;
-	float maxY = panel.rearRT.y + panel.rearRT.height;
-	return Rectangle {minX, minY, maxX - minX, maxY - minY};
-}
-
-void drawVerticalArcLine(Rectangle bounds, bool isLeftSide) {
-	float x = isLeftSide ? (bounds.x - ARC_LINE_PADDING - ARC_LINE_THICKNESS) : (bounds.x + bounds.width + ARC_LINE_PADDING);
-
-	Vector2 start = {x, bounds.y};
-	Vector2 end = {x, bounds.y + bounds.height};
-
-	// Draw double line
-	DrawLineEx(start, end, (float)ARC_LINE_THICKNESS, ARC_INDICATOR_COLOR);
-	DrawLineEx(Vector2 {x + ARC_LINE_THICKNESS + 1, start.y},
-	           Vector2 {x + ARC_LINE_THICKNESS + 1, end.y},
-	           (float)ARC_LINE_THICKNESS, ARC_INDICATOR_COLOR);
-}
-
 void renderAttackArcIndicators(const PaperdollPanel& panel, combatarcs::AttackArc arc) {
-	Rectangle frontBounds = getBoundingRectForFrontPaperdoll(panel);
-	Rectangle rearBounds = getBoundingRectForRearPaperdoll(panel);
+	// Highlight the targeted box based on attack arc
+	// (10% chance to hit CENTER is always there, but we highlight the primary target)
+	Rectangle targetBox;
 
 	switch (arc) {
 		case combatarcs::AttackArc::FRONT:
-			// Lines on left and right of front paperdoll
-			drawVerticalArcLine(frontBounds, true);  // left
-			drawVerticalArcLine(frontBounds, false); // right
+			targetBox = panel.boxFront;
 			break;
-
 		case combatarcs::AttackArc::LEFT_SIDE:
-			// Line on left side of front paperdoll only
-			drawVerticalArcLine(frontBounds, true);
+			targetBox = panel.boxLeft;
 			break;
-
 		case combatarcs::AttackArc::RIGHT_SIDE:
-			// Line on right side of front paperdoll only
-			drawVerticalArcLine(frontBounds, false);
+			targetBox = panel.boxRight;
 			break;
-
 		case combatarcs::AttackArc::REAR:
-			// Lines on both sides of rear paperdoll
-			drawVerticalArcLine(rearBounds, true);
-			drawVerticalArcLine(rearBounds, false);
+			targetBox = panel.boxRear;
 			break;
 	}
+
+	// Draw red border around targeted location
+	DrawRectangleLinesEx(targetBox, 3, ARC_INDICATOR_COLOR);
 }
 
 // ============================================================================
@@ -422,25 +386,19 @@ void renderTargetPanel(const GameState& game) {
 	// 2. Draw header section
 	renderPanelHeader(panel, unit, true);
 
-	// 3. Draw front paperdoll
-	renderFrontPaperdoll(panel, unit);
+	// 3. Draw 5-box cross paperdoll
+	renderCrossPaperdoll(panel, unit);
 
-	// 4. Draw rear paperdoll
-	renderRearPaperdoll(panel, unit);
-
-	// 5. Draw flash overlay (hit animation)
+	// 4. Draw flash overlay (hit animation)
 	renderFlashOverlay(panel);
 
-	// 6. Draw attack arc indicators (red lines)
+	// 5. Draw attack arc indicators (red border on targeted location)
 	renderAttackArcIndicators(panel, panel.currentArc);
 
-	// 7. Draw "FRONT" and "REAR" labels
-	renderPaperdollLabels(panel);
-
-	// 8. Draw weapon loadout list
+	// 6. Draw weapon loadout list
 	renderWeaponLoadout(panel, unit);
 
-	// 9. Draw tooltip if hovering over body part
+	// 7. Draw tooltip if hovering over body part
 	if (panel.showTooltip) {
 		renderLocationTooltip(panel, unit);
 	}
@@ -463,19 +421,13 @@ void renderPlayerPanel(const GameState& game) {
 	// 2. Draw header section (simplified for player panel)
 	renderPanelHeader(panel, unit, false);
 
-	// 3. Draw front paperdoll
-	renderFrontPaperdoll(panel, unit);
+	// 3. Draw 5-box cross paperdoll
+	renderCrossPaperdoll(panel, unit);
 
-	// 4. Draw rear paperdoll
-	renderRearPaperdoll(panel, unit);
-
-	// 5. Draw flash overlay (hit animation)
+	// 4. Draw flash overlay (hit animation)
 	renderFlashOverlay(panel);
 
-	// 6. Draw "FRONT" and "REAR" labels
-	renderPaperdollLabels(panel);
-
-	// 7. Draw tooltip if hovering over body part
+	// 5. Draw tooltip if hovering over body part
 	if (panel.showTooltip) {
 		renderLocationTooltip(panel, unit);
 	}
@@ -489,31 +441,17 @@ void updatePanelTooltip(PaperdollPanel& panel, Vector2 mousePos) {
 	panel.hoveredLocation = ArmorLocation::NONE;
 	panel.showTooltip = false;
 
-	// Check each body section for hover
-	if (CheckCollisionPointRec(mousePos, panel.frontHead)) {
-		panel.hoveredLocation = ArmorLocation::HEAD;
-	} else if (CheckCollisionPointRec(mousePos, panel.frontCT)) {
-		panel.hoveredLocation = ArmorLocation::CENTER_TORSO;
-	} else if (CheckCollisionPointRec(mousePos, panel.frontLT)) {
-		panel.hoveredLocation = ArmorLocation::LEFT_TORSO;
-	} else if (CheckCollisionPointRec(mousePos, panel.frontRT)) {
-		panel.hoveredLocation = ArmorLocation::RIGHT_TORSO;
-	} else if (CheckCollisionPointRec(mousePos, panel.frontLA)) {
-		panel.hoveredLocation = ArmorLocation::LEFT_ARM;
-	} else if (CheckCollisionPointRec(mousePos, panel.frontRA)) {
-		panel.hoveredLocation = ArmorLocation::RIGHT_ARM;
-	} else if (CheckCollisionPointRec(mousePos, panel.frontLL)) {
-		panel.hoveredLocation = ArmorLocation::LEFT_LEG;
-	} else if (CheckCollisionPointRec(mousePos, panel.frontRL)) {
-		panel.hoveredLocation = ArmorLocation::RIGHT_LEG;
-	}
-	// Rear paperdoll sections
-	else if (CheckCollisionPointRec(mousePos, panel.rearCT)) {
-		panel.hoveredLocation = ArmorLocation::CENTER_TORSO_REAR;
-	} else if (CheckCollisionPointRec(mousePos, panel.rearLT)) {
-		panel.hoveredLocation = ArmorLocation::LEFT_TORSO_REAR;
-	} else if (CheckCollisionPointRec(mousePos, panel.rearRT)) {
-		panel.hoveredLocation = ArmorLocation::RIGHT_TORSO_REAR;
+	// Check each box in the 5-box cross layout for hover
+	if (CheckCollisionPointRec(mousePos, panel.boxFront)) {
+		panel.hoveredLocation = ArmorLocation::FRONT;
+	} else if (CheckCollisionPointRec(mousePos, panel.boxLeft)) {
+		panel.hoveredLocation = ArmorLocation::LEFT;
+	} else if (CheckCollisionPointRec(mousePos, panel.boxCenter)) {
+		panel.hoveredLocation = ArmorLocation::CENTER;
+	} else if (CheckCollisionPointRec(mousePos, panel.boxRight)) {
+		panel.hoveredLocation = ArmorLocation::RIGHT;
+	} else if (CheckCollisionPointRec(mousePos, panel.boxRear)) {
+		panel.hoveredLocation = ArmorLocation::REAR;
 	}
 
 	if (panel.hoveredLocation != ArmorLocation::NONE) {
@@ -599,28 +537,16 @@ void handlePaperdollTooltips(GameState& game) {
 // Get the rectangle for a given armor location in a panel
 Rectangle getLocationRect(const PaperdollPanel& panel, ArmorLocation location) {
 	switch (location) {
-		case ArmorLocation::HEAD:
-			return panel.frontHead;
-		case ArmorLocation::CENTER_TORSO:
-			return panel.frontCT;
-		case ArmorLocation::LEFT_TORSO:
-			return panel.frontLT;
-		case ArmorLocation::RIGHT_TORSO:
-			return panel.frontRT;
-		case ArmorLocation::LEFT_ARM:
-			return panel.frontLA;
-		case ArmorLocation::RIGHT_ARM:
-			return panel.frontRA;
-		case ArmorLocation::LEFT_LEG:
-			return panel.frontLL;
-		case ArmorLocation::RIGHT_LEG:
-			return panel.frontRL;
-		case ArmorLocation::CENTER_TORSO_REAR:
-			return panel.rearCT;
-		case ArmorLocation::LEFT_TORSO_REAR:
-			return panel.rearLT;
-		case ArmorLocation::RIGHT_TORSO_REAR:
-			return panel.rearRT;
+		case ArmorLocation::FRONT:
+			return panel.boxFront;
+		case ArmorLocation::LEFT:
+			return panel.boxLeft;
+		case ArmorLocation::CENTER:
+			return panel.boxCenter;
+		case ArmorLocation::RIGHT:
+			return panel.boxRight;
+		case ArmorLocation::REAR:
+			return panel.boxRear;
 		default:
 			return Rectangle {0, 0, 0, 0};
 	}
