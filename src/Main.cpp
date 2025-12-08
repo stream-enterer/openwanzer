@@ -401,7 +401,7 @@ int main() {
 		}
 
 		// Update combat texts
-		gamelogic::updateCombatTexts(game);
+		gamelogic::updateCombatTexts(game, GetFrameTime());
 
 		// Update panel flash animations
 		paperdollui::updatePanelFlashes(game);

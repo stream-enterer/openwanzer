@@ -123,7 +123,10 @@ void renderBodySection(Rectangle rect, const Unit* unit, ArmorLocation location)
 	} else if (isStructureExposed) {
 		// Orange with diagonal stripes
 		DrawRectangleRec(rect, STRUCTURE_COLOR);
+		// Use scissor mode to clip diagonal stripes to the rectangle bounds
+		BeginScissorMode((int)rect.x, (int)rect.y, (int)rect.width, (int)rect.height);
 		renderDiagonalStripes(rect, BLACK, STRIPE_WIDTH);
+		EndScissorMode();
 		DrawRectangleLinesEx(rect, 1, DESTROYED_OUTLINE);
 	} else {
 		// Armor present - color based on percentage

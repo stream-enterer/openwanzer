@@ -33,13 +33,19 @@ void spawnCombatText(GameState& game, const HexCoord& targetHex, const std::stri
 	float posY = (float)center.y - (randomY * verticalRange); // Upper half (negative Y is up)
 
 	Vector2 position = {posX, posY};
-	game.combatTexts.emplace_back(position, text, isStructure);
+
+	// Use config timing values
+	float fadeIn = game.settings.combatTextFadeInTime;
+	float floatDur = game.settings.combatTextFloatTime;
+	float floatSpeed = game.settings.combatTextFloatSpeed;
+
+	game.combatTexts.emplace_back(position, text, isStructure, fadeIn, floatDur, floatSpeed);
 }
 
-void updateCombatTexts(GameState& game) {
+void updateCombatTexts(GameState& game, float deltaTime) {
 	// Update all combat texts and remove finished ones
 	for (auto& text : game.combatTexts) {
-		text.update();
+		text.update(deltaTime);
 	}
 
 	// Remove finished combat texts
